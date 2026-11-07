@@ -8,6 +8,19 @@ import type { GameEntry } from '../types/game'
  */
 export const GAME_REGISTRY: GameEntry[] = [
   {
+    id: 'shazai-angle-challenge',
+    title: '緊急謝罪会見！ギリギリお辞儀チャレンジ',
+    shortDescription:
+      '「会社のプリンを無断完食した件」で緊急記者会見！？長押し加速＆指離しブレーキで黄金の謝罪角度を狙え！下げすぎると床を突き破りブラジルへ貫通！？',
+    howToPlay:
+      '【ルール＆操作方法】\n・画面下のボタンを「長押し」するとお辞儀が加速し、「指を離す」と慣性ブレーキで止まります。\n・第1問（45°）➔ 第2問（90°・フラッシュ目くらまし！）➔ 最終問（135°・床寸止め限界土下座！）の目標角度ピタリを狙ってください。\n・浅すぎると「逆ギレ大炎上🔥」、深すぎると「会見テーブル粉砕＆マントル貫通🌍」の放送事故になり、号外スクープ新聞が発行されます！',
+    thumbnailEmoji: '🙇',
+    accentColor: 'amber',
+    tags: ['アクション', 'カジュアル'],
+    createdAt: '2026-11-07',
+    component: lazy(() => import('./shazai-angle-challenge')),
+  },
+  {
     id: 'candy-pop-reversi',
     title: 'キャンディ・ポップ・リバーシ',
     shortDescription:
