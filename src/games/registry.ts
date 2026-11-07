@@ -8,6 +8,19 @@ import type { GameEntry } from '../types/game'
  */
 export const GAME_REGISTRY: GameEntry[] = [
   {
+    id: 'candy-pop-reversi',
+    title: 'キャンディ・ポップ・リバーシ',
+    shortDescription:
+      'ぷっくりキャンディ石がパタパタ弾ける！💣ボム＆🛡️シールドの「パーティーモード」と純粋な「クラシックモード」が遊べる新感覚リバーシ！',
+    howToPlay:
+      '【ルール＆操作方法】\n・相手のキャンディ石を上下・左右・斜めに挟むと自分の色（★コーラル）に裏返ります。\n・置けるマスには「+3」など裏返る合計枚数がガイド表示されます。\n・🎉パーティーモードでは、点対称に配置された「💣ボムマス（十字4マスの相手石もまとめて誘爆！）」と「🛡️シールドマス（ゲーム終了まで絶対裏返らない無敵キャンディになる！）」が登場します。\n・CPU難易度は「🐣よわい / 🐰ふつう / 🦁つよい」の3段階＋スマホ1台で遊べる「👥2人対戦」から選べます。',
+    thumbnailEmoji: '🍬',
+    accentColor: 'rose',
+    tags: ['パズル', 'カジュアル'],
+    createdAt: '2026-11-07',
+    component: lazy(() => import('./candy-pop-reversi')),
+  },
+  {
     id: 'sample-01',
     title: 'サンプルゲーム 01',
     shortDescription:
