@@ -38,7 +38,7 @@ jobs:
 
       - name: Build for GitHub Pages
         env:
-          GITHUB_ACTIONS: 'true'
+          VITE_BASE_PATH: '/GameCreateTeam/'
         run: |
           npm run build
           cp dist/index.html dist/404.html

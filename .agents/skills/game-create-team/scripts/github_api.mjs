@@ -179,6 +179,18 @@ async function main() {
       break
     }
 
+    case 'merge-pr': {
+      const [prNumber] = args
+      if (!prNumber) {
+        throw new Error('マージするPR番号を指定してください')
+      }
+      const merged = await githubRequest(`/pulls/${prNumber}/merge`, 'PUT', {
+        merge_method: 'squash',
+      })
+      console.log(JSON.stringify(merged, null, 2))
+      break
+    }
+
     default:
       console.error(
         'Usage: github_api.mjs <list-issues|get-issue|create-issue|comment-issue|create-pr> ...'
