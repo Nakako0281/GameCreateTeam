@@ -32,14 +32,20 @@ description: >-
 
 ## 🚀 実行ステップ
 
-### Step 1: 対象GitHub Issueの確認（または自動起票）
+### Step 1: 対象GitHub Issueの確認（またはAIチームによる自律企画＆自動起票）
 
 1. 現在のオープンなIssue一覧を確認します：
    ```bash
    node .agents/skills/game-create-team/scripts/github_api.mjs list-issues
    ```
-2. ユーザーが特定のIssue番号を指定した場合は `get-issue <番号>` で詳細を取得します。
-3. もしユーザーがGitHub上にまだIssueを立てずにチャットで直接「〇〇を作って」と依頼した場合は、`create-issue` コマンドで自動的にGitHub Issueを起票し、そのIssue番号を以降の記録先とします。
+2. **オープンなIssueが存在する場合**（またはユーザーが特定のIssue番号を指定した場合）：
+   - `get-issue <番号>` で詳細を取得し、そのお題を対象として Step 2 へ進みます。
+3. **ユーザーが直接お題（「〇〇を作って」）を指定した場合**：
+   - `create-issue` コマンドで自動的にGitHub Issueを起票し、そのIssue番号を記録先とします。
+4. **オープンなIssueが0件で、定期実行（自律企画モード）として起動された場合**：
+   - `src/games/registry.ts` の既存ゲーム一覧を確認し、まだプラットフォームにないジャンル・遊び方を把握します。
+   - Step 2 の4名（トレンドリサーチャー、王道・ルール番人、バズ・中毒性プランナー、モバイルUXデザイナー）に「次にAI Game Labに追加すべき、スマホ縦画面で最高に面白い新作ミニゲームのお題・企画」をリサーチ＆議論させてお題を決定します。
+   - 決定したお題で `node .agents/skills/game-create-team/scripts/github_api.mjs create-issue "【AI自律企画】<ゲームタイトル>" "<企画背景の要約>"` を実行してGitHub Issueを自動起票し、そのIssueに以降の議論ログ・設計・レビュー結果・PRを紐づけます。
 
 ---
 
