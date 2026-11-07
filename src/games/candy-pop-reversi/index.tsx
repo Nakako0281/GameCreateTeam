@@ -522,14 +522,27 @@ export default function CandyPopReversi() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => startNewGame(mode, opponent)}
-                  className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 py-3 text-sm font-black text-white shadow-md transition hover:brightness-105 active:scale-95"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>もう1回遊ぶ！</span>
-                </button>
+                <div className="mt-4 flex flex-col gap-2">
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                      `🍬 キャンディ・ポップ・リバーシで【${playstyleTitle.badge}】を獲得！（★${counts.coral} vs ●${counts.soda}）\n#AIGameLab #キャンディポップリバーシ\n`
+                    )}&url=${encodeURIComponent(window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-900 py-2.5 text-xs font-black text-white shadow-md transition hover:bg-slate-800 active:scale-95"
+                  >
+                    <span>𝕏 で結果をシェアする</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => startNewGame(mode, opponent)}
+                    className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 py-3 text-sm font-black text-white shadow-md transition hover:brightness-105 active:scale-95"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>もう1回遊ぶ！</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
