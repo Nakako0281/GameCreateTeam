@@ -142,4 +142,5 @@ Step 2で起動した以下の3名の **既存の `conversationId`** に対し�
    ```bash
    node .agents/skills/game-create-team/scripts/github_api.mjs create-pr feat/game-<game-id> "feat(game): <ゲームタイトル> を追加 (#<issue_number>)" <pr_body_file_path>
    ```
-3. 作成したPRのURLをGitHub Issueにもコメント投稿し、ユーザーへ「PRのマージ待ち（マージボタンを押すとGitHub Pagesへ自動デプロイされます）」である旨を報告して完了します。
+3. 作成したPRのURLをGitHub Issueにもコメント投稿し、ユーザーへ「PRのマージ待ち（ユーザーが承認・マージボタンを押すとGitHub Pagesへ自動デプロイされます）」である旨を報告して完了します。
+   - **【絶対厳守】AIエージェント自身がPRをマージすることは厳禁です。必ずオープン状態のPRのままユーザーのレビュー・承認を待ってください。**

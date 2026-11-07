@@ -3,6 +3,7 @@
  * GitHub API Helper for GameCreateTeam
  * Git Credential Manager (または環境変数 GITHUB_TOKEN) の認証情報を利用して
  * Issueの取得・作成・コメント投稿・PR作成を行います。
+ * ※ PRのマージ機能は人間（ユーザー）の承認専権事項のため搭載禁止。
  *
  * 使い方:
  *   node .agents/skills/game-create-team/scripts/github_api.mjs list-issues
@@ -176,18 +177,6 @@ async function main() {
           2
         )
       )
-      break
-    }
-
-    case 'merge-pr': {
-      const [prNumber] = args
-      if (!prNumber) {
-        throw new Error('マージするPR番号を指定してください')
-      }
-      const merged = await githubRequest(`/pulls/${prNumber}/merge`, 'PUT', {
-        merge_method: 'squash',
-      })
-      console.log(JSON.stringify(merged, null, 2))
       break
     }
 
