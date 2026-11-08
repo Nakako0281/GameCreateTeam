@@ -7,6 +7,19 @@ import type { GameEntry } from '../types/game'
  */
 export const GAME_REGISTRY: GameEntry[] = [
   {
+    id: 'slice-5050',
+    title: '神業・断面スライサー 50:50',
+    shortDescription:
+      'スワイプ一閃で多層塊を50:50に真っ二つ！ズレると天秤カタパルト暴走、鉄芯に当たると刀身＆床まで粉砕！',
+    howToPlay:
+      '指をドラッグしてレーザー切断線を引き、離して一刀両断！黄金コア（★）を通しつつ50:50を狙いましょう。ドクロ鉄芯（💀）を切ると刀が折れて大爆発します。',
+    tags: ['アクション', 'パズル', 'カジュアル'],
+    thumbnailEmoji: '🔪',
+    accentColor: 'rose',
+    createdAt: '2026-11-08',
+    component: lazy(() => import('./slice-5050')),
+  },
+  {
     id: 'ihou-kenchiku-burger',
     title: '注文の多すぎる違法建築ハンバーガー',
     shortDescription:
