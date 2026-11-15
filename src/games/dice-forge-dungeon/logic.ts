@@ -113,11 +113,11 @@ function spawnEnemyForFloor(
   }
   const tpl = pickRandom(state, candidates)
 
-  const floorScale = 1 + (floor - 1) * 0.08 + state.ascension * 0.12
+  const floorScale = 1 + (floor - 1) * 0.12 + state.ascension * 0.12
   const maxHp = Math.round(tpl.baseHp * floorScale)
   const scaledPatterns = tpl.intentPattern.map((intent) => ({
     ...intent,
-    damage: Math.round(intent.damage * (1 + (floor - 1) * 0.03 + state.ascension * 0.1)),
+    damage: Math.round(intent.damage * (1 + (floor - 1) * 0.06 + state.ascension * 0.1)),
   }))
 
   return {
@@ -427,7 +427,7 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
     }
   }
 
-  const pips = assignedDice.map((a) => a.die.currentPip)
+  const allHandPips = state.dice.map((d) => d.currentPip)
   let extraComboAdd = state.relics.includes('relic_lucky_clover') ? 0.2 : 0
   for (const { die } of assignedDice) {
     const eng = ENGRAVINGS[die.currentEngravingId]
@@ -435,15 +435,15 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
   }
 
   const formation = evaluateFormation(
-    pips,
+    allHandPips,
     state.relics.includes('relic_arcane_crown'),
     extraComboAdd
   )
 
   // レリック乗算倍率の計算
   let relicMult = 1.0
-  const lowPipCount = pips.filter((p) => p <= 2).length
-  const highPipCount = pips.filter((p) => p >= 5).length
+  const lowPipCount = allHandPips.filter((p) => p <= 2).length
+  const highPipCount = allHandPips.filter((p) => p >= 5).length
 
   if (state.relics.includes('relic_twin_daggers') && lowPipCount >= 2) {
     relicMult *= 1.35
@@ -521,12 +521,19 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
 
     if (category === 'guard') {
       rawShieldSum +=
-        effectivePip + (eng.bonusShield ?? 0) + Math.floor((eng.bonusAttack ?? 0) * 0.5)
+        effectivePip + (eng.bonusShield ?? 0) + Math.floor((eng.bonusAttack ?? 0) * 0.5) + 1
       if (eng.applyPoison) totalPoisonApplied += Math.ceil(eng.applyPoison * 0.5)
     } else if (category === 'strike') {
-      const hits = eng.multiHit ?? 1
+      const isTwinFangSlot = slotId === 'strike_2'
+      const hits = isTwinFangSlot ? (eng.multiHit ?? 2) : (eng.multiHit ?? 1)
       let perHit =
         effectivePip + (eng.bonusAttack ?? 0) + state.strengthThisBattle
+      if (slotId === 'strike_1') {
+        perHit += 2
+      } else if (isTwinFangSlot && !eng.multiHit) {
+        perHit = Math.max(1, Math.ceil(perHit * 0.55))
+        totalPoisonApplied += 2
+      }
       if (hasThimble && die.currentPip <= 2) {
         perHit += 5
         totalPoisonApplied += 3
@@ -730,9 +737,7 @@ function generateRewardOffer(state: GameState): RewardOffer {
   const posInArea = ((nextFloor - 1) % 4) + 1
   let nextFloorChoices: RewardOffer['nextFloorChoices'] = ['normal']
   if (posInArea === 2) {
-    nextFloorChoices = ['elite', 'altar']
-  } else if (posInArea === 3) {
-    nextFloorChoices = ['shop', 'normal']
+    nextFloorChoices = ['elite']
   } else if (posInArea === 4) {
     nextFloorChoices = ['boss']
   }
@@ -750,6 +755,9 @@ function advanceToNextFloor(
 ): void {
   state.floor += 1
   state.area = getAreaForFloor(state.floor)
+  // ステージ突破による自動レベルアップ成長（最大HP+4 ＆ HP回復+4）
+  state.maxHp += 4
+  state.hp = Math.min(state.maxHp, state.hp + 4)
   const bossTpl = getBossTemplateForArea(state.area)
   state.upcomingBoss = {
     name: bossTpl.name,
@@ -760,13 +768,13 @@ function advanceToNextFloor(
 
   if (nextNodeType === 'altar') {
     state.phase = 'altar'
-    state.combatLog.unshift(`Floor ${state.floor}: 秘境の魔導祭壇を発見した。`)
+    state.combatLog.unshift(`Stage ${state.floor}: 秘境の魔導祭壇を発見した。`)
     return
   }
   if (nextNodeType === 'shop') {
     state.phase = 'shop'
     state.rewardOffer = generateRewardOffer(state)
-    state.combatLog.unshift(`Floor ${state.floor}: 鍛冶屋＆魔導商店に到着した。`)
+    state.combatLog.unshift(`Stage ${state.floor}: 鍛冶屋＆魔導商店に到着した。`)
     return
   }
 
@@ -789,13 +797,14 @@ function startBattleOnCurrentFloor(
   state.shield = 0
   state.alchemyUsesThisBattle = 0
   state.evenPermBonusThisBattle = 0
-  state.strengthThisBattle = 0
+  // レベル（Stage）に応じた基礎攻撃力成長ボーナス
+  state.strengthThisBattle = state.floor - 1
   state.thornsThisBattle = 0
   state.rewardOffer = null
   state.enemy = spawnEnemyForFloor(state, state.floor, battleType)
   startTurnSetup(state)
   state.combatLog.unshift(
-    `Floor ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が立ち塞がる！`
+    `Stage ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が立ち塞がる！`
   )
 }
 
@@ -1070,12 +1079,68 @@ export function step(prevState: GameState, action: GameAction): GameState {
       if (state.phase !== 'reward' || !state.rewardOffer) return state
 
       if (action.engravingId !== undefined) {
-        const dieId = action.targetDieId ?? 0
-        const faceIdx = action.targetFaceIndex ?? 0
-        const die = state.dice.find((d) => d.id === dieId) ?? state.dice[0]
-        if (canForgeEngravingOnDie(die, action.engravingId, faceIdx)) {
-          die.faces[faceIdx] = {
-            faceIndex: faceIdx,
+        let chosenDie =
+          action.targetDieId !== undefined
+            ? state.dice.find((d) => d.id === action.targetDieId)
+            : undefined
+        let chosenFaceIdx = action.targetFaceIndex
+
+        // 24面手動選択を廃し、スキル選択だけで最適な未強化面（base_*優先）へ自動組み込みする
+        if (!chosenDie || chosenFaceIdx === undefined) {
+          let fallbackDie = state.dice[0]
+          let fallbackFaceIdx = 0
+          let foundBase = false
+
+          // まず全ダイスの中で base_ かつ pip が近い面、なければ任意の base_ 面を探す
+          const preferredFaceIdx = Math.max(0, Math.min(5, ENGRAVINGS[action.engravingId].pip - 1))
+          for (const die of state.dice) {
+            const prefFace = die.faces[preferredFaceIdx]
+            if (
+              prefFace.engravingId.startsWith('base_') &&
+              canForgeEngravingOnDie(die, action.engravingId, preferredFaceIdx)
+            ) {
+              fallbackDie = die
+              fallbackFaceIdx = preferredFaceIdx
+              foundBase = true
+              break
+            }
+          }
+
+          if (!foundBase) {
+            outer: for (const die of state.dice) {
+              for (const face of die.faces) {
+                if (
+                  face.engravingId.startsWith('base_') &&
+                  canForgeEngravingOnDie(die, action.engravingId, face.faceIndex)
+                ) {
+                  fallbackDie = die
+                  fallbackFaceIdx = face.faceIndex
+                  foundBase = true
+                  break outer
+                }
+              }
+            }
+          }
+
+          if (!foundBase) {
+            outerAny: for (const die of state.dice) {
+              for (const face of die.faces) {
+                if (canForgeEngravingOnDie(die, action.engravingId, face.faceIndex)) {
+                  fallbackDie = die
+                  fallbackFaceIdx = face.faceIndex
+                  break outerAny
+                }
+              }
+            }
+          }
+
+          chosenDie = fallbackDie
+          chosenFaceIdx = fallbackFaceIdx
+        }
+
+        if (canForgeEngravingOnDie(chosenDie, action.engravingId, chosenFaceIdx)) {
+          chosenDie.faces[chosenFaceIdx] = {
+            faceIndex: chosenFaceIdx,
             pip: ENGRAVINGS[action.engravingId].pip,
             engravingId: action.engravingId,
           }

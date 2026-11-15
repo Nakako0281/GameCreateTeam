@@ -80,6 +80,40 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
     )
   })
 
+  it('未配置でも手札4ダイスの役倍率が即座に決定し、ステージ突破で自動レベルアップ＆自動スキル組み込みが行われること', () => {
+    const state = initGameState(2026, 'mage', 0)
+    // 手元の4ダイスをワンペア(2,2,4,5)に設定（まだ1個もスロット未配置）
+    state.dice[0].currentPip = 2
+    state.dice[1].currentPip = 2
+    state.dice[2].currentPip = 4
+    state.dice[3].currentPip = 5
+
+    const handPreview = calculateTurnPreview(state)
+    expect(handPreview.formation.id).toBe('one_pair')
+    expect(handPreview.finalMult).toBeGreaterThanOrEqual(1.25)
+
+    // 敵を撃破して報酬フェーズへ移行
+    state.enemy.hp = 1
+    let postBattle = step(state, { type: 'ASSIGN_DIE', dieId: 0, slotId: 'strike_1' })
+    postBattle = step(postBattle, { type: 'EXECUTE_TURN' })
+    expect(postBattle.phase).toBe('reward')
+    expect(postBattle.rewardOffer?.nextFloorChoices).toEqual(['elite'])
+
+    const beforeMaxHp = postBattle.maxHp
+    const chosenEng = postBattle.rewardOffer!.engravings[0]
+    // 24面を手動指定しなくても自動で組み込まれ、レベルアップ（maxHp+4, 基礎攻撃+1）してStage2へ進む
+    const stage2 = step(postBattle, {
+      type: 'CHOOSE_REWARD',
+      engravingId: chosenEng,
+      nextNodeType: 'elite',
+    })
+    expect(stage2.phase).toBe('battle')
+    expect(stage2.floor).toBe(2)
+    expect(stage2.maxHp).toBe(beforeMaxHp + 4)
+    expect(stage2.strengthThisBattle).toBe(1)
+    expect(stage2.stats.engravingsForged).toBe(1)
+  })
+
   it('マナ介入（出目操作±1・反転）でマナを消費し出目が変化すること', () => {
     let state = initGameState(77, 'mage', 0)
     state.dice[0].currentPip = 2

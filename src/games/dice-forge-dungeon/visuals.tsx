@@ -660,6 +660,25 @@ export function renderDungeonArena(
     ctx.restore()
   }
 
+  // Hero Level Badge (Above Hero Head)
+  {
+    const lvX = heroBaseX
+    const lvY = heroBaseY - 106
+    ctx.save()
+    ctx.fillStyle = '#0f172a'
+    ctx.strokeStyle = '#fbbf24'
+    ctx.lineWidth = 2
+    roundRect(ctx, lvX - 28, lvY - 12, 56, 24, 12)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = '#fde68a'
+    ctx.font = '900 12px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`Lv.${params.floor}`, lvX, lvY + 0.5)
+    ctx.restore()
+  }
+
   // 4. Draw Monster Sprite (Right Side)
   const enemyBaseX = width * 0.73 + anim.enemyOffsetX
   const enemyBaseY = horizonY + 20 + anim.enemyOffsetY
@@ -696,7 +715,7 @@ export function renderDungeonArena(
   // 5. Draw Enemy Intent Badge (Above Enemy Head, clear of edges)
   if (params.enemyHp > 0) {
     const intentX = enemyBaseX
-    const intentY = heroBaseY - 96 + Math.sin(t * 5) * 1.5
+    const intentY = heroBaseY - 106 + Math.sin(t * 5) * 1.5
     const totalIntentDmg = params.enemyIntentDamage * Math.max(1, params.enemyIntentHits)
 
     // Intent Pill Box
