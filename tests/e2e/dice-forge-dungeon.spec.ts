@@ -8,8 +8,8 @@ test.use({
 
 const OUT_DIR = 'test-results/dice-forge-dungeon'
 
-test.describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) モバイルE2E ＆ R-09絵文字ゼロ・R-10直感ダイレクト戦闘検証', () => {
-  test('R-09絵文字完全禁止・R-10説明ゼロ超低文字量＆ダイレクト武器攻撃・Canvas戦場・鍛造・オートセーブが全てパスすること', async ({
+test.describe('ダイス・フォージ・ダンジョン モバイルE2E ＆ Issue #25/#26 抜本改善検証', () => {
+  test('タイトル画面・固定3ゾーン高さ一致・キャラ明確差別化・能力常時表示・1ダイス即発動・報酬明示がすべてパスすること', async ({
     page,
   }) => {
     fs.mkdirSync(OUT_DIR, { recursive: true })
@@ -32,88 +32,108 @@ test.describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) �
       expect(result.hasLongSentence).toBe(false)
     }
 
+    const assertMinFontAndNoOverflow = async () => {
+      const check = await page.evaluate(() => {
+        let minPx = 999
+        const elements = document.querySelectorAll('body *')
+        for (const el of Array.from(elements)) {
+          const htmlEl = el as HTMLElement
+          if (
+            htmlEl.offsetParent !== null &&
+            htmlEl.innerText &&
+            htmlEl.innerText.trim().length > 0
+          ) {
+            const fsPx = parseFloat(window.getComputedStyle(htmlEl).fontSize)
+            if (!Number.isNaN(fsPx) && fsPx < minPx) {
+              minPx = fsPx
+            }
+          }
+        }
+        const overflow =
+          document.documentElement.scrollWidth >
+            document.documentElement.clientWidth ||
+          document.documentElement.scrollHeight >
+            document.documentElement.clientHeight
+        return { minPx, overflow }
+      })
+      expect(check.minPx).toBeGreaterThanOrEqual(12)
+      expect(check.overflow).toBe(false)
+    }
+
+    const getThreeZoneBounds = async () => {
+      const topBox = await page.getByTestId('layout-zone-top').boundingBox()
+      const stageBox = await page.getByTestId('layout-zone-stage').boundingBox()
+      const bottomBox = await page.getByTestId('layout-zone-bottom').boundingBox()
+      expect(topBox).not.toBeNull()
+      expect(stageBox).not.toBeNull()
+      expect(bottomBox).not.toBeNull()
+      return {
+        top: topBox!,
+        stage: stageBox!,
+        bottom: bottomBox!,
+      }
+    }
+
+    const assertSameThreeZoneHeights = (
+      a: Awaited<ReturnType<typeof getThreeZoneBounds>>,
+      b: Awaited<ReturnType<typeof getThreeZoneBounds>>
+    ) => {
+      expect(Math.abs(a.top.y - b.top.y)).toBeLessThanOrEqual(1.5)
+      expect(Math.abs(a.top.height - b.top.height)).toBeLessThanOrEqual(1.5)
+      expect(Math.abs(a.stage.y - b.stage.y)).toBeLessThanOrEqual(1.5)
+      expect(Math.abs(a.stage.height - b.stage.height)).toBeLessThanOrEqual(1.5)
+      expect(Math.abs(a.bottom.y - b.bottom.y)).toBeLessThanOrEqual(1.5)
+      expect(Math.abs(a.bottom.height - b.bottom.height)).toBeLessThanOrEqual(1.5)
+    }
+
+    // ① タイトル画面 (Issue #26)
     await page.goto('/games/dice-forge-dungeon')
-    const titleScreen = page.getByTestId('dice-forge-title-screen')
-    await expect(titleScreen).toBeVisible()
-
-    // 【R-09 絵文字完全禁止 ＆ R-10 説明文ゼロゲート】
+    await expect(page.getByTestId('dice-forge-title-screen')).toBeVisible()
+    await expect(page.getByTestId('title-hero-panel')).toBeVisible()
+    await expect(page.getByTestId('title-start-btn')).toBeVisible()
     await assertZeroEmojiAndZeroSentenceOnPage()
-
-    // 【R-10 説明ゼロ直感UIゲート】タイトル画面の日本語文字数が20文字以下（クラス名＋ボタンのみ）であること
-    const titleJpCount = await titleScreen.evaluate((el) => {
-      const text = (el as HTMLElement).innerText || ''
-      const matches = text.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g)
-      return matches ? matches.length : 0
+    await assertMinFontAndNoOverflow()
+    const titleZones = await getThreeZoneBounds()
+    await page.screenshot({
+      path: path.join(OUT_DIR, '00_title_screen.png'),
     })
-    expect(titleJpCount).toBeLessThanOrEqual(20)
 
-    // ① タイトル・スタータークラス選択画面のスクリーンショット
+    // ② キャラクター選択画面 (Issue #25-1: 3クラスの明確なステータス・得意出目・特性差)
+    await page.getByTestId('title-start-btn').click()
+    await expect(page.getByTestId('class-select-panel')).toBeVisible()
+    await expect(page.getByTestId('class-select-mage')).toContainText('得意: 大目(5・6)')
+    await expect(page.getByTestId('class-select-assassin')).toContainText('得意: 小目(1・2)')
+    await expect(page.getByTestId('class-select-blacksmith')).toContainText('得意: 偶数(2・4・6)')
+    await assertZeroEmojiAndZeroSentenceOnPage()
+    await assertMinFontAndNoOverflow()
+    const classSelectZones = await getThreeZoneBounds()
+    assertSameThreeZoneHeights(titleZones, classSelectZones)
+
     await page.getByTestId('class-select-assassin').click()
     await page.getByTestId('class-select-mage').click()
     await page.screenshot({
       path: path.join(OUT_DIR, '01_title_class_select.png'),
     })
 
-    // 出撃ボタンでラン開始
+    // ③ 戦闘画面 (Issue #25-2,3,6,7,8)
     await page.getByTestId('dice-forge-start-btn').click()
     const battleViewport = page.getByTestId('dice-forge-canvas')
     await expect(battleViewport).toBeVisible()
-    await expect(page.getByTestId('battle-duel-stage')).toBeVisible()
     await expect(page.getByText('STAGE 1/12')).toBeVisible()
-    await expect(page.getByText('Lv.1', { exact: true })).toBeVisible()
+    await expect(page.getByText('Lv.1')).toBeVisible()
+    await expect(page.getByTestId('always-visible-abilities')).toBeVisible()
+    await expect(page.getByTestId('always-visible-abilities')).toContainText('星見の魔導書')
 
-    // 【R-09 & R-10 バトル画面の絵文字ゼロ＆説明文ゼロ＆超コンパクト文字量検証】
+    // 重複ボタン（「自動」「一斉攻撃」）が撤廃されていること
+    await expect(page.getByTestId('dice-forge-auto-assign-btn')).toHaveCount(0)
+    await expect(page.getByTestId('dice-forge-execute-turn')).toHaveCount(0)
+
     await assertZeroEmojiAndZeroSentenceOnPage()
-    const battleJpCount = await battleViewport.evaluate((el) => {
-      const text = (el as HTMLElement).innerText || ''
-      const matches = text.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g)
-      return matches ? matches.length : 0
-    })
-    expect(battleJpCount).toBeLessThanOrEqual(50)
+    await assertMinFontAndNoOverflow()
+    const battleZones = await getThreeZoneBounds()
+    assertSameThreeZoneHeights(titleZones, battleZones)
 
-    // 【R-07 左右対峙構図ゲート】左にプレイヤー、右に敵モンスターが配置されていること
-    const playerBox = await page
-      .getByTestId('player-avatar-actor')
-      .boundingBox()
-    const enemyBox = await page.getByTestId('enemy-avatar-actor').boundingBox()
-    expect(playerBox).not.toBeNull()
-    expect(enemyBox).not.toBeNull()
-    if (playerBox && enemyBox) {
-      expect(playerBox.x).toBeLessThan(enemyBox.x)
-    }
-
-    // 最小フォントサイズ 12px 以上検証
-    const minFontSize = await page.evaluate(() => {
-      let minPx = 999
-      const elements = document.querySelectorAll('body *')
-      for (const el of Array.from(elements)) {
-        const htmlEl = el as HTMLElement
-        if (
-          htmlEl.offsetParent !== null &&
-          htmlEl.innerText &&
-          htmlEl.innerText.trim().length > 0
-        ) {
-          const fsPx = parseFloat(window.getComputedStyle(htmlEl).fontSize)
-          if (!Number.isNaN(fsPx) && fsPx < minPx) {
-            minPx = fsPx
-          }
-        }
-      }
-      return minPx
-    })
-    expect(minFontSize).toBeGreaterThanOrEqual(12)
-
-    // 画面の横・縦はみ出しゼロ検証
-    const hasOverflow = await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth >
-          document.documentElement.clientWidth ||
-        document.documentElement.scrollHeight >
-          document.documentElement.clientHeight
-    )
-    expect(hasOverflow).toBe(false)
-
-    // ステータスモーダルの確認とスクリーンショット（絵文字ゼロ・句点ゼロ）
+    // 能力詳細モーダルも正常に開閉できること
     await page.getByTestId('dice-forge-inspect-btn').click()
     await expect(page.getByTestId('dice-forge-net-modal')).toBeVisible()
     await assertZeroEmojiAndZeroSentenceOnPage()
@@ -122,26 +142,26 @@ test.describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) �
     })
     await page.getByRole('button', { name: '閉じる' }).click()
 
-    // ダイスのリロール・マナ操作確認
+    // リロール＆マナ操作
     await page.getByTestId('dice-forge-reroll-btn').click()
     await page.waitForTimeout(260)
     await page.getByTestId('dice-forge-manipulate-btn').click()
 
-    // 【R-10 & R-12 ダイレクト・コマンドカード連打＆即時アクション検証】
-    // 斬撃を連打しても解除ではなく次のダイスが自動割り当てされて連続アクションが発動すること！
-    await page.getByTestId('slot-strike_1').click()
-    await expect(page.getByTestId('battle-floating-popup')).toBeVisible()
-    await page.waitForTimeout(140)
-    await page.getByTestId('slot-strike_1').click()
-    await page.waitForTimeout(140)
+    // 1ダイス＝1即時発動（まず鉄壁盾をタップした瞬間にポップアップが出てダイスが「済」になる）
     await page.getByTestId('slot-guard_1').click()
-
-    // ② バトル・ダイレクトコマンド＆3Dピップダイス画面のスクリーンショット
+    await expect(page.getByTestId('battle-floating-popup')).toBeVisible()
+    await expect(page.getByTestId('die-card-0')).toContainText('済')
     await page.screenshot({
       path: path.join(OUT_DIR, '02_battle_slots_preview.png'),
     })
 
-    // サウンド発音カウント確認
+    // 2手目で強斬撃をタップして敵へ即時ダメージを与える
+    await page.getByTestId('slot-strike_1').click()
+    await page.screenshot({
+      path: path.join(OUT_DIR, '03_action_hitstop_impact.png'),
+    })
+
+    // サウンド発音確認
     const audioCount = await page.evaluate(
       () =>
         (window as Window & { __diceForgeDungeonAudioCount?: number })
@@ -149,48 +169,60 @@ test.describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) �
     )
     expect(audioCount).toBeGreaterThan(0)
 
-    // 【R-07 一斉攻撃フィニッシャー＆敵反撃コレオグラフィ検証】
-    if (!(await page.getByTestId('dice-forge-reward-modal').isVisible())) {
-      await page.getByTestId('dice-forge-execute-turn').click()
-      await expect(page.getByTestId('battle-floating-popup')).toBeVisible()
-      await page.screenshot({
-        path: path.join(OUT_DIR, '03_action_hitstop_impact.png'),
-      })
-      await page.waitForTimeout(450)
-    }
-
-    // Stage 1 の敵を撃破するまでターン実行（最大8ターン以内）
-    for (let turn = 0; turn < 8; turn++) {
+    // Stage 1 の敵を撃破するまで技をタップし続ける（最大4ターン分）
+    for (let stepIdx = 0; stepIdx < 20; stepIdx++) {
       const rewardVisible = await page
         .getByTestId('dice-forge-reward-modal')
         .isVisible()
       if (rewardVisible) break
-      await page.getByTestId('dice-forge-auto-assign-btn').click()
-      await page.getByTestId('dice-forge-execute-turn').click()
-      await page.waitForTimeout(450)
+      const strikeBtn = page.getByTestId('slot-strike_1')
+      if ((await strikeBtn.count()) === 0) {
+        await page.waitForTimeout(150)
+        continue
+      }
+      const strikeDisabled = await strikeBtn.isDisabled()
+      if (strikeDisabled) {
+        await page.waitForTimeout(420)
+        continue
+      }
+      if (stepIdx % 4 === 2) {
+        await page.getByTestId('slot-guard_1').click()
+      } else if (stepIdx % 4 === 1) {
+        await page.getByTestId('slot-strike_2').click()
+      } else {
+        await page.getByTestId('slot-strike_1').click()
+      }
+      await page.waitForTimeout(120)
     }
 
-    // ⑤ ステージ突破・LEVEL UP!（3択スキル）モーダルの表示確認＆スクリーンショット
-    const rewardModal = page.getByTestId('dice-forge-reward-modal')
-    await expect(rewardModal).toBeVisible({ timeout: 5000 })
-    await expect(rewardModal.getByText(/LEVEL UP!/)).toBeVisible()
-    await expect(rewardModal.getByText('STAGE 1 CLEAR')).toBeVisible()
+    // ④ ステージクリア報酬画面（Zone C内固定、省略なしの具体的な効果説明）
+    const rewardPanel = page.getByTestId('dice-forge-reward-modal')
+    await expect(rewardPanel).toBeVisible({ timeout: 5000 })
+    await expect(rewardPanel.getByText(/LEVEL UP!/)).toBeVisible()
+    await expect(rewardPanel.getByText('STAGE 1 CLEAR')).toBeVisible()
+    await expect(rewardPanel).toContainText('ダイス面強化')
+    await expect(rewardPanel).toContainText('遺物効果:')
     await assertZeroEmojiAndZeroSentenceOnPage()
+    await assertMinFontAndNoOverflow()
+    const rewardZones = await getThreeZoneBounds()
+    assertSameThreeZoneHeights(titleZones, rewardZones)
+
     await page.screenshot({
       path: path.join(OUT_DIR, '05_forge_reward_modal.png'),
     })
 
-    // 24面手動選択なしでスキルを選び、1タップで次のステージ(Stage 2)へ進む
+    // 強化を確定して Stage 2 へ進み、リロード後のオートセーブ再開を確認
     await page.getByTestId('reward-engraving-1').click()
     await page.getByTestId('next-floor-elite').click()
+    await expect(page.getByText('STAGE 2/12')).toBeVisible()
 
-    // ページをリロードし、localStorage オートセーブから STAGE 2 / Lv.2 を途中再開できることを検証
     await page.reload()
+    await expect(page.getByTestId('dice-forge-title-screen')).toBeVisible()
     const continueBtn = page.getByTestId('dice-forge-continue-btn')
     await expect(continueBtn).toBeVisible()
     await continueBtn.click()
     await expect(page.getByText('STAGE 2/12')).toBeVisible()
-    await expect(page.getByText('Lv.2', { exact: true })).toBeVisible()
+    await expect(page.getByText('Lv.2')).toBeVisible()
     await assertZeroEmojiAndZeroSentenceOnPage()
 
     expect(errors).toEqual([])

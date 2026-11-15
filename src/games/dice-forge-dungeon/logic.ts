@@ -19,6 +19,7 @@ import type {
   RelicId,
   RewardOffer,
   RunResult,
+  SingleDieActionPreview,
   SlotCategory,
   SlotId,
   StarterClassId,
@@ -113,11 +114,13 @@ function spawnEnemyForFloor(
   }
   const tpl = pickRandom(state, candidates)
 
-  const floorScale = 1 + (floor - 1) * 0.12 + state.ascension * 0.12
+  const floorScale = 1 + (floor - 1) * 0.28 + state.ascension * 0.14
   const maxHp = Math.round(tpl.baseHp * floorScale)
   const scaledPatterns = tpl.intentPattern.map((intent) => ({
     ...intent,
-    damage: Math.round(intent.damage * (1 + (floor - 1) * 0.06 + state.ascension * 0.1)),
+    damage: Math.round(
+      intent.damage * (1.35 + (floor - 1) * 0.14 + state.ascension * 0.12)
+    ),
   }))
 
   return {
@@ -195,7 +198,9 @@ function rollAllUnlockedDice(state: GameState): void {
 }
 
 function startTurnSetup(state: GameState): void {
-  const hasBarricade = state.relics.includes('relic_barricade_core')
+  const hasBarricade =
+    state.starterClass === 'blacksmith' ||
+    state.relics.includes('relic_barricade_core')
   if (hasBarricade) {
     state.shield = Math.min(35, state.shield)
   } else {
@@ -263,6 +268,8 @@ export function initGameState(
     turn: 1,
     hp: cls.maxHp,
     maxHp: cls.maxHp,
+    baseAttack: cls.baseAttack,
+    baseDefense: cls.baseDefense,
     shield: 0,
     mana: cls.startingMana,
     maxMana: 10,
@@ -291,7 +298,7 @@ export function initGameState(
       traitDescription: bossTpl.traitDescription,
     },
     rewardOffer: null,
-    combatLog: [`Floor 1（エリア1）に突入！ボス予告：${bossTpl.name}`],
+    combatLog: [`Stage 1: ${bossTpl.name} への挑戦開始`],
     stats: {
       turnsPlayed: 0,
       totalDamageDealt: 0,
@@ -307,7 +314,7 @@ export function initGameState(
 }
 
 /**
- * 配置されたダイスの出目から「共鳴役（Formation Combo）」と倍率を計算する
+ * 配置・手札ダイスの出目から「共鳴役（Formation Combo）」と倍率を計算する
  */
 export function evaluateFormation(
   pips: number[],
@@ -317,7 +324,7 @@ export function evaluateFormation(
   if (pips.length === 0) {
     return {
       id: 'none',
-      name: '未配置',
+      name: 'ハイロール',
       baseMult: 1.0,
       isAllEven: false,
       isAllOdd: false,
@@ -343,7 +350,7 @@ export function evaluateFormation(
   }
 
   let id: FormationInfo['id'] = 'none'
-  let name = 'ハイロール'
+  let name = '出目倍率'
   let baseMult = 1.0
 
   if (freq[0] >= 4) {
@@ -370,7 +377,7 @@ export function evaluateFormation(
 
   const badges: string[] = []
   if (id !== 'none') {
-    badges.push(`${name} ×${baseMult.toFixed(2)}`)
+    badges.push(`${name} x${baseMult.toFixed(2)}`)
   }
 
   const isAllEven = pips.length >= 3 && pips.every((p) => p % 2 === 0)
@@ -390,7 +397,7 @@ export function evaluateFormation(
 
   if (isOverload20) {
     mult = mult * 1.25
-    badges.push('OVERLOAD 20+ ×1.25')
+    badges.push('OVERLOAD 20+ x1.25')
   } else if (isOverload18) {
     mult += 0.2
     badges.push('高出力16+ +0.20x')
@@ -414,24 +421,16 @@ export function evaluateFormation(
   }
 }
 
-/**
- * 現在のスロット配置から、ターン実行時の結果プレビューを計算する（UI＆実行＆ボット共通）
- */
-export function calculateTurnPreview(state: GameState): TurnPreview {
-  const assignedDice: { slotId: SlotId; die: DieState }[] = []
-  for (const slotId of ALL_SLOT_IDS) {
-    const dieId = state.slots[slotId]
-    if (dieId !== null && dieId !== undefined) {
-      const die = state.dice.find((d) => d.id === dieId)
-      if (die) assignedDice.push({ slotId, die })
-    }
-  }
-
+function getFormationAndRelicMultipliers(state: GameState): {
+  formation: FormationInfo
+  relicMult: number
+  finalMult: number
+} {
   const allHandPips = state.dice.map((d) => d.currentPip)
   let extraComboAdd = state.relics.includes('relic_lucky_clover') ? 0.2 : 0
-  for (const { die } of assignedDice) {
+  for (const die of state.dice) {
     const eng = ENGRAVINGS[die.currentEngravingId]
-    if (eng.comboMultAdd) extraComboAdd += eng.comboMultAdd
+    if (eng.comboMultAdd) extraComboAdd += eng.comboMultAdd * 0.4
   }
 
   const formation = evaluateFormation(
@@ -440,7 +439,6 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
     extraComboAdd
   )
 
-  // レリック乗算倍率の計算
   let relicMult = 1.0
   const lowPipCount = allHandPips.filter((p) => p <= 2).length
   const highPipCount = allHandPips.filter((p) => p >= 5).length
@@ -463,17 +461,32 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
   ) {
     relicMult *= 1.35
   }
+  if (state.relics.includes('relic_golem_heart') && state.shield >= 15) {
+    relicMult *= 1.45
+  }
+  if (state.relics.includes('relic_venom_heart') && state.enemy.poison > 0) {
+    relicMult *= 1.4
+  }
 
-  let rawAttackSum = 0
-  let totalHits = 0
-  let rawShieldSum = 0
-  let totalManaGain = 0
-  let totalPoisonApplied = 0
-  let totalThornsGain = 0
-  let totalHeal = 0
-  let totalGoldGain = 0
-  let poisonMultiplier = 1.0
-  let shieldBashRatioSum = 0
+  const finalMult = Number((formation.totalMult * relicMult).toFixed(2))
+  return {
+    formation,
+    relicMult: Number(relicMult.toFixed(2)),
+    finalMult,
+  }
+}
+
+/**
+ * 1個のダイスを技ボタンに使用した瞬間の確定ダメージ・シールド・ボーナスを計算する（UI即時プレビュー＆実行共通）
+ */
+export function calculateSingleDieAction(
+  state: GameState,
+  die: DieState,
+  slotId: SlotId
+): SingleDieActionPreview {
+  const { formation, finalMult } = getFormationAndRelicMultipliers(state)
+  const eng = ENGRAVINGS[die.currentEngravingId]
+  const pip = die.currentPip
 
   const hasThimble = state.relics.includes('relic_assassin_thimble')
   const hasShadowCloak = state.relics.includes('relic_shadow_cloak')
@@ -481,181 +494,253 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
   const hasHourglass = state.relics.includes('relic_astral_hourglass')
   const hasDragonEye = state.relics.includes('relic_dragon_eye')
   const hasSagePrism = state.relics.includes('relic_sage_prism')
+  const hasCorrosive = state.relics.includes('relic_corrosive_flask')
+  const hasSpikedBuckler = state.relics.includes('relic_spiked_buckler')
+  const hasKnightVow = state.relics.includes('relic_knight_vow')
+  const hasMerchantCoin = state.relics.includes('relic_merchant_coin')
 
-  // 先にマナ獲得・シールド・バフ系を集計し、そのあと盾撃やマナオーバーチャージを計算する
-  for (const { slotId, die } of assignedDice) {
-    const category = getSlotCategory(slotId)
-    const eng = ENGRAVINGS[die.currentEngravingId]
-    let effectivePip = die.currentPip
+  let effectivePip = pip
+  if (pip % 2 === 0) effectivePip += state.evenPermBonusThisBattle
+  if (hasHourglass && pip >= 5) effectivePip += 3
+  if (hasDragonEye) effectivePip += 3
 
-    if (die.currentPip % 2 === 0) {
-      effectivePip += state.evenPermBonusThisBattle
-    }
-    if (hasHourglass && die.currentPip >= 5) {
-      effectivePip += 3
-    }
-    if (hasDragonEye) {
-      effectivePip += 3
-    }
+  // クラス固有パッシブ補正
+  const mageHighPipMult =
+    state.starterClass === 'mage' && pip >= 5 ? 1.4 : 1.0
+  const mageHighPipMana = state.starterClass === 'mage' && pip >= 5 ? 1 : 0
+  const assassinLowPipDmg =
+    state.starterClass === 'assassin' && pip <= 2 ? 5 : 0
+  const assassinLowPipPoison =
+    state.starterClass === 'assassin' && pip <= 2 ? 3 : 0
 
-    if (hasShadowCloak && die.currentPip <= 2) {
-      rawShieldSum += 4
-    }
-    if (hasThimble && die.currentPip <= 2) {
-      rawShieldSum += 2
-    }
-    if (hasCogwheel && die.currentPip % 2 === 0) {
-      rawShieldSum += 3
-    }
+  let damageRaw = 0
+  let hits = 1
+  let rawShield = 0
+  let poisonApplied = (eng.applyPoison ?? 0) + assassinLowPipPoison
+  let manaGain = (eng.bonusMana ?? 0) + mageHighPipMana
+  let manaConsumed = 0
+  let thornsGain = eng.applyThorns ?? 0
+  const healHp = eng.healHp ?? 0
+  const goldGain = eng.goldGain ?? 0
+  let bonusTriggered = false
+  let bonusTag = ''
+  let isOverchargeBlast = false
 
-    // 刻印固有のサブ効果
-    if (eng.bonusMana) totalManaGain += eng.bonusMana
-    if (eng.applyThorns) totalThornsGain += eng.applyThorns
-    if (eng.healHp) totalHeal += eng.healHp
-    if (
-      eng.goldGain &&
-      state.alchemyUsesThisBattle < state.maxAlchemyUsesPerBattle
-    ) {
-      totalGoldGain += eng.goldGain
-    }
-
-    if (category === 'guard') {
-      rawShieldSum +=
-        effectivePip + (eng.bonusShield ?? 0) + Math.floor((eng.bonusAttack ?? 0) * 0.5) + 1
-      if (eng.applyPoison) totalPoisonApplied += Math.ceil(eng.applyPoison * 0.5)
-    } else if (category === 'strike') {
-      const isTwinFangSlot = slotId === 'strike_2'
-      const hits = isTwinFangSlot ? (eng.multiHit ?? 2) : (eng.multiHit ?? 1)
-      let perHit =
-        effectivePip + (eng.bonusAttack ?? 0) + state.strengthThisBattle
-      if (slotId === 'strike_1') {
-        perHit += 2
-      } else if (isTwinFangSlot && !eng.multiHit) {
-        perHit = Math.max(1, Math.ceil(perHit * 0.55))
-        totalPoisonApplied += 2
-      }
-      if (hasThimble && die.currentPip <= 2) {
-        perHit += 5
-        totalPoisonApplied += 3
-      }
-      if (hasCogwheel && die.currentPip % 2 === 0) {
-        perHit += 2
-      }
-      rawAttackSum += perHit * hits
-      totalHits += hits
-      if (eng.applyPoison) totalPoisonApplied += eng.applyPoison
-      if (eng.multiplyEnemyPoison) poisonMultiplier *= eng.multiplyEnemyPoison
-      if (eng.bonusShield) rawShieldSum += Math.floor(eng.bonusShield * 0.5)
-      if (eng.shieldBashRatio) shieldBashRatioSum += eng.shieldBashRatio
-    } else if (category === 'arcana') {
-      const arcanaScale = hasSagePrism ? 1.5 : 1.0
-      const manaFromSlot = Math.ceil(
-        (effectivePip * 0.5 + (eng.bonusMana ?? 1)) * arcanaScale
-      )
-      totalManaGain += manaFromSlot
-      const magicDmg = Math.round(
-        (effectivePip + (eng.bonusAttack ?? 2)) * arcanaScale
-      )
-      rawAttackSum += magicDmg
-      totalHits += 1
-      if (eng.applyPoison) totalPoisonApplied += eng.applyPoison
-      if (eng.bonusShield) rawShieldSum += Math.floor(eng.bonusShield * 0.5)
-    } else if (category === 'alchemy') {
-      if (state.alchemyUsesThisBattle < state.maxAlchemyUsesPerBattle) {
-        totalPoisonApplied +=
-          Math.ceil(effectivePip * 1.2) + 2 + (eng.applyPoison ?? 0)
-        if (eng.multiplyEnemyPoison) {
-          poisonMultiplier *= eng.multiplyEnemyPoison
-        }
-        rawShieldSum += Math.ceil(effectivePip * 0.6) + (eng.bonusShield ?? 0)
-        totalGoldGain += 5
-      } else {
-        // 戦闘内2回上限到達後は小シールド変換のみ（遅延ハメ防止）
-        rawShieldSum += Math.ceil(effectivePip * 0.5)
-      }
-    }
-
-    if (eng.manaOverchargeScale) {
-      const projectedMana = Math.min(state.maxMana, state.mana + totalManaGain)
-      rawAttackSum += projectedMana * eng.manaOverchargeScale
-    }
+  // レリックの小目・偶数パッシブ
+  if (hasShadowCloak && pip <= 2) rawShield += 3
+  if (hasThimble && pip <= 2) {
+    damageRaw += 4
+    poisonApplied += 2
+  }
+  if (hasCogwheel && pip % 2 === 0) {
+    rawShield += 3
+    damageRaw += 2
+  }
+  if (hasMerchantCoin) {
+    damageRaw += 2
   }
 
-  let shieldMult = formation.totalMult
-  if (state.relics.includes('relic_knight_vow')) {
-    shieldMult *= 1.35
+  if (slotId === 'strike_1') {
+    // 強斬撃：大目4〜6で会心1.5倍
+    const baseAtk =
+      effectivePip +
+      state.baseAttack +
+      state.strengthThisBattle +
+      (eng.bonusAttack ?? 0) +
+      assassinLowPipDmg +
+      2
+    if (pip >= 4) {
+      damageRaw += Math.ceil(baseAtk * 1.5)
+      bonusTriggered = true
+      bonusTag = '会心x1.5'
+    } else {
+      damageRaw += Math.max(2, Math.floor(baseAtk * 0.72))
+      bonusTag = '4〜6で会心'
+    }
+    hits = eng.multiHit ?? 1
+    if (hits > 1) damageRaw = Math.ceil(damageRaw * (1 + (hits - 1) * 0.35))
+    if (eng.bonusShield) rawShield += Math.floor(eng.bonusShield * 0.5)
+    if (eng.shieldBashRatio) {
+      damageRaw += Math.floor((state.shield + rawShield) * eng.shieldBashRatio)
+    }
+  } else if (slotId === 'strike_2') {
+    // 毒連撃：小目1〜3で2連撃+猛毒強化
+    const baseAtk =
+      effectivePip +
+      state.baseAttack +
+      Math.floor(state.strengthThisBattle * 0.5) +
+      (eng.bonusAttack ?? 0) +
+      assassinLowPipDmg
+    if (pip <= 3) {
+      hits = Math.max(2, eng.multiHit ?? 2)
+      const perHit = Math.max(2, Math.ceil(baseAtk * 0.65))
+      damageRaw += perHit * hits
+      poisonApplied += 4
+      bonusTriggered = true
+      bonusTag = '2連+猛毒'
+    } else {
+      hits = eng.multiHit ?? 1
+      damageRaw += Math.max(2, Math.floor(baseAtk * 0.58))
+      bonusTag = '1〜3で2連+毒'
+    }
+    if (eng.bonusShield) rawShield += Math.floor(eng.bonusShield * 0.4)
+  } else if (slotId === 'guard_1') {
+    // 鉄壁盾：偶数2・4・6で装甲1.4倍+反撃棘
+    let baseDef =
+      effectivePip + state.baseDefense + (eng.bonusShield ?? 0) + 2
+    if (pip % 2 === 0) {
+      baseDef = Math.ceil(baseDef * 1.4) + 2
+      thornsGain += 2
+      bonusTriggered = true
+      bonusTag = '偶数強化'
+    } else {
+      bonusTag = '偶数で強化'
+    }
+    rawShield += baseDef
+    if (eng.bonusAttack) {
+      damageRaw += Math.floor(eng.bonusAttack * 0.5)
+    }
+    // 重騎士パッシブ＆スパイク盾：獲得シールドに応じて即座に追撃ダメージ
+    let bashRatio = 0
+    if (state.starterClass === 'blacksmith') bashRatio += 0.5
+    if (hasSpikedBuckler) bashRatio += 0.6
+    if (eng.shieldBashRatio) bashRatio += eng.shieldBashRatio * 0.5
+    if (bashRatio > 0) {
+      damageRaw += Math.floor(rawShield * bashRatio)
+    }
+  } else if (slotId === 'arcana_1') {
+    // 魔導砲：MP3以上でMP3消費の必殺砲、未満はMP+2充填+魔攻
+    const prismScale = hasSagePrism ? 1.35 : 1.0
+    if (state.mana >= 3) {
+      isOverchargeBlast = true
+      manaConsumed = 3
+      bonusTriggered = true
+      bonusTag = 'MP3必殺砲'
+      const blastBase =
+        effectivePip * 1.8 +
+        state.baseAttack * 2 +
+        state.strengthThisBattle +
+        (eng.bonusAttack ?? 0) +
+        11 +
+        assassinLowPipDmg
+      damageRaw += Math.round(blastBase * prismScale)
+    } else {
+      manaGain += 2
+      bonusTag = 'MP+2充填'
+      const boltBase =
+        effectivePip * 0.75 +
+        state.baseAttack +
+        Math.floor(state.strengthThisBattle * 0.5) +
+        (eng.bonusAttack ?? 0) +
+        assassinLowPipDmg
+      damageRaw += Math.max(2, Math.round(boltBase * prismScale))
+    }
+    if (eng.bonusShield) rawShield += Math.floor(eng.bonusShield * 0.5)
+  } else {
+    // alchemy_1（互換用）
+    poisonApplied += Math.ceil(effectivePip * 0.8) + 2
+    rawShield += Math.ceil(effectivePip * 0.6) + (eng.bonusShield ?? 0)
+    damageRaw += Math.max(1, Math.floor(effectivePip * 0.5))
+    bonusTag = '錬金'
   }
-  const totalShieldGain = Math.floor(rawShieldSum * shieldMult)
-  const projectedTotalShield = state.shield + totalShieldGain
 
-  if (shieldBashRatioSum > 0) {
-    rawAttackSum += Math.floor(projectedTotalShield * shieldBashRatioSum)
-    if (totalHits === 0) totalHits = 1
-  }
+  // 共通コンボ・クラス倍率の適用
+  const shieldMult =
+    (1 + (formation.totalMult - 1) * 0.65) * (hasKnightVow ? 1.35 : 1.0)
+  const shieldGain = Math.floor(rawShield * shieldMult)
 
-  if (state.relics.includes('relic_spiked_buckler') && totalShieldGain > 0) {
-    rawAttackSum += Math.floor(totalShieldGain * 0.6)
-    if (totalHits === 0) totalHits = 1
-  }
+  let totalDamage = Math.floor(damageRaw * finalMult * mageHighPipMult)
 
-  if (
-    state.relics.includes('relic_golem_heart') &&
-    projectedTotalShield >= 15
-  ) {
-    relicMult *= 1.45
-  }
-
-  const projectedPoisonOnEnemy = Math.floor(
-    (state.enemy.poison + totalPoisonApplied) * poisonMultiplier
-  )
-  totalPoisonApplied = Math.max(0, projectedPoisonOnEnemy - state.enemy.poison)
-
-  if (
-    state.relics.includes('relic_venom_heart') &&
-    projectedPoisonOnEnemy > 0
-  ) {
-    relicMult *= 1.4
-  }
-
-  const finalMult = Number((formation.totalMult * relicMult).toFixed(2))
-  let totalDamage = Math.floor(rawAttackSum * finalMult)
-
-  if (
-    state.relics.includes('relic_corrosive_flask') &&
-    totalPoisonApplied > 0
-  ) {
-    totalDamage += totalPoisonApplied
+  if (eng.manaOverchargeScale && !isOverchargeBlast) {
+    totalDamage += Math.min(state.maxMana, state.mana + manaGain) * eng.manaOverchargeScale
   }
   if (state.relics.includes('relic_golden_scales') && formation.isOverload18) {
-    totalDamage += 8
+    totalDamage += 4
   }
-
-  // 敵の単発ダメージキャップ特性
+  if (hasCorrosive && poisonApplied > 0) {
+    totalDamage += poisonApplied
+  }
   if (
     state.enemy.trait === 'damage_cap' &&
     state.enemy.damageCap &&
-    totalDamage > state.enemy.damageCap * Math.max(1, totalHits)
+    totalDamage > state.enemy.damageCap * Math.max(1, hits)
   ) {
-    totalDamage = state.enemy.damageCap * Math.max(1, totalHits)
+    totalDamage = state.enemy.damageCap * Math.max(1, hits)
   }
 
-  // 敵の毒ティックダメージ予測
+  let summaryLabel = ''
+  if (slotId === 'guard_1') {
+    summaryLabel =
+      totalDamage > 0
+        ? `盾+${shieldGain} / ${totalDamage}攻`
+        : `盾+${shieldGain}`
+  } else if (slotId === 'strike_2') {
+    summaryLabel =
+      poisonApplied > 0
+        ? `${totalDamage}攻 +${poisonApplied}毒`
+        : `${totalDamage}攻`
+  } else if (slotId === 'arcana_1') {
+    summaryLabel = isOverchargeBlast
+      ? `必殺 ${totalDamage}攻`
+      : `${totalDamage}攻 +${manaGain}MP`
+  } else {
+    summaryLabel = `${totalDamage}攻`
+  }
+
+  return {
+    slotId,
+    damage: totalDamage,
+    hits: totalDamage > 0 ? Math.max(1, hits) : 0,
+    shieldGain,
+    poisonApplied,
+    manaGain,
+    manaConsumed,
+    thornsGain,
+    healHp,
+    goldGain,
+    bonusTriggered,
+    bonusTag,
+    summaryLabel,
+    isOverchargeBlast,
+  }
+}
+
+/**
+ * 現在の手札・残ダイスからのターン状況プレビューを計算する（UIの役バッジ＆テスト互換用）
+ */
+export function calculateTurnPreview(state: GameState): TurnPreview {
+  const { formation, relicMult, finalMult } =
+    getFormationAndRelicMultipliers(state)
+
+  let totalDamage = 0
+  let totalHits = 0
+  let totalShieldGain = 0
+  let totalManaGain = 0
+  let totalPoisonApplied = 0
+  let totalThornsGain = 0
+  let totalHeal = 0
+  let totalGoldGain = 0
+
+  // すでにこのターンで使用されたダイスの実績、またはスロット割り当てから概算
+  for (const die of state.dice) {
+    if (die.assignedSlot !== null) {
+      const act = calculateSingleDieAction(state, die, die.assignedSlot)
+      totalDamage += act.damage
+      totalHits += act.hits
+      totalShieldGain += act.shieldGain
+      totalManaGain += act.manaGain
+      totalPoisonApplied += act.poisonApplied
+      totalThornsGain += act.thornsGain
+      totalHeal += act.healHp
+      totalGoldGain += act.goldGain
+    }
+  }
+
   const poisonTickDamage = state.relics.includes('relic_serpent_idol')
-    ? Math.floor(projectedPoisonOnEnemy * 1.5)
-    : projectedPoisonOnEnemy
-
-  const effectiveDamageToEnemy = Math.max(
-    0,
-    totalDamage - state.enemy.shield
-  ) + poisonTickDamage
-
-  const enemyWillDie = effectiveDamageToEnemy >= state.enemy.hp
-
-  // 敵からの被ダメージ予測（棘反射による自傷＋敵の予告攻撃）
-  let thornsSelfDamage = 0
-  if (state.enemy.thorns > 0 && totalHits > 0) {
-    thornsSelfDamage = state.enemy.thorns * totalHits
-  }
+    ? Math.floor(state.enemy.poison * 1.5)
+    : state.enemy.poison
+  const enemyWillDie =
+    state.enemy.hp <= 0 || poisonTickDamage >= state.enemy.hp
 
   let enemyAttackRaw = 0
   if (!enemyWillDie) {
@@ -664,45 +749,39 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
     enemyAttackRaw = perHit * (intent.hits || 1)
     if (
       state.relics.includes('relic_serpent_idol') &&
-      projectedPoisonOnEnemy > 0
+      state.enemy.poison > 0
     ) {
       enemyAttackRaw = Math.floor(enemyAttackRaw * 0.75)
     }
   }
 
-  const totalIncoming = thornsSelfDamage + enemyAttackRaw
-  const unblockedDamage = Math.max(0, totalIncoming - projectedTotalShield)
+  const unblockedDamage = Math.max(0, enemyAttackRaw - state.shield)
   const expectedHpAfterTurn = Math.max(
     0,
-    Math.min(state.maxHp, state.hp + totalHeal - unblockedDamage)
+    Math.min(state.maxHp, state.hp - unblockedDamage)
   )
 
   const synergySteps: TurnSynergyStep[] = [
     {
-      label: '基礎出力',
-      detail: `ATK ${rawAttackSum} / DEF ${rawShieldSum}`,
-      color: 'sky',
-    },
-    {
       label: `共鳴役 (${formation.name})`,
-      detail: `×${formation.totalMult.toFixed(2)}`,
+      detail: `x${formation.totalMult.toFixed(2)}`,
       color: 'amber',
     },
     {
       label: '遺物乗算',
-      detail: `×${relicMult.toFixed(2)}`,
+      detail: `x${relicMult.toFixed(2)}`,
       color: 'violet',
     },
     {
-      label: '最終確定',
-      detail: `${totalDamage} DMG / +${totalShieldGain} DEF`,
+      label: '最終倍率',
+      detail: `x${finalMult.toFixed(2)}`,
       color: 'rose',
     },
   ]
 
   return {
     formation,
-    relicMult: Number(relicMult.toFixed(2)),
+    relicMult,
     finalMult,
     totalDamage,
     totalHits,
@@ -722,7 +801,6 @@ function generateRewardOffer(state: GameState): RewardOffer {
   const allEngIds = (Object.keys(ENGRAVINGS) as EngravingId[]).filter(
     (id) => !id.startsWith('base_')
   )
-  // クラスと所持レリックに合った系統を少し出やすくしつつ多様性を確保
   const OfferEngs = shufflePick(state, allEngIds, 3)
 
   const unownedRelics = (Object.keys(RELICS) as RelicId[]).filter(
@@ -749,15 +827,49 @@ function generateRewardOffer(state: GameState): RewardOffer {
   }
 }
 
+function handleEnemyDefeated(state: GameState): void {
+  state.stats.enemiesDefeated += 1
+  let rewardGold = state.enemy.isBoss
+    ? 55
+    : state.enemy.isElite
+      ? 38
+      : 24
+  if (state.relics.includes('relic_merchant_coin')) rewardGold += 18
+  state.gold += rewardGold
+
+  if (state.relics.includes('relic_vampire_chalice')) {
+    state.maxHp += 4
+    state.hp = Math.min(state.maxHp, state.hp + 7)
+  } else {
+    state.hp = Math.min(state.maxHp, state.hp + 2)
+  }
+
+  if (state.floor >= 12) {
+    state.phase = 'victory'
+    state.combatLog.unshift(
+      `最終ボス「${state.enemy.name}」を撃破！運命の塔を完全制覇した`
+    )
+    return
+  }
+
+  state.phase = 'reward'
+  state.rewardOffer = generateRewardOffer(state)
+  state.combatLog.unshift(
+    `${state.enemy.name} を撃破！(+${rewardGold}G) 強化を選択しよう`
+  )
+}
+
 function advanceToNextFloor(
   state: GameState,
   nextNodeType: 'normal' | 'elite' | 'altar' | 'shop' | 'boss'
 ): void {
   state.floor += 1
   state.area = getAreaForFloor(state.floor)
-  // ステージ突破による自動レベルアップ成長（最大HP+4 ＆ HP回復+4）
-  state.maxHp += 4
-  state.hp = Math.min(state.maxHp, state.hp + 4)
+  // ステージ突破によるレベルアップ成長（最大HP+3, 基礎攻撃+1, HP+3回復）
+  state.maxHp += 3
+  state.baseAttack += 1
+  state.hp = Math.min(state.maxHp, state.hp + 3)
+
   const bossTpl = getBossTemplateForArea(state.area)
   state.upcomingBoss = {
     name: bossTpl.name,
@@ -768,13 +880,13 @@ function advanceToNextFloor(
 
   if (nextNodeType === 'altar') {
     state.phase = 'altar'
-    state.combatLog.unshift(`Stage ${state.floor}: 秘境の魔導祭壇を発見した。`)
+    state.combatLog.unshift(`Stage ${state.floor}: 秘境の魔導祭壇に到着`)
     return
   }
   if (nextNodeType === 'shop') {
     state.phase = 'shop'
     state.rewardOffer = generateRewardOffer(state)
-    state.combatLog.unshift(`Stage ${state.floor}: 鍛冶屋＆魔導商店に到着した。`)
+    state.combatLog.unshift(`Stage ${state.floor}: 鍛冶屋＆魔導商店に到着`)
     return
   }
 
@@ -797,14 +909,13 @@ function startBattleOnCurrentFloor(
   state.shield = 0
   state.alchemyUsesThisBattle = 0
   state.evenPermBonusThisBattle = 0
-  // レベル（Stage）に応じた基礎攻撃力成長ボーナス
-  state.strengthThisBattle = state.floor - 1
+  state.strengthThisBattle = 0
   state.thornsThisBattle = 0
   state.rewardOffer = null
   state.enemy = spawnEnemyForFloor(state, state.floor, battleType)
   startTurnSetup(state)
   state.combatLog.unshift(
-    `Stage ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が立ち塞がる！`
+    `Stage ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が出現`
   )
 }
 
@@ -839,7 +950,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
     case 'MANIPULATE_DIE': {
       if (state.phase !== 'battle' || state.mana < 1) return state
       const die = state.dice.find((d) => d.id === action.dieId)
-      if (!die) return state
+      if (!die || die.assignedSlot !== null) return state
       state.mana -= 1
       if (action.mode === 'plus1') {
         die.currentPip = Math.min(8, die.currentPip + 1)
@@ -854,39 +965,39 @@ export function step(prevState: GameState, action: GameAction): GameState {
         state.enemy.shield -= blocked
         state.enemy.hp = Math.max(0, state.enemy.hp - (dmg - blocked))
         state.stats.totalDamageDealt += dmg
+        if (state.enemy.hp <= 0) {
+          handleEnemyDefeated(state)
+        }
       }
       return state
     }
 
     case 'ASSIGN_DIE': {
-      if (state.phase !== 'battle') return state
+      if (state.phase !== 'battle' || action.slotId === null) return state
       const die = state.dice.find((d) => d.id === action.dieId)
-      if (!die) return state
+      if (!die || die.assignedSlot !== null) return state
 
-      // 既に別スロットに割り当てられていれば解除
-      for (const sId of ALL_SLOT_IDS) {
-        if (state.slots[sId] === die.id) {
-          state.slots[sId] = null
-        }
-      }
-
-      if (action.slotId === null) {
-        die.assignedSlot = null
-        return state
-      }
-
-      // 対象スロットに別のダイスがあればトレイに戻す
-      const existingDieId = state.slots[action.slotId]
-      if (existingDieId !== null && existingDieId !== undefined) {
-        const prevDie = state.dice.find((d) => d.id === existingDieId)
-        if (prevDie) prevDie.assignedSlot = null
-      }
-
-      state.slots[action.slotId] = die.id
-      die.assignedSlot = action.slotId
-
-      // 刻印による他ダイス出目ブースト（配置時に未配置ダイス1個を強化）
+      // 即時計算＆即座に戦場へ反映（1ダイス＝1即時行動）
+      const act = calculateSingleDieAction(state, die, action.slotId)
       const eng = ENGRAVINGS[die.currentEngravingId]
+
+      die.assignedSlot = action.slotId
+      state.slots[action.slotId] = die.id
+
+      state.mana = Math.max(
+        0,
+        Math.min(state.maxMana, state.mana - act.manaConsumed + act.manaGain)
+      )
+      state.shield += act.shieldGain
+      state.thornsThisBattle += act.thornsGain
+      state.gold += act.goldGain
+      if (act.healHp > 0) {
+        state.hp = Math.min(state.maxHp, state.hp + act.healHp)
+      }
+
+      if (eng.permanentEvenBonus) {
+        state.evenPermBonusThisBattle += eng.permanentEvenBonus
+      }
       if (eng.boostOtherPip && !die.cantripUsedThisTurn) {
         const other = state.dice.find(
           (d) => d.id !== die.id && d.assignedSlot === null
@@ -897,63 +1008,69 @@ export function step(prevState: GameState, action: GameAction): GameState {
         }
       }
 
+      // 敵へのダメージ即時適用
+      if (act.damage > 0) {
+        let dmgToDeal = act.damage
+        // 必殺魔導砲は敵シールドを50%貫通する
+        const effectiveEnemyShield = act.isOverchargeBlast
+          ? Math.floor(state.enemy.shield * 0.5)
+          : state.enemy.shield
+        const blocked = Math.min(effectiveEnemyShield, dmgToDeal)
+        state.enemy.shield = Math.max(0, state.enemy.shield - blocked)
+        dmgToDeal -= blocked
+        state.enemy.hp = Math.max(0, state.enemy.hp - dmgToDeal)
+
+        state.stats.totalDamageDealt += act.damage
+        if (act.damage > state.stats.maxSingleTurnDamage) {
+          state.stats.maxSingleTurnDamage = act.damage
+        }
+
+        // 敵の棘甲による反射被弾
+        if (state.enemy.thorns > 0 && act.hits > 0) {
+          const selfThornDmg = state.enemy.thorns * act.hits
+          const abs = Math.min(state.shield, selfThornDmg)
+          state.shield -= abs
+          state.hp = Math.max(0, state.hp - (selfThornDmg - abs))
+        }
+      }
+
+      // 猛毒付与＆猛毒増殖の即時適用
+      if (act.poisonApplied > 0 || eng.multiplyEnemyPoison) {
+        const basePoison = state.enemy.poison + act.poisonApplied
+        state.enemy.poison = eng.multiplyEnemyPoison
+          ? Math.floor(basePoison * eng.multiplyEnemyPoison)
+          : basePoison
+      }
+
+      if (state.enemy.hp <= 0) {
+        handleEnemyDefeated(state)
+        return state
+      }
+
+      if (state.hp <= 0) {
+        state.phase = 'gameover'
+        state.combatLog.unshift(`${state.enemy.name} の棘反射に倒れた`)
+        return state
+      }
+
       return state
     }
 
     case 'EXECUTE_TURN': {
       if (state.phase !== 'battle') return state
-      const preview = calculateTurnPreview(state)
       state.stats.turnsPlayed += 1
 
-      // 永続偶数強化やリロール獲得の処理
       let nextTurnExtraRerolls = 0
-      let usedAlchemy = false
-      for (const sId of ALL_SLOT_IDS) {
-        const dId = state.slots[sId]
-        if (dId !== null) {
-          const die = state.dice.find((d) => d.id === dId)
-          if (die) {
-            const eng = ENGRAVINGS[die.currentEngravingId]
-            if (eng.permanentEvenBonus) {
-              state.evenPermBonusThisBattle += eng.permanentEvenBonus
-            }
-            if (eng.rerollGain) {
-              nextTurnExtraRerolls += eng.rerollGain
-            }
-            if (getSlotCategory(sId) === 'alchemy' || eng.goldGain) {
-              usedAlchemy = true
-            }
+      for (const die of state.dice) {
+        if (die.assignedSlot !== null) {
+          const eng = ENGRAVINGS[die.currentEngravingId]
+          if (eng.rerollGain) {
+            nextTurnExtraRerolls += eng.rerollGain
           }
         }
       }
-      if (usedAlchemy) {
-        state.alchemyUsesThisBattle += 1
-      }
 
-      state.shield += preview.totalShieldGain
-      state.mana = Math.min(state.maxMana, state.mana + preview.totalManaGain)
-      state.thornsThisBattle += preview.totalThornsGain
-      state.gold += preview.totalGoldGain
-      if (preview.totalHeal > 0) {
-        state.hp = Math.min(state.maxHp, state.hp + preview.totalHeal)
-      }
-
-      // 敵へのダメージ適用
-      let dmgToDeal = preview.totalDamage
-      const blockedByEnemy = Math.min(state.enemy.shield, dmgToDeal)
-      state.enemy.shield -= blockedByEnemy
-      dmgToDeal -= blockedByEnemy
-      state.enemy.hp = Math.max(0, state.enemy.hp - dmgToDeal)
-
-      state.stats.totalDamageDealt += preview.totalDamage
-      if (preview.totalDamage > state.stats.maxSingleTurnDamage) {
-        state.stats.maxSingleTurnDamage = preview.totalDamage
-      }
-
-      // 猛毒付与＆猛毒ダメージ解決
-      if (preview.totalPoisonApplied > 0) {
-        state.enemy.poison += preview.totalPoisonApplied
-      }
+      // ターン終了時の猛毒ダメージ解決
       if (state.enemy.poison > 0 && state.enemy.hp > 0) {
         const poisonDmg = state.relics.includes('relic_serpent_idol')
           ? Math.floor(state.enemy.poison * 1.5)
@@ -963,49 +1080,12 @@ export function step(prevState: GameState, action: GameAction): GameState {
         state.enemy.poison = Math.max(0, state.enemy.poison - 1)
       }
 
-      // 敵の棘甲による反射被弾
-      if (state.enemy.thorns > 0 && preview.totalHits > 0) {
-        const selfThornDmg = state.enemy.thorns * preview.totalHits
-        const abs = Math.min(state.shield, selfThornDmg)
-        state.shield -= abs
-        state.hp = Math.max(0, state.hp - (selfThornDmg - abs))
-      }
-
-      // 敵撃破判定
       if (state.enemy.hp <= 0) {
-        state.stats.enemiesDefeated += 1
-        let rewardGold = state.enemy.isBoss
-          ? 55
-          : state.enemy.isElite
-            ? 38
-            : 24
-        if (state.relics.includes('relic_merchant_coin')) rewardGold += 18
-        state.gold += rewardGold
-
-        if (state.relics.includes('relic_vampire_chalice')) {
-          state.maxHp += 4
-          state.hp = Math.min(state.maxHp, state.hp + 10)
-        } else {
-          state.hp = Math.min(state.maxHp, state.hp + 5)
-        }
-
-        if (state.floor >= 12) {
-          state.phase = 'victory'
-          state.combatLog.unshift(
-            `最終ボス「${state.enemy.name}」を撃破！運命の塔を完全制覇した！`
-          )
-          return state
-        }
-
-        state.phase = 'reward'
-        state.rewardOffer = generateRewardOffer(state)
-        state.combatLog.unshift(
-          `${state.enemy.name} を撃破！（+${rewardGold}G）鍛造報酬を選択しよう。`
-        )
+        handleEnemyDefeated(state)
         return state
       }
 
-      // 敵が生存している場合：敵のターン行動解決
+      // 敵のターン行動解決
       const intent = state.enemy.currentIntent
       state.enemy.shield = intent.shieldGain
       let totalEnemyAttack =
@@ -1035,14 +1115,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
           state.enemy.hp = Math.max(0, state.enemy.hp - thornDmg)
           state.stats.totalDamageDealt += thornDmg
           if (state.enemy.hp <= 0) {
-            state.stats.enemiesDefeated += 1
-            state.gold += 25
-            if (state.floor >= 12) {
-              state.phase = 'victory'
-              return state
-            }
-            state.phase = 'reward'
-            state.rewardOffer = generateRewardOffer(state)
+            handleEnemyDefeated(state)
             return state
           }
         }
@@ -1051,15 +1124,13 @@ export function step(prevState: GameState, action: GameAction): GameState {
       if (intent.strengthGain > 0) {
         state.enemy.strength += intent.strengthGain
       }
-
-      // 6ターン目以降の長期戦狂暴化（遅延ハメ防止）
       if (state.turn >= 6) {
         state.enemy.strength += 3
       }
 
       if (state.hp <= 0) {
         state.phase = 'gameover'
-        state.combatLog.unshift(`${state.enemy.name} の攻撃に倒れた…`)
+        state.combatLog.unshift(`${state.enemy.name} の攻撃に倒れた`)
         return state
       }
 
@@ -1085,14 +1156,15 @@ export function step(prevState: GameState, action: GameAction): GameState {
             : undefined
         let chosenFaceIdx = action.targetFaceIndex
 
-        // 24面手動選択を廃し、スキル選択だけで最適な未強化面（base_*優先）へ自動組み込みする
         if (!chosenDie || chosenFaceIdx === undefined) {
           let fallbackDie = state.dice[0]
           let fallbackFaceIdx = 0
           let foundBase = false
 
-          // まず全ダイスの中で base_ かつ pip が近い面、なければ任意の base_ 面を探す
-          const preferredFaceIdx = Math.max(0, Math.min(5, ENGRAVINGS[action.engravingId].pip - 1))
+          const preferredFaceIdx = Math.max(
+            0,
+            Math.min(5, ENGRAVINGS[action.engravingId].pip - 1)
+          )
           for (const die of state.dice) {
             const prefFace = die.faces[preferredFaceIdx]
             if (
@@ -1111,7 +1183,11 @@ export function step(prevState: GameState, action: GameAction): GameState {
               for (const face of die.faces) {
                 if (
                   face.engravingId.startsWith('base_') &&
-                  canForgeEngravingOnDie(die, action.engravingId, face.faceIndex)
+                  canForgeEngravingOnDie(
+                    die,
+                    action.engravingId,
+                    face.faceIndex
+                  )
                 ) {
                   fallbackDie = die
                   fallbackFaceIdx = face.faceIndex
@@ -1125,7 +1201,13 @@ export function step(prevState: GameState, action: GameAction): GameState {
           if (!foundBase) {
             outerAny: for (const die of state.dice) {
               for (const face of die.faces) {
-                if (canForgeEngravingOnDie(die, action.engravingId, face.faceIndex)) {
+                if (
+                  canForgeEngravingOnDie(
+                    die,
+                    action.engravingId,
+                    face.faceIndex
+                  )
+                ) {
                   fallbackDie = die
                   fallbackFaceIdx = face.faceIndex
                   break outerAny
@@ -1138,7 +1220,9 @@ export function step(prevState: GameState, action: GameAction): GameState {
           chosenFaceIdx = fallbackFaceIdx
         }
 
-        if (canForgeEngravingOnDie(chosenDie, action.engravingId, chosenFaceIdx)) {
+        if (
+          canForgeEngravingOnDie(chosenDie, action.engravingId, chosenFaceIdx)
+        ) {
           chosenDie.faces[chosenFaceIdx] = {
             faceIndex: chosenFaceIdx,
             pip: ENGRAVINGS[action.engravingId].pip,
@@ -1177,28 +1261,6 @@ export function step(prevState: GameState, action: GameAction): GameState {
       if (state.phase !== 'altar') return state
       if (action.choice === 'heal_full') {
         state.hp = state.maxHp
-      } else if (action.choice === 'upgrade_two_faces') {
-        const die = state.dice[action.targetDieId ?? 0]
-        const pool: EngravingId[] =
-          state.starterClass === 'assassin'
-            ? ['assassin_Shadow_clone_1' as EngravingId, 'assassin_catalyst_2']
-            : state.starterClass === 'blacksmith'
-              ? ['fortress_shield_bash_4', 'fortress_aegis_guard_4']
-              : ['arcana_starlight_6', 'arcana_wisdom_rune_5']
-        const validPool: EngravingId[] = pool.map((id) =>
-          ENGRAVINGS[id] ? id : 'arcana_starlight_6'
-        )
-        for (let i = 0; i < 2; i++) {
-          const engId = validPool[i % validPool.length]
-          if (canForgeEngravingOnDie(die, engId, i)) {
-            die.faces[i] = {
-              faceIndex: i,
-              pip: ENGRAVINGS[engId].pip,
-              engravingId: engId,
-            }
-            state.stats.engravingsForged += 1
-          }
-        }
       } else if (action.choice === 'sacrifice_hp_for_relic') {
         state.hp = Math.max(10, state.hp - 12)
         const unowned = (Object.keys(RELICS) as RelicId[]).filter(
@@ -1208,8 +1270,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
           state.relics.push(pickRandom(state, unowned))
         }
       }
-
-      const nextPos = ((state.floor % 4) + 1)
+      const nextPos = (state.floor % 4) + 1
       advanceToNextFloor(state, nextPos === 3 ? 'shop' : 'normal')
       return state
     }
@@ -1341,7 +1402,6 @@ export function simulateRun(
   const enemyHpRatio =
     state.enemy.maxHp > 0 ? state.enemy.hp / state.enemy.maxHp : 1
 
-  // ニアミス判定：敗北時に敵の残りHPが25%以下だった、またはエリアボス(Floor 4/8/12)まで到達して惜敗した
   const nearMiss =
     !cleared && (enemyHpRatio <= 0.25 || state.floor % 4 === 0)
 
@@ -1351,8 +1411,7 @@ export function simulateRun(
     state.stats.maxSingleTurnDamage * 4 +
     (cleared ? 3500 + state.hp * 25 : Math.round((1 - enemyHpRatio) * 500))
 
-  const durationSec =
-    state.stats.turnsPlayed * 20 + floorsCleared * 16
+  const durationSec = state.stats.turnsPlayed * 20 + floorsCleared * 16
 
   return {
     score,
@@ -1386,8 +1445,6 @@ export const randomBot: Policy = ({ state }, rng) => {
     return {
       type: 'CHOOSE_REWARD',
       engravingId: engId,
-      targetDieId: Math.floor(rng() * 4),
-      targetFaceIndex: Math.floor(rng() * 6),
       relicId,
       nextNodeType: state.rewardOffer.nextFloorChoices[0],
     }
@@ -1399,15 +1456,13 @@ export const randomBot: Policy = ({ state }, rng) => {
     return { type: 'LEAVE_SHOP' }
   }
 
-  // 未配置のダイスがあればランダムな空きスロットに置く（でたらめ操作のため途中でターン終了することもある）
   const unassigned = state.dice.filter((d) => d.assignedSlot === null)
-  if (unassigned.length > 0 && rng() < 0.78) {
+  if (unassigned.length > 0 && rng() < 0.8) {
     if (state.rerollsLeft > 0 && rng() < 0.45) {
       return { type: 'REROLL_DICE', lockDieIds: [] }
     }
-    const emptySlots = ALL_SLOT_IDS.filter((s) => state.slots[s] === null)
-    const targetSlot =
-      emptySlots[Math.floor(rng() * emptySlots.length)] ?? 'strike_1'
+    const choices: SlotId[] = ['strike_1', 'strike_2', 'guard_1', 'arcana_1']
+    const targetSlot = choices[Math.floor(rng() * choices.length)]
     return {
       type: 'ASSIGN_DIE',
       dieId: unassigned[Math.floor(rng() * unassigned.length)].id,
@@ -1417,7 +1472,7 @@ export const randomBot: Policy = ({ state }, rng) => {
   return { type: 'EXECUTE_TURN' }
 }
 
-/** 2. 敵の行動予告や防御・役を一切無視して攻撃枠と錬金枠だけに置く単調ボット */
+/** 2. 敵の予告や防御を一切無視して「強斬撃」ボタンだけ連打し続ける思考停止ボット */
 export const monotoneBot: Policy = ({ state }) => {
   if (state.phase === 'reward' && state.rewardOffer) {
     return {
@@ -1426,7 +1481,7 @@ export const monotoneBot: Policy = ({ state }) => {
     }
   }
   if (state.phase === 'altar') {
-    return { type: 'ALTAR_ACTION', choice: 'upgrade_two_faces', targetDieId: 0 }
+    return { type: 'ALTAR_ACTION', choice: 'heal_full' }
   }
   if (state.phase === 'shop') {
     return { type: 'LEAVE_SHOP' }
@@ -1434,25 +1489,13 @@ export const monotoneBot: Policy = ({ state }) => {
 
   const unassigned = state.dice.filter((d) => d.assignedSlot === null)
   if (unassigned.length > 0) {
-    // 防御(guard_1)を一切使わず、攻撃と錬金にだけ順番に詰める思考停止ムーブ
-    const monotoneOrder: SlotId[] = [
-      'strike_1',
-      'strike_2',
-      'alchemy_1',
-      'arcana_1',
-    ]
-    for (const sId of monotoneOrder) {
-      if (state.slots[sId] === null) {
-        return { type: 'ASSIGN_DIE', dieId: unassigned[0].id, slotId: sId }
-      }
-    }
+    return { type: 'ASSIGN_DIE', dieId: unassigned[0].id, slotId: 'strike_1' }
   }
   return { type: 'EXECUTE_TURN' }
 }
 
 /**
- * 戦略的ダイス割り当て＆鍛造ボット生成ヘルパー
- * preferredArchetype を指定するとそのビルド系統を優先し、noise (0..1) に応じて判断ブレを入れる
+ * 3. 戦略的プレイヤボット生成ヘルパー（敵攻撃を盾で防ぎ、出目と技・MP必殺を使い分ける）
  */
 function createStrategicPolicy(
   noise: number,
@@ -1462,9 +1505,10 @@ function createStrategicPolicy(
     const isNoisy = noise > 0 && rng() < noise
 
     if (state.phase === 'reward' && state.rewardOffer) {
-      if (isNoisy) return randomBot({ state, preview: calculateTurnPreview(state) }, rng)
+      if (isNoisy) {
+        return randomBot({ state, preview: calculateTurnPreview(state) }, rng)
+      }
 
-      // 優先系統に合致する刻印・レリックを高く評価して選ぶ
       const sortedEngs = [...state.rewardOffer.engravings].sort((a, b) => {
         const ea = ENGRAVINGS[a]
         const eb = ENGRAVINGS[b]
@@ -1476,23 +1520,6 @@ function createStrategicPolicy(
           eb.cost
         return scoreB - scoreA
       })
-      const chosenEng = sortedEngs[0]
-
-      // 素の面（base_1〜base_6）が残っているダイス面を探して優先的に彫り直す
-      let bestDieId = 0
-      let bestFaceIdx = 0
-      outer: for (const die of state.dice) {
-        for (const face of die.faces) {
-          if (
-            face.engravingId.startsWith('base_') &&
-            canForgeEngravingOnDie(die, chosenEng, face.faceIndex)
-          ) {
-            bestDieId = die.id
-            bestFaceIdx = face.faceIndex
-            break outer
-          }
-        }
-      }
 
       const sortedRelics = [...state.rewardOffer.relics].sort((a, b) => {
         const ra = RELICS[a]
@@ -1514,44 +1541,23 @@ function createStrategicPolicy(
 
       return {
         type: 'CHOOSE_REWARD',
-        engravingId: chosenEng,
-        targetDieId: bestDieId,
-        targetFaceIndex: bestFaceIdx,
+        engravingId: sortedEngs[0],
         relicId: sortedRelics[0],
         nextNodeType: nextNode,
       }
     }
 
     if (state.phase === 'altar') {
-      if (state.hp < state.maxHp * 0.55) {
-        return { type: 'ALTAR_ACTION', choice: 'heal_full' }
-      }
-      if (state.relics.length < 5 && state.hp > 32) {
-        return { type: 'ALTAR_ACTION', choice: 'sacrifice_hp_for_relic' }
-      }
-      return { type: 'ALTAR_ACTION', choice: 'upgrade_two_faces', targetDieId: 0 }
+      return { type: 'ALTAR_ACTION', choice: 'heal_full' }
     }
-
     if (state.phase === 'shop') {
-      if (state.hp < state.maxHp * 0.6 && state.gold >= 25) {
-        return { type: 'SHOP_BUY_HEAL' }
-      }
-      if (state.rewardOffer) {
-        for (const rId of state.rewardOffer.relics) {
-          const cost = RELICS[rId].cost
-          if (state.gold >= cost && state.relics.length < 5) {
-            return { type: 'SHOP_BUY_RELIC', relicId: rId }
-          }
-        }
-      }
       return { type: 'LEAVE_SHOP' }
     }
 
-    // 戦闘フェーズ
     const unassigned = state.dice.filter((d) => d.assignedSlot === null)
 
     if (unassigned.length === 4) {
-      // リロール判断：ビルド方針に合致するダイスとペアをロックして残りを振り直す
+      // リロール判断：ビルド方針に合致するダイスとペアをロックして振り直す
       if (state.rerollsLeft > 0 && !isNoisy) {
         const pipCounts = new Map<number, number>()
         for (const d of state.dice) {
@@ -1559,18 +1565,17 @@ function createStrategicPolicy(
         }
         const lockIds: number[] = []
         for (const d of state.dice) {
-          const isSpecial = !d.currentEngravingId.startsWith('base_')
           const isPaired = (pipCounts.get(d.currentPip) ?? 0) >= 2
           const matchesPref =
             preferredArchetype &&
             ENGRAVINGS[d.currentEngravingId].archetype === preferredArchetype
-          const goodPipForBuild =
+          const goodPip =
             preferredArchetype === 'assassin'
               ? d.currentPip <= 2
               : preferredArchetype === 'fortress'
                 ? d.currentPip % 2 === 0
                 : d.currentPip >= 5
-          if (matchesPref || goodPipForBuild || (isSpecial && isPaired)) {
+          if (matchesPref || goodPip || isPaired) {
             lockIds.push(d.id)
           }
         }
@@ -1579,36 +1584,20 @@ function createStrategicPolicy(
         }
       }
 
-      // マナ介入：ビルド方針に合わせて出目を変換する
-      if (state.mana >= 2 && !isNoisy) {
-        if (preferredArchetype === 'assassin') {
-          const highBaseDie = state.dice.find((d) => d.currentPip >= 5)
-          if (highBaseDie) {
-            return {
-              type: 'MANIPULATE_DIE',
-              dieId: highBaseDie.id,
-              mode: 'flip',
-            }
-          }
-        } else if (preferredArchetype === 'fortress') {
-          const oddDie = state.dice.find((d) => d.currentPip % 2 === 1)
-          if (oddDie) {
-            return {
-              type: 'MANIPULATE_DIE',
-              dieId: oddDie.id,
-              mode: 'plus1',
-            }
-          }
-        } else {
-          const lowBaseDie = state.dice.find(
-            (d) => d.currentEngravingId.startsWith('base_') && d.currentPip <= 2
-          )
-          if (lowBaseDie) {
-            return {
-              type: 'MANIPULATE_DIE',
-              dieId: lowBaseDie.id,
-              mode: 'flip',
-            }
+      // マナ介入：MP余裕があれば得意出目へ引き上げる
+      if (state.mana >= 4 && !isNoisy) {
+        const targetDie = unassigned.find((d) =>
+          preferredArchetype === 'assassin'
+            ? d.currentPip === 3
+            : preferredArchetype === 'fortress'
+              ? d.currentPip % 2 === 1
+              : d.currentPip === 4 || d.currentPip === 5
+        )
+        if (targetDie) {
+          return {
+            type: 'MANIPULATE_DIE',
+            dieId: targetDie.id,
+            mode: preferredArchetype === 'assassin' ? 'minus1' : 'plus1',
           }
         }
       }
@@ -1616,91 +1605,100 @@ function createStrategicPolicy(
 
     if (unassigned.length > 0) {
       if (isNoisy) {
-        if (rng() < 0.22) {
-          return { type: 'EXECUTE_TURN' }
-        }
-        const emptySlots = ALL_SLOT_IDS.filter((s) => state.slots[s] === null)
+        const choices: SlotId[] = ['strike_1', 'strike_2', 'guard_1', 'arcana_1']
         return {
           type: 'ASSIGN_DIE',
           dieId: unassigned[0].id,
-          slotId: emptySlots[Math.floor(rng() * emptySlots.length)] ?? 'strike_1',
+          slotId: choices[Math.floor(rng() * choices.length)],
         }
       }
 
-      // 現在のプレビューを見て、敵をこのターン倒し切れるか、それとも強攻撃をガードすべきか判断する
-      const curPreview = calculateTurnPreview(state)
+      // 1. まず必殺魔導砲(MP>=3)や全残ダイスで仕留められるかチェック
+      const bestKillCombo = findBestImmediateAction(state, unassigned)
+      if (
+        bestKillCombo &&
+        bestKillCombo.preview.damage >= state.enemy.hp + state.enemy.shield
+      ) {
+        return {
+          type: 'ASSIGN_DIE',
+          dieId: bestKillCombo.die.id,
+          slotId: bestKillCombo.slotId,
+        }
+      }
+
+      // 2. 敵の攻撃予告に対してシールドが足りなければ、鉄壁盾に最適なダイスを使う
       const incoming =
         (state.enemy.currentIntent.damage + state.enemy.strength) *
         (state.enemy.currentIntent.hits || 1)
-      const needGuard =
-        state.slots.guard_1 === null &&
-        incoming > state.shield + curPreview.totalShieldGain + 4 &&
-        state.enemy.hp > curPreview.totalDamage + 16
+      const deficit = incoming - state.shield
+      const hpRatio = state.hp / state.maxHp
 
-      if (needGuard) {
-        const bestGuardDie = [...unassigned].sort((a, b) => {
-          const ea = ENGRAVINGS[a.currentEngravingId]
-          const eb = ENGRAVINGS[b.currentEngravingId]
-          const valA =
-            a.currentPip +
-            (ea.bonusShield ?? 0) * 1.8 -
-            (ea.multiHit ? 6 : 0) -
-            (ea.multiplyEnemyPoison ? 6 : 0)
-          const valB =
-            b.currentPip +
-            (eb.bonusShield ?? 0) * 1.8 -
-            (eb.multiHit ? 6 : 0) -
-            (eb.multiplyEnemyPoison ? 6 : 0)
-          return valB - valA
+      if (deficit >= 4 && (hpRatio < 0.82 || incoming >= 12)) {
+        const guardCandidate = [...unassigned].sort((a, b) => {
+          const pa = calculateSingleDieAction(state, a, 'guard_1')
+          const pb = calculateSingleDieAction(state, b, 'guard_1')
+          const scoreA =
+            pa.shieldGain + pa.damage * 0.5 + (a.currentPip % 2 === 0 ? 4 : 0)
+          const scoreB =
+            pb.shieldGain + pb.damage * 0.5 + (b.currentPip % 2 === 0 ? 4 : 0)
+          return scoreB - scoreA
         })[0]
         return {
           type: 'ASSIGN_DIE',
-          dieId: bestGuardDie.id,
+          dieId: guardCandidate.id,
           slotId: 'guard_1',
         }
       }
 
-      // 攻撃適性が最も高いダイスを先に strike_1 / strike_2 に割り当てる
-      const sortedForAttack = [...unassigned].sort((a, b) => {
-        const ea = ENGRAVINGS[a.currentEngravingId]
-        const eb = ENGRAVINGS[b.currentEngravingId]
-        const scoreA =
-          (a.currentPip + (ea.bonusAttack ?? 0)) * (ea.multiHit ?? 1) +
-          (ea.applyPoison ?? 0) * 1.5 +
-          (ea.shieldBashRatio ?? 0) * 15
-        const scoreB =
-          (b.currentPip + (eb.bonusAttack ?? 0)) * (eb.multiHit ?? 1) +
-          (eb.applyPoison ?? 0) * 1.5 +
-          (eb.shieldBashRatio ?? 0) * 15
-        return scoreB - scoreA
-      })
-      const die = sortedForAttack[0]
-      const eng = ENGRAVINGS[die.currentEngravingId]
-
-      if (state.slots.strike_1 === null) {
-        return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'strike_1' }
+      // 3. 攻撃アクション：各ダイスと各技の組み合わせで最も期待値が高いものを選ぶ
+      const bestOffense = findBestImmediateAction(state, unassigned)
+      if (bestOffense) {
+        return {
+          type: 'ASSIGN_DIE',
+          dieId: bestOffense.die.id,
+          slotId: bestOffense.slotId,
+        }
       }
-      if (state.slots.strike_2 === null) {
-        return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'strike_2' }
-      }
-      if (
-        eng.multiplyEnemyPoison &&
-        state.slots.alchemy_1 === null &&
-        state.alchemyUsesThisBattle < state.maxAlchemyUsesPerBattle
-      ) {
-        return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'alchemy_1' }
-      }
-      if (state.slots.arcana_1 === null) {
-        return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'arcana_1' }
-      }
-      if (state.slots.guard_1 === null) {
-        return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'guard_1' }
-      }
-      return { type: 'ASSIGN_DIE', dieId: die.id, slotId: 'alchemy_1' }
     }
 
     return { type: 'EXECUTE_TURN' }
   }
+}
+
+function findBestImmediateAction(
+  state: GameState,
+  unassigned: DieState[]
+): { die: DieState; slotId: SlotId; preview: SingleDieActionPreview; value: number } | null {
+  const slots: SlotId[] = ['strike_1', 'strike_2', 'arcana_1', 'guard_1']
+  let best: {
+    die: DieState
+    slotId: SlotId
+    preview: SingleDieActionPreview
+    value: number
+  } | null = null
+
+  for (const die of unassigned) {
+    for (const slotId of slots) {
+      const preview = calculateSingleDieAction(state, die, slotId)
+      const poisonValue =
+        preview.poisonApplied * (state.enemy.hp > 25 ? 2.1 : 1.1)
+      const manaValue = preview.manaGain * 1.6 - preview.manaConsumed * 0.4
+      const shieldValue =
+        slotId === 'guard_1' ? preview.shieldGain * 0.45 : preview.shieldGain * 0.7
+      const value =
+        preview.damage +
+        poisonValue +
+        manaValue +
+        shieldValue +
+        preview.thornsGain * 1.2 +
+        (preview.bonusTriggered ? 2.5 : 0)
+
+      if (!best || value > best.value) {
+        best = { die, slotId, preview, value }
+      }
+    }
+  }
+  return best
 }
 
 export const skilledBot = (noise: number): Policy =>
