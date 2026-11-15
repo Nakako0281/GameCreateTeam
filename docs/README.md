@@ -22,6 +22,7 @@
 docs/
 ├── README.md                                  # 本ファイル（プロジェクト一覧＆運用ガイド）
 ├── REVIEW_GUIDELINES_AND_LOG.md               # ★最高責任者レビュー指針＆指摘履歴台帳（毎回必読）
+├── GAME_FEEL_AND_UX_PRINCIPLES.md             # ★ゲームの手触り・UI情報圧縮・演出設計バイブル（桜井政博氏の7原則＆名作分析）
 ├── templates/                                 # 各種標準テンプレート
 │   ├── MARKET_RESEARCH_TEMPLATE.md            # ① 市場調査・リプレイ性構造分析テンプレート
 │   ├── GAME_PROPOSAL_TEMPLATE.md              # ② ゲーム企画書（人間への提出・決裁用）テンプレート
