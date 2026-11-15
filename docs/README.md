@@ -39,7 +39,7 @@ docs/
 
 | Project ID | タイトル | 想定1プレイ時間 | ステータス | 企画書 (MD) | ロードマップ | GitHub Milestone / Issue |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `dice-forge-dungeon` | **ダイス・フォージ・ダンジョン：魔導刻印と運命の塔** | 15〜25分 (自動セーブ有) | `🟡 企画書レビュー・Goサイン待ち` | [企画書](./proposals/dice-forge-dungeon.md) / [市場調査](./proposals/dice-forge-dungeon-research.md) | *(Goサイン後に作成)* | [Issue #12](https://github.com/Nakako0281/GameCreateTeam/issues/12) |
+| `dice-forge-dungeon` | **ダイス・フォージ・ダンジョン：魔導刻印と運命の塔** | 15〜25分 (自動セーブ有) | `🟣 M1〜M5完了・PRレビュー待ち` | [企画書](./proposals/dice-forge-dungeon.md) / [市場調査](./proposals/dice-forge-dungeon-research.md) | [ROADMAP](./projects/dice-forge-dungeon/ROADMAP.md) | [Milestone #1](https://github.com/Nakako0281/GameCreateTeam/milestone/1) / [Epic #12](https://github.com/Nakako0281/GameCreateTeam/issues/12) (`#13`〜`#17`) |
 
 ---
 
