@@ -29,6 +29,8 @@ description: >-
    - 最終PRのマージは必ず人間が行う（AIによる自動マージ・`main` 直接Pushは厳禁）。
 
 > [!IMPORTANT]
+> - **レビュー指摘台帳の必読**: 企画書やPRを提出する前、および人間からレビューを受けた際は、必ず [docs/REVIEW_GUIDELINES_AND_LOG.md](../../../docs/REVIEW_GUIDELINES_AND_LOG.md) を参照・更新し、**過去の指摘の再発防止**と**過去指針との矛盾チェック**を行うこと。
+> - **無料フリー素材・AI画像生成・無料ライブラリの活用**: 使用する素材・ツール・ライブラリはすべて**無料で使えるもの**に限定する。無理にWeb Audio合成音だけに頼らず、人間側でダウンロード可能な無料フリー素材（効果音・BGM等）や必要なツールがあれば企画書でリスト化して依頼すること。
 > - リトライ性の設計基準は [references/fun_patterns.md](./references/fun_patterns.md) を参照。
 > - 多戦略ボットによるバランス＆リプレイ性検証は [references/fun_metrics.md](./references/fun_metrics.md) を参照。
 > - 企画書・ロードマップのテンプレートは `docs/templates/` 配下を使用すること。

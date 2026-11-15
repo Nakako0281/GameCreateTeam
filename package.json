@@ -11,6 +11,7 @@
     "test:e2e": "playwright test",
     "preview": "vite preview",
     "gct:status": "node .agents/skills/game-create-team/scripts/github_api.mjs status",
+    "gct:feedback": "node .agents/skills/game-create-team/scripts/github_api.mjs check-feedback",
     "gct:labels": "node .agents/skills/game-create-team/scripts/github_api.mjs ensure-labels"
   },
   "dependencies": {

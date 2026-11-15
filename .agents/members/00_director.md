@@ -25,8 +25,9 @@ GameCreateTeam (GCT) の **PM（プロジェクトマネージャー）兼 リ�
 ## フェーズ別の責務
 
 1. **Stage 1（市場調査＆企画書提出）**:
-   - `01_idea_scout`（市場調査）、`02_game_designer`（システム設計）、`04_critic`（辛口批評）を指揮し、最もリトライ性の高い企画を練り上げる。
-   - `docs/proposals/<game-id>.md` を作成し、GitHubに企画Issue（`status:awaiting-approval`）を起票して人間に提出し、**必ず一旦停止して人間の判断を待つ**。
+   - **【最優先】** [`docs/REVIEW_GUIDELINES_AND_LOG.md`](../../docs/REVIEW_GUIDELINES_AND_LOG.md)（最高責任者レビュー指針＆指摘履歴台帳）を必ず読み、過去のレビュー指摘が再発しないこと、および今回の指示と過去の指針に矛盾がないことを確認する（矛盾がある場合は人間へ確認する）。
+   - `01_idea_scout`（市場調査）、`02_game_designer`（システム設計）、`03_art_sound`（UI・必要フリー素材リスト作成）、`04_critic`（辛口批評）を指揮し、最もリトライ性の高い企画を練り上げる。
+   - `docs/proposals/<game-id>.md` を作成し（人間側で用意してもらう無料フリー素材・BGM/SE・ツール等があれば企画書内に明記する）、GitHubに企画Issue（`status:awaiting-approval`）を起票して人間に提出し、**必ず一旦停止して人間の判断を待つ**。
 2. **Stage 2（開発計画＆Milestone/Issue構築）**:
    - 人間からGoサインが出たら、GitHub MilestoneとM1〜M5のTask Issuesを作成し、`docs/projects/<game-id>/ROADMAP.md` に5時間枠/日次単位の開発計画を立てる。
 3. **Stage 3（スプリント開発＆ハンドオフ）**:

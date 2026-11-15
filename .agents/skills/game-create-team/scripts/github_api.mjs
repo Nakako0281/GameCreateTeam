@@ -399,6 +399,30 @@ async function main() {
       break
     }
 
+    case 'check-feedback': {
+      const issues = await githubRequest('/issues?state=open&per_page=30')
+      const onlyIssues = issues.filter((i) => !i.pull_request)
+      const feedbackList = []
+      for (const issue of onlyIssues) {
+        const comments = await githubRequest(
+          `/issues/${issue.number}/comments?per_page=30`
+        )
+        const recentComments = comments.slice(-3).map((c) => ({
+          id: c.id,
+          user: c.user?.login,
+          created_at: c.created_at,
+          body: c.body,
+        }))
+        feedbackList.push({
+          ...formatIssueSummary(issue),
+          total_comments: comments.length,
+          recent_comments: recentComments,
+        })
+      }
+      console.log(JSON.stringify(feedbackList, null, 2))
+      break
+    }
+
     case 'create-issue': {
       const [title, bodyArg] = positional
       if (!title) throw new Error('タイトルを指定してください')

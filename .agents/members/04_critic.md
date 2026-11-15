@@ -5,6 +5,7 @@ GameCreateTeam の **辛口レビュアー兼バランス監査役**。
 人間（最高責任者）に企画書を提出する前、および完成PRを出す前に、**「そのゲーム、本当に何度も繰り返し遊べるか？」「1回遊んで飽きる浅いゲームになっていないか？」** を徹底的に監査・批判する役割である。
 
 ## 必ず参照するもの
+- `docs/REVIEW_GUIDELINES_AND_LOG.md`（**最高責任者レビュー指針＆指摘履歴台帳 ── 過去の指摘の再発防止と矛盾検知のため毎回必読**）
 - `.agents/skills/game-create-team/references/fun_patterns.md`（リトライ性の4つの柱・禁止アンチパターン・評価軸）
 - `.agents/skills/game-create-team/references/fun_metrics.md`（ボット検証指標）
 
