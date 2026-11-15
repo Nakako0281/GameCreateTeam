@@ -476,6 +476,7 @@ export function renderDungeonArena(
   height: number,
   anim: ArenaAnimState,
   params: {
+    mode?: 'title' | 'class_select' | 'battle' | 'reward' | 'victory' | 'gameover'
     classId: StarterClassId
     floor: number
     area: number
@@ -713,7 +714,7 @@ export function renderDungeonArena(
   ctx.restore()
 
   // 5. Draw Enemy Intent Badge (Above Enemy Head, clear of edges)
-  if (params.enemyHp > 0) {
+  if (params.enemyHp > 0 && params.mode !== 'title' && params.mode !== 'reward') {
     const intentX = enemyBaseX
     const intentY = heroBaseY - 106 + Math.sin(t * 5) * 1.5
     const totalIntentDmg = params.enemyIntentDamage * Math.max(1, params.enemyIntentHits)
@@ -748,6 +749,47 @@ export function renderDungeonArena(
         ? `${params.enemyIntentDamage}x${params.enemyIntentHits}`
         : `${params.enemyIntentDamage}`
     ctx.fillText(`ATK ${dmgLabel}`, intentX - 8, intentY + 0.5)
+    ctx.restore()
+  }
+
+  // Title / Reward Center Emblem Overlay on Canvas
+  if (params.mode === 'title') {
+    ctx.save()
+    ctx.translate(centerX, 68)
+    const pulse = 1 + Math.sin(t * 3) * 0.03
+    ctx.scale(pulse, pulse)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    ctx.strokeStyle = '#fbbf24'
+    ctx.lineWidth = 2.5
+    roundRect(ctx, -138, -32, 276, 64, 16)
+    ctx.fill()
+    ctx.stroke()
+
+    ctx.fillStyle = '#fde68a'
+    ctx.font = '900 18px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('DICE FORGE DUNGEON', 0, -8)
+
+    ctx.fillStyle = '#94a3b8'
+    ctx.font = '800 12px sans-serif'
+    ctx.fillText('DESTINY TOWER ROGUELITE', 0, 14)
+    ctx.restore()
+  } else if (params.mode === 'reward') {
+    ctx.save()
+    ctx.translate(centerX, 46)
+    ctx.fillStyle = 'rgba(6, 78, 59, 0.92)'
+    ctx.strokeStyle = '#34d399'
+    ctx.lineWidth = 2.5
+    roundRect(ctx, -124, -20, 248, 40, 14)
+    ctx.fill()
+    ctx.stroke()
+
+    ctx.fillStyle = '#ecfdf5'
+    ctx.font = '900 15px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`STAGE ${params.floor} CLEAR!`, 0, 0)
     ctx.restore()
   }
 

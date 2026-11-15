@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  calculateSingleDieAction,
   calculateTurnPreview,
   canForgeEngravingOnDie,
   evaluateFormation,
@@ -15,17 +16,28 @@ import {
 } from '../storage'
 
 describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コアロジック単体テスト', () => {
-  it('初期状態がクラスごとに正しく生成され、ダイス4個・24面を持つこと', () => {
+  it('初期状態が3クラスごとにHP・攻撃・防御・MPで明確に差別化され、ダイス4個・24面を持つこと', () => {
     const mage = initGameState(123, 'mage', 0)
     expect(mage.dice).toHaveLength(4)
     expect(mage.dice[0].faces).toHaveLength(6)
+    expect(mage.maxHp).toBe(60)
+    expect(mage.baseAttack).toBe(3)
+    expect(mage.baseDefense).toBe(2)
+    expect(mage.mana).toBe(4)
     expect(mage.relics).toContain('relic_star_grimoire')
-    expect(mage.floor).toBe(1)
 
     const assassin = initGameState(123, 'assassin', 0)
+    expect(assassin.maxHp).toBe(52)
+    expect(assassin.baseAttack).toBe(4)
+    expect(assassin.baseDefense).toBe(1)
+    expect(assassin.mana).toBe(3)
     expect(assassin.relics).toContain('relic_assassin_thimble')
 
     const smith = initGameState(123, 'blacksmith', 0)
+    expect(smith.maxHp).toBe(76)
+    expect(smith.baseAttack).toBe(2)
+    expect(smith.baseDefense).toBe(4)
+    expect(smith.mana).toBe(2)
     expect(smith.relics).toContain('relic_barricade_core')
   })
 
@@ -55,34 +67,60 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
     die.faces[0].engravingId = 'assassin_poison_dart_1'
     die.faces[1].engravingId = 'assassin_poison_dart_1'
 
-    // すでに2面あるため、3面目（index 2）には彫れない
     expect(canForgeEngravingOnDie(die, 'assassin_poison_dart_1', 2)).toBe(false)
-    // 既存の面（index 0）の上書きや、別の特殊刻印なら可能
     expect(canForgeEngravingOnDie(die, 'assassin_poison_dart_1', 0)).toBe(true)
     expect(canForgeEngravingOnDie(die, 'assassin_twin_fang_2', 2)).toBe(true)
   })
 
-  it('ダイスのスロット配置・リアルタイム予測・ターン実行が整合すること', () => {
+  it('1ダイス＝1即時行動：技タップの瞬間にプレビュー通りに敵HP・シールド・毒・MPが即反映されること', () => {
     let state = initGameState(100, 'mage', 0)
+    state.enemy.maxHp = 200
+    state.enemy.hp = 200
+    // 出目6の強斬撃（会心ボーナス）、出目1の毒連撃（2連+猛毒）、出目4の鉄壁盾（偶数強化）、MP3魔導砲を検証
+    state.dice[0].currentPip = 6
+    state.dice[0].currentEngravingId = 'base_6'
+    state.dice[1].currentPip = 1
+    state.dice[1].currentEngravingId = 'base_1'
+    state.dice[2].currentPip = 4
+    state.dice[2].currentEngravingId = 'base_4'
+    state.dice[3].currentPip = 5
+    state.dice[3].currentEngravingId = 'base_5'
+
+    const enemyStartHp = state.enemy.hp
+    const strikePreview = calculateSingleDieAction(state, state.dice[0], 'strike_1')
+    expect(strikePreview.bonusTriggered).toBe(true)
+    expect(strikePreview.damage).toBeGreaterThan(10)
+
     state = step(state, { type: 'ASSIGN_DIE', dieId: 0, slotId: 'strike_1' })
+    expect(state.dice[0].assignedSlot).toBe('strike_1')
+    expect(state.enemy.hp).toBe(Math.max(0, enemyStartHp - strikePreview.damage))
+
+    // 毒連撃（出目1）
+    const poisonPreview = calculateSingleDieAction(state, state.dice[1], 'strike_2')
+    expect(poisonPreview.bonusTriggered).toBe(true)
+    expect(poisonPreview.hits).toBeGreaterThanOrEqual(2)
+    expect(poisonPreview.poisonApplied).toBeGreaterThanOrEqual(4)
     state = step(state, { type: 'ASSIGN_DIE', dieId: 1, slotId: 'strike_2' })
+    expect(state.enemy.poison).toBeGreaterThanOrEqual(4)
+
+    // 鉄壁盾（出目4 偶数）
+    const guardPreview = calculateSingleDieAction(state, state.dice[2], 'guard_1')
+    expect(guardPreview.bonusTriggered).toBe(true)
+    expect(guardPreview.shieldGain).toBeGreaterThan(6)
     state = step(state, { type: 'ASSIGN_DIE', dieId: 2, slotId: 'guard_1' })
+    expect(state.shield).toBe(guardPreview.shieldGain)
+
+    // 魔導砲（初期MP4 >= 3 なのでMP3消費の必殺砲が発動）
+    const arcanaPreview = calculateSingleDieAction(state, state.dice[3], 'arcana_1')
+    expect(arcanaPreview.isOverchargeBlast).toBe(true)
+    expect(arcanaPreview.manaConsumed).toBe(3)
+    const manaBefore = state.mana
     state = step(state, { type: 'ASSIGN_DIE', dieId: 3, slotId: 'arcana_1' })
-
-    const preview = calculateTurnPreview(state)
-    expect(preview.totalDamage).toBeGreaterThan(0)
-    expect(preview.totalShieldGain).toBeGreaterThan(0)
-
-    const nextState = step(state, { type: 'EXECUTE_TURN' })
-    expect(nextState.stats.turnsPlayed).toBe(1)
-    expect(nextState.stats.totalDamageDealt).toBeGreaterThanOrEqual(
-      preview.totalDamage
-    )
+    expect(state.mana).toBe(manaBefore - 3 + arcanaPreview.manaGain)
   })
 
   it('未配置でも手札4ダイスの役倍率が即座に決定し、ステージ突破で自動レベルアップ＆自動スキル組み込みが行われること', () => {
     const state = initGameState(2026, 'mage', 0)
-    // 手元の4ダイスをワンペア(2,2,4,5)に設定（まだ1個もスロット未配置）
     state.dice[0].currentPip = 2
     state.dice[1].currentPip = 2
     state.dice[2].currentPip = 4
@@ -92,16 +130,15 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
     expect(handPreview.formation.id).toBe('one_pair')
     expect(handPreview.finalMult).toBeGreaterThanOrEqual(1.25)
 
-    // 敵を撃破して報酬フェーズへ移行
+    // 1回の攻撃で敵を撃破すると即座に報酬フェーズへ移行
     state.enemy.hp = 1
-    let postBattle = step(state, { type: 'ASSIGN_DIE', dieId: 0, slotId: 'strike_1' })
-    postBattle = step(postBattle, { type: 'EXECUTE_TURN' })
+    const postBattle = step(state, { type: 'ASSIGN_DIE', dieId: 0, slotId: 'strike_1' })
     expect(postBattle.phase).toBe('reward')
     expect(postBattle.rewardOffer?.nextFloorChoices).toEqual(['elite'])
 
     const beforeMaxHp = postBattle.maxHp
+    const beforeAtk = postBattle.baseAttack
     const chosenEng = postBattle.rewardOffer!.engravings[0]
-    // 24面を手動指定しなくても自動で組み込まれ、レベルアップ（maxHp+4, 基礎攻撃+1）してStage2へ進む
     const stage2 = step(postBattle, {
       type: 'CHOOSE_REWARD',
       engravingId: chosenEng,
@@ -109,8 +146,8 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
     })
     expect(stage2.phase).toBe('battle')
     expect(stage2.floor).toBe(2)
-    expect(stage2.maxHp).toBe(beforeMaxHp + 4)
-    expect(stage2.strengthThisBattle).toBe(1)
+    expect(stage2.maxHp).toBe(beforeMaxHp + 3)
+    expect(stage2.baseAttack).toBe(beforeAtk + 1)
     expect(stage2.stats.engravingsForged).toBe(1)
   })
 
@@ -135,7 +172,7 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
       removeItem: (k: string) => store.delete(k),
     })
 
-    let state = initGameState(999, 'blacksmith', 0)
+    const state = initGameState(999, 'blacksmith', 0)
     state.floor = 5
     state.hp = 48
     saveActiveRun(state)

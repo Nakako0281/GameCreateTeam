@@ -59,6 +59,7 @@ export interface EngravingDef {
   cost: number
   icon: string
   description: string
+  shortEffect?: string
   /** 基礎攻撃ボーナス */
   bonusAttack?: number
   /** 基礎シールドボーナス */
@@ -149,6 +150,7 @@ export interface RelicDef {
   cost: number
   icon: string
   description: string
+  shortEffect: string
 }
 
 export type FormationId =
@@ -250,6 +252,23 @@ export interface TurnPreview {
   synergySteps: TurnSynergyStep[]
 }
 
+export interface SingleDieActionPreview {
+  slotId: SlotId
+  damage: number
+  hits: number
+  shieldGain: number
+  poisonApplied: number
+  manaGain: number
+  manaConsumed: number
+  thornsGain: number
+  healHp: number
+  goldGain: number
+  bonusTriggered: boolean
+  bonusTag: string
+  summaryLabel: string
+  isOverchargeBlast: boolean
+}
+
 export interface RewardOffer {
   engravings: EngravingId[]
   relics: RelicId[]
@@ -267,6 +286,8 @@ export interface GameState {
   turn: number
   hp: number
   maxHp: number
+  baseAttack: number
+  baseDefense: number
   shield: number
   mana: number
   maxMana: number

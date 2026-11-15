@@ -16,8 +16,12 @@ export const STARTER_CLASSES: Record<
     icon: string
     description: string
     maxHp: number
+    baseAttack: number
+    baseDefense: number
     startingMana: number
     startingGold: number
+    specialtyLabel: string
+    passiveLabel: string
     startingRelic: RelicId
     initialDiceEngravings: [
       [EngravingId, EngravingId, EngravingId, EngravingId, EngravingId, EngravingId],
@@ -34,9 +38,13 @@ export const STARTER_CLASSES: Record<
     icon: 'MAGE',
     description:
       '初期からマナ生成刻印と『星見の魔導書』を所持。マナ介入で出目を操作し、共鳴役と魔導バーストを狙う王道スタイル。',
-    maxHp: 64,
-    startingMana: 3,
+    maxHp: 60,
+    baseAttack: 3,
+    baseDefense: 2,
+    startingMana: 4,
     startingGold: 45,
+    specialtyLabel: '得意: 大目(5・6)',
+    passiveLabel: '出目5・6で威力1.4倍+MP1',
     startingRelic: 'relic_star_grimoire',
     initialDiceEngravings: [
       ['base_1', 'base_2', 'base_3', 'base_4', 'arcana_mana_crystal_5', 'base_6'],
@@ -52,9 +60,13 @@ export const STARTER_CLASSES: Record<
     icon: 'ASSASSIN',
     description:
       '初期から『毒針の1』『連撃の2』と『暗殺者の指貫』を所持。あえて1・2の小目を揃えて手数と猛毒で敵を蝕むテクニカルスタイル。',
-    maxHp: 64,
+    maxHp: 52,
+    baseAttack: 4,
+    baseDefense: 1,
     startingMana: 3,
     startingGold: 50,
+    specialtyLabel: '得意: 小目(1・2)',
+    passiveLabel: '出目1・2で威力+5＆猛毒+3',
     startingRelic: 'relic_assassin_thimble',
     initialDiceEngravings: [
       ['assassin_poison_dart_1', 'assassin_twin_fang_2', 'base_3', 'base_4', 'base_5', 'base_6'],
@@ -65,14 +77,18 @@ export const STARTER_CLASSES: Record<
   },
   blacksmith: {
     id: 'blacksmith',
-    name: '重装の鍛冶師',
+    name: '重装の重騎士',
     subtitle: '偶数装甲×シールド反撃要塞型',
     icon: 'BLACKSMITH',
     description:
-      '初期から『鉄壁の4』『盾撃の4』と『不落の城塞』を所持。偶数役で分厚いシールドを築き、装甲値をそのまま巨槌に変えて粉砕する。',
-    maxHp: 72,
+      '初期から『鉄壁の4』『盾撃の4』と『不落の城塞』を所持。偶数役で分厚いシールドを築き、装甲値をそのまま反撃に変えて粉砕する。',
+    maxHp: 76,
+    baseAttack: 2,
+    baseDefense: 4,
     startingMana: 2,
     startingGold: 40,
+    specialtyLabel: '得意: 偶数(2・4・6)',
+    passiveLabel: '盾を持越＆盾の50%で追撃',
     startingRelic: 'relic_barricade_core',
     initialDiceEngravings: [
       ['base_1', 'fortress_thorn_mail_2', 'base_3', 'fortress_iron_wall_4', 'base_5', 'base_6'],
@@ -495,6 +511,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 55,
     icon: 'RING',
     description: '出目1または2のダイス1個につき、基礎ダメージ+4＆猛毒付与+2。',
+    shortEffect: '出目1・2で威力+4＆猛毒+2',
   },
   relic_corrosive_flask: {
     id: 'relic_corrosive_flask',
@@ -504,6 +521,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 75,
     icon: 'FLASK',
     description: '敵に猛毒を付与するたび、付与量の100%にあたる即時ダメージを与える。',
+    shortEffect: '猛毒付与ぶんの即時追加ダメージ',
   },
   relic_twin_daggers: {
     id: 'relic_twin_daggers',
@@ -513,6 +531,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 60,
     icon: 'DAGGERS',
     description: '出目2以下のダイスが2個以上ある時、最終乗算倍率×1.35。',
+    shortEffect: '出目1・2が2個以上で全威力x1.35',
   },
   relic_serpent_idol: {
     id: 'relic_serpent_idol',
@@ -522,6 +541,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 80,
     icon: 'SERPENT',
     description: '敵の猛毒ダメージが1.5倍になり、猛毒状態の敵から受けるダメージを-25%軽減。',
+    shortEffect: '毒ダメ1.5倍＆毒敵の攻撃25%軽減',
   },
   relic_shadow_cloak: {
     id: 'relic_shadow_cloak',
@@ -530,7 +550,8 @@ export const RELICS: Record<RelicId, RelicDef> = {
     rarity: 'common',
     cost: 55,
     icon: 'CLOAK',
-    description: '出目1または2のダイスを配置するたび、シールド+3を自動獲得する。',
+    description: '出目1または2のダイスを使用するたび、シールド+3を自動獲得する。',
+    shortEffect: '出目1・2使用時に自動で盾+3',
   },
   relic_venom_heart: {
     id: 'relic_venom_heart',
@@ -540,6 +561,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 100,
     icon: 'HEART',
     description: '戦闘開始時に敵へ猛毒10を付与し、猛毒状態の敵に対する全ダメージ倍率×1.40。',
+    shortEffect: '開幕に毒10付与＆毒敵へ威力x1.4',
   },
 
   // ---- 系統B: フォートレス系 ----
@@ -551,6 +573,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 60,
     icon: 'CITADEL',
     description: 'ターン終了時にシールドが消滅せず、最大35まで次ターンへ持ち越す。',
+    shortEffect: 'ターン終了時も盾を最大35持ち越し',
   },
   relic_spiked_buckler: {
     id: 'relic_spiked_buckler',
@@ -560,6 +583,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 75,
     icon: 'BUCKLER',
     description: '獲得したシールドの60%を、毎ターン自動的に敵への追撃ダメージとして放つ。',
+    shortEffect: '盾獲得時に盾値の60%で自動反撃',
   },
   relic_even_cogwheel: {
     id: 'relic_even_cogwheel',
@@ -569,6 +593,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 60,
     icon: 'GEAR',
     description: '偶数ダイス1個につきシールド+3＆基礎威力+2。全て偶数ならさらに乗算倍率×1.35。',
+    shortEffect: '偶数で盾+3・威力+2 / 全偶数x1.35',
   },
   relic_knight_vow: {
     id: 'relic_knight_vow',
@@ -578,6 +603,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 78,
     icon: 'CREST',
     description: 'すべてのシールド獲得量が1.35倍になり、戦闘開始時にシールド12を得る。',
+    shortEffect: '盾獲得1.35倍＆開幕に盾12獲得',
   },
   relic_iron_anvil: {
     id: 'relic_iron_anvil',
@@ -587,6 +613,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 55,
     icon: 'ANVIL',
     description: '反撃棘（Thorns）が毎ターン+4され、反撃ダメージが1.5倍になる。',
+    shortEffect: '毎ターン反撃棘+4＆棘ダメ1.5倍',
   },
   relic_golem_heart: {
     id: 'relic_golem_heart',
@@ -596,6 +623,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 100,
     icon: 'CORE',
     description: '最大HP+15。シールドを15以上保持している間、全ダメージ乗算倍率×1.45。',
+    shortEffect: '最大HP+15＆盾15以上で威力x1.45',
   },
 
   // ---- 系統C: アルカナ系 ----
@@ -607,6 +635,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 60,
     icon: 'TOME',
     description: '出目5以上のダイス1個につき、全ダメージ＆シールドの乗算倍率が+0.20x上昇する。',
+    shortEffect: '大目5・6ごとに全効果+0.20倍',
   },
   relic_ether_reactor: {
     id: 'relic_ether_reactor',
@@ -616,6 +645,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 75,
     icon: 'REACTOR',
     description: '毎ターン開始時にマナ+2を得て、所持マナ1MPにつき毎ターンシールド+2を自動生成。',
+    shortEffect: '毎ターンMP+2＆所持MP×2の盾獲得',
   },
   relic_golden_scales: {
     id: 'relic_golden_scales',
@@ -625,6 +655,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 80,
     icon: 'SCALES',
     description: '4個のダイスの出目合計が16以上の時、最終乗算倍率×1.40＆敵へ8ダメージ。',
+    shortEffect: '出目合計16以上で全威力x1.4＆+8攻',
   },
   relic_sage_prism: {
     id: 'relic_sage_prism',
@@ -634,6 +665,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 58,
     icon: 'PRISM',
     description: '魔導スロットの効果が1.5倍になり、マナ介入（出目操作）を行うたび敵に6ダメージ。',
+    shortEffect: '魔導砲1.35倍＆出目操作で6ダメ',
   },
   relic_arcane_crown: {
     id: 'relic_arcane_crown',
@@ -643,6 +675,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 100,
     icon: 'CROWN',
     description: 'すべての共鳴役（ペア・連番・ゾロ目等）の倍率ボーナスが1.35倍に増幅される。',
+    shortEffect: '役コンボの追加倍率が1.35倍に強化',
   },
   relic_astral_hourglass: {
     id: 'relic_astral_hourglass',
@@ -652,6 +685,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 55,
     icon: 'HOURGLASS',
     description: '毎ターンのリロール回数が+1され、出目5以上のダイスは基礎値+3される。',
+    shortEffect: '毎ターン振直+1＆出目5・6基礎+3',
   },
 
   // ---- 汎用 ----
@@ -663,6 +697,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 50,
     icon: 'CLOVER',
     description: '共鳴役倍率+0.20x、毎ターン開始時にシールド+4。',
+    shortEffect: '役倍率+0.20x＆毎ターン開始時盾+4',
   },
   relic_vampire_chalice: {
     id: 'relic_vampire_chalice',
@@ -672,6 +707,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 72,
     icon: 'CHALICE',
     description: '敵を撃破するたびHPを10回復し、最大HP+4。',
+    shortEffect: '敵撃破ごとに最大HP+4＆HP10回復',
   },
   relic_merchant_coin: {
     id: 'relic_merchant_coin',
@@ -681,6 +717,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 50,
     icon: 'COIN',
     description: '戦闘勝利時の獲得ゴールド+18G、ショップ価格20%割引。',
+    shortEffect: '勝利報酬+18G＆全ダメージ+2',
   },
   relic_dragon_eye: {
     id: 'relic_dragon_eye',
@@ -690,6 +727,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 95,
     icon: 'DRAGON_EYE',
     description: '全ダイスの基礎威力+3、基礎シールド+2。',
+    shortEffect: '全ダイス出目+3扱い＆常時強化',
   },
   relic_phoenix_feather: {
     id: 'relic_phoenix_feather',
@@ -699,6 +737,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 75,
     icon: 'FEATHER',
     description: '毎ターンHPを2回復し、HPが50%以下の時は全ダメージ倍率×1.35。',
+    shortEffect: '毎ターンHP+2＆ピンチ時威力x1.35',
   },
   relic_chrono_compass: {
     id: 'relic_chrono_compass',
@@ -708,6 +747,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 70,
     icon: 'COMPASS',
     description: '毎ターン開始時にマナ+1、リロール回数+1、シールド+3。',
+    shortEffect: '毎ターンMP+1・振直+1・盾+3',
   },
 }
 
