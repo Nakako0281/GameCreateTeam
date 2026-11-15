@@ -4,6 +4,7 @@
 > **【最高責任者（人間）決裁ボックス】**
 > - **現在のステータス**: `🟡 レビュー・Goサイン待ち (status:awaiting-approval)`
 > - **企画提出日**: 2026-11-15
+> - **GitHub 企画Issue**: `#12` (https://github.com/Nakako0281/GameCreateTeam/issues/12)
 > - **関連市場調査レポート**: [docs/proposals/dice-forge-dungeon-research.md](./dice-forge-dungeon-research.md)
 > - **決裁アクション**:
 >   - [ ] **✅ Go（承認）** ── この企画で開発計画（GitHub Milestone / 分割Issue作成）および段階的実装へ進む
