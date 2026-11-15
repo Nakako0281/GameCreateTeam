@@ -7,6 +7,7 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Gamepad2,
 } from 'lucide-react'
 import { GAME_REGISTRY } from '../games/registry'
 
@@ -57,9 +58,9 @@ export function GamePlayPage() {
           {/* 左：ホームへ戻る */}
           <Link
             to="/"
-            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 transition hover:bg-slate-200 active:scale-95"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-extrabold whitespace-nowrap text-slate-700 transition hover:bg-slate-200 active:scale-95"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
             <span>ホーム</span>
           </Link>
 
@@ -108,9 +109,9 @@ export function GamePlayPage() {
               <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">
-                      {game.thumbnailEmoji ?? '🎮'}
-                    </span>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+                      <Gamepad2 className="h-5 w-5" />
+                    </div>
                     <div>
                       <h2 className="text-base font-extrabold text-slate-800">
                         {game.title}
