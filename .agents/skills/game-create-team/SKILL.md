@@ -1,146 +1,211 @@
 ---
 name: game-create-team
 description: >-
-  Autonomous AI Game Create Team workflow. Activate this skill whenever the user asks to
-  create a new game, process a GitHub Issue requesting a game, or run the AI game creation team
-  (market research, 4-member planning debate, requirements/design, implementation, Vitest/Playwright QA,
-  memory-preserving 3-planner review, and Pull Request creation).
+  AI Game Create Team (GCT) workflow. Activate whenever the user asks to research/propose a new game,
+  review/update a game proposal, plan milestones/issues after a Go sign, run a development sprint
+  within quota (5-hour reset / daily schedule), or check project status. Focuses on high-replayability
+  games of any optimal duration (1 min to 1+ hour), human Executive Producer Go-sign on MD proposals,
+  and multi-session milestone-driven development via GitHub.
 ---
 
-# GameCreateTeam 自律ゲーム開発ワークフロー
+# GameCreateTeam (GCT)：リトライ性の高いゲームを創る自律開発組織
 
-このスキルは、7名のAI社員（サブエージェント）がチームとして協調し、GitHub Issueを起点に **「市場調査 ➔ 4人企画会議 ➔ 要件定義・設計 ➔ 製造・単体テスト ➔ QA実ブラウザ検証＆企画3名の記憶引き継ぎレビュー ➔ PR作成」** までを自律的に完遂するための標準ランブックです。
+## 🎯 組織の基本方針（5大原則）
 
----
-
-## 👥 チーム編成（`.agents/members/`）
-
-1. **進行プロデューサー**: [00_producer.md](../../members/00_producer.md)
-2. **トレンドリサーチャー（企画会議）**: [01_trend_researcher.md](../../members/01_trend_researcher.md)
-3. **王道・ルール番人（企画会議 ＆ 実装後レビュー兼任）**: [02_classic_guardian.md](../../members/02_classic_guardian.md)
-4. **バズ・中毒性プランナー（企画会議 ＆ 実装後レビュー兼任）**: [03_buzz_planner.md](../../members/03_buzz_planner.md)
-5. **モバイルUXデザイナー（企画会議 ＆ 実装後レビュー兼任）**: [04_mobile_ux_designer.md](../../members/04_mobile_ux_designer.md)
-6. **リードゲームエンジニア（製造・単体テスト担当）**: [05_game_developer.md](../../members/05_game_developer.md)
-7. **QA自動検証エンジニア（Vitest・Build・Playwright実ブラウザ検査担当）**: [06_qa_engineer.md](../../members/06_qa_engineer.md)
+1. **リトライ性の高いゲーム（High Replayability）を作る**
+   - 瞬間的にバズって1回で飽きられる出落ちゲームは作らない。
+   - 毎回異なる展開（シード乱数）、複数の戦略・ビルド・シナジー、実力の介入余地、納得感のある敗北と発見により、**「何度も繰り返し遊べるゲーム」** を作る。
+2. **1ゲームのプレイ時間は制限しない（1分〜1時間以上まで最適設計）**
+   - 1プレイが短くある必要はない。1時間かけてビルドを構築するローグライト/ストラテジーでも、1〜3分で周回するスコアアタックでも構わない。
+   - 市場調査とチーム内の議論を経て「そのゲームが最も面白くなるプレイ時間」を決定する（中〜長時間ゲームは `localStorage` による中断オートセーブ＆再開を必須とする）。
+3. **市場調査 ➔ 企画書（MDファイル）提出 ➔ 人間（最高責任者）のGoサイン**
+   - **人間（ユーザー）が最終的なGoサインを出す最高責任者（Executive Producer）** であり、**その他の業務（市場調査・企画立案・MD作成・スケジュール策定・Milestone/Issue管理・実装・検証・PR作成）はすべてAIチームが担う**。
+   - 実装に入る前に必ず市場調査を行い、企画書（`docs/proposals/<game-id>.md`）を作成して人間に提出し、Goサイン（または修正指示）を仰ぐ。
+4. **Google One Pro 利用枠に合わせたマルチセッション・分割開発**
+   - 1日やワンショットで無理に完成させる必要はない。
+   - ゲームのボリュームを見て、**5時間ごとの枠リセット** や **日次スケジュール** の範囲内で無理なく消化できるよう、GitHubの **Milestone** と **Task Issues（M1〜M5）** に分割して計画的に開発する。
+5. **品質・エラーゼロの徹底 ＆ PRマージは人間専権**
+   - 各スプリントの終わりには必ずテスト・ビルドが通る状態でコミット＆引き継ぎ（Handover）を行う。
+   - 最終PRのマージは必ず人間が行う（AIによる自動マージ・`main` 直接Pushは厳禁）。
 
 > [!IMPORTANT]
-> **ドキュメント管理の鉄則**:
-> リポジトリ内に企画書や議事録のMarkdownファイルをコミットして残してはいけません。
-> すべての議論ログ・要件定義・設計書・レビュー結果は [github_api.mjs](./scripts/github_api.mjs) を使って **対象のGitHub Issueのコメント欄** に記録してください。（一時ファイルを作成してスクリプトに渡す場合は、OSの一時ディレクトリまたはアーティファクトの `scratch/` を使い、リポジトリを汚さないこと）
+> - リトライ性の設計基準は [references/fun_patterns.md](./references/fun_patterns.md) を参照。
+> - 多戦略ボットによるバランス＆リプレイ性検証は [references/fun_metrics.md](./references/fun_metrics.md) を参照。
+> - 企画書・ロードマップのテンプレートは `docs/templates/` 配下を使用すること。
 
 ---
 
-## 🚀 実行ステップ
+## 👥 AIチーム編成（`.agents/members/`）
 
-### Step 1: 対象GitHub Issueの確認（またはAIチームによる自律企画＆自動起票）
+| # | 役割 | 担当Stage | 定義ファイル |
+| :- | :--- | :--- | :--- |
+| **00** | **PM ＆ リードディレクター**（統括・スケジュール・引き継ぎ管理） | 全Stage | [00_director.md](../../members/00_director.md) |
+| **01** | **市場調査 ＆ リプレイ性リサーチャー**（Web調査・ベンチマーク分析） | Stage 1 | [01_idea_scout.md](../../members/01_idea_scout.md) |
+| **02** | **リードゲームデザイナー**（コアループ・ビルド多様性・時間設計・ボット設計） | Stage 1, 3, 4 | [02_game_designer.md](../../members/02_game_designer.md) |
+| **03** | **UI/UX・アート ＆ サウンド**（モバイル情報設計・演出・Web Audio） | Stage 1, 3, 4 | [03_art_sound.md](../../members/03_art_sound.md) |
+| **04** | **辛口レビュアー ＆ バランス監査役**（単一解排除・リプレイ性監査） | Stage 1, 4 | [04_critic.md](../../members/04_critic.md) |
+| **05** | **ソフトウェアアーキテクト ＆ エンジニア**（M1〜M4の段階的実装） | Stage 3 | [05_engineer.md](../../members/05_engineer.md) |
+| **06** | **テクニカルQA ＆ リリースエンジニア**（テスト・録画・E2Eゲート） | Stage 3, 4 | [06_qa.md](../../members/06_qa.md) |
+| **07** | **初見プレイテスター**（録画映像による直感理解・リトライ意欲評価） | Stage 4 | [07_blind_playtester.md](../../members/07_blind_playtester.md) |
 
-1. 現在のオープンなIssue一覧を確認します：
+- 01〜04, 07 は `define_subagent`（`EnableWriteTools: false`）で定義して `invoke_subagent` できる（市場調査では `search_web` も活用）。
+- 00, 05, 06 はメインエージェント自身が遂行する（大規模実装の分担時は `self` サブエージェントも利用可）。
+
+---
+
+## 🔄 全体ワークフロー（4 Stages）
+
+```mermaid
+flowchart TD
+  Start["セッション開始: npm run gct:status"] --> Check{"現在のプロジェクト状態は？"}
+  Check -->|新規企画依頼| S1["Stage 1: 市場調査 ＆ 企画書MD作成"]
+  S1 --> Gate["🛑 人間（最高責任者）へ企画書MD提出・Goサイン待ち"]
+  Gate -->|修正指示| S1_Rev["企画書MDの改訂・再提出"]
+  S1_Rev --> Gate
+  Gate -->|✅ Goサイン！| S2["Stage 2: Milestone ＆ 分割Issue(M1〜M5)・ROADMAP作成"]
+  S2 --> S3["Stage 3: スプリント開発（5時間枠 / 日次で1〜2 Issue消化）"]
+  Check -->|承認済み ＆ 計画未作成| S2
+  Check -->|開発中Milestoneあり| S3
+  S3 --> Quota{"全Issue(M1〜M4)完了？"}
+  Quota -->|未完了（枠の区切り）| Handoff["💾 コミット＆Push・ROADMAP＆Issue更新・次回枠へ引き継ぎ"]
+  Handoff -.->|5時間枠リセット / 翌日再開| Start
+  Quota -->|M1〜M4完了| S4["Stage 4: M5 総合QA・E2E録画・初見テスト・PR作成"]
+  S4 --> FinalGate["🎉 人間（最高責任者）へPR提出・マージ承認待ち"]
+```
+
+---
+
+## 🛠️ 各ステージの実行手順
+
+### Stage 0: 状況確認（すべてのセッションの最初に実行）
+
+```bash
+npm run gct:status
+```
+- GitHub上のオープンな Milestone、承認待ちの企画Issue（`status:awaiting-approval`）、開発中のタスクIssue（`status:in-progress` / `status:handoff`）、および `docs/README.md` を確認し、現在どのステージを実行すべきかを判断する。
+
+---
+
+### Stage 1: 市場調査 ＆ 企画書（MDファイル）提出
+
+**目的**: 市場調査を徹底的に行い、リトライ性の高いゲームの企画書をMDファイルとして人間（最高責任者）に提出する。
+
+1. **市場・ベンチマーク調査**:
+   - `01_idea_scout`（および `search_web`）を使い、ターゲット領域の名作・トレンドと「なぜ何度も繰り返し遊ばれるのか」を調査する。
+   - 調査結果を `docs/proposals/<game-id>-research.md`（[MARKET_RESEARCH_TEMPLATE.md](../../../docs/templates/MARKET_RESEARCH_TEMPLATE.md) 準拠）にまとめる（または企画書内に統合する）。
+2. **複数案の比較 ＆ 社内辛口レビュー**:
+   - 3案以上のコンセプトから、`02_game_designer`（コアループ・ビルド幅・最適プレイ時間設計）と `03_art_sound`（モバイル縦画面UI設計）が設計案を作成。
+   - `04_critic` が「単一最適解になっていないか」「本当に何十回も遊べるか」「想定プレイ時間と密度が合っているか」を厳しくツッコみ、ブラッシュアップする。
+3. **企画書MDファイルの作成**:
+   - [GAME_PROPOSAL_TEMPLATE.md](../../../docs/templates/GAME_PROPOSAL_TEMPLATE.md) を用いて、`docs/proposals/<game-id>.md` を作成する。
+   - `docs/README.md` のプロジェクト一覧テーブルに追記する。
+4. **GitHub 企画Issueの起票 ＆ 人間への提出**:
    ```bash
-   node .agents/skills/game-create-team/scripts/github_api.mjs list-issues
+   node .agents/skills/game-create-team/scripts/github_api.mjs create-issue "【企画書提出】<タイトル> (<game-id>)" docs/proposals/<game-id>.md --labels "type:proposal,status:awaiting-approval"
    ```
-2. **オープンなIssueが存在する場合**（またはユーザーが特定のIssue番号を指定した場合）：
-   - `get-issue <番号>` で詳細を取得し、そのお題を対象として Step 2 へ進みます。
-3. **ユーザーが直接お題（「〇〇を作って」）を指定した場合**：
-   - `create-issue` コマンドで自動的にGitHub Issueを起票し、そのIssue番号を記録先とします。
-4. **オープンなIssueが0件で、定期実行（自律企画モード）として起動された場合**：
-   - **「1日で飽きられてもいいから、X（旧Twitter）などのSNSで話題になる・ツッコミたくなる・結果をシェアしたくなるゲーム」** を最重要テーマとします。
-   - `src/games/registry.ts` の既存ゲーム一覧を確認し、まだプラットフォームにないジャンル・ネタを把握します。
-   - Step 2 の4名（トレンドリサーチャー、王道・手触り番人、バズ・中毒性プランナー、モバイルUXデザイナー）に、まず **「Xでバズりそうな全く異なる3つ以上のゲーム企画候補（A案・B案・C案）」** を提案させ、「なぜ他の候補ではなくこの1本を作るのか（SNSでの出オチ感・拡散性・中毒性の比較）」を議論させてお題を決定します。
-   - 決定したお題で `node .agents/skills/game-create-team/scripts/github_api.mjs create-issue "【AI自律企画】<ゲームタイトル>" "<検討した候補A/B/Cの比較と、なぜこのゲームに決まったかの選定理由>"` を実行してGitHub Issueを自動起票し、そのIssueに以降の議論ログ・設計・レビュー結果・PRを紐づけます。
-   - ※すべてのゲームのリザルト画面には、思わずSNSに貼りたくなる **「パワーワード称号・寸評」** と **「𝕏（旧Twitter）で結果をシェア」ボタン**（`https://twitter.com/intent/tweet?...`）を必ず実装させてください。
+5. **🛑 停止ゲート（最重要）**:
+   - 人間（最高責任者）に [docs/proposals/<game-id>.md](../../../docs/proposals/) のリンクと企画の要点（コアループ、推奨プレイ時間とその理由、リトライ性の核、想定スプリント数）を提示し、**「Goサイン、または修正のご指示をお願いします」と伝えてターンを終了する**。
+   - **人間からGoサインが出るまで、絶対にStage 2以降へ進んではいけない。**
 
 ---
 
-### Step 2: 市場調査 ＆ 4人の企画会議（2ラウンド議論）
+### Stage 2: 開発計画・Milestone ＆ 分割Issue構築（Goサイン後）
 
-1人で仕様を決めることは厳禁です。必ず以下の4名のサブエージェントを `define_subagent` で定義（各 `.agents/members/*.md` の内容をシステムプロンプトに設定、`EnableWriteTools: false`）し、並列で議論させます。
+**目的**: 人間からGoサインが出た企画を、Google One Proの利用枠（5時間枠リセット／日次スケジュール）で安全かつ着実に開発できるよう、Milestoneと分割Issueに落とし込む。
 
-#### Round 1: 市場調査＆初期提案（並列起動）
-- `invoke_subagent` で以下の4名を同時に起動し、Issueのお題に対する調査と初期アイデアを出させます：
-  1. `trend-researcher`（`search_web` を使って既存のWeb/スマホ人気作やアレンジ事例を調査）
-  2. `classic-guardian`（王道ルール・CPU難易度・直感性の提案）
-  3. `buzz-planner`（爽快演出・独自のひねり・リプレイ性の提案）
-  4. `mobile-ux-designer`（スマホ縦画面 `430px` フレーム内のUI配置・片手操作・ポップ配色の提案）
-- **【最重要】会話ID（記憶）の保持**:
-  - `classic-guardian`、`buzz-planner`、`mobile-ux-designer` の3名の `conversationId` を必ず控えておきます。Step 5のレビュー工程で、この **同じ `conversationId`** に `send_message` を送ることで、自分が企画した記憶を持った状態でレビューさせます。
-
-#### Round 2: 相互ツッコミ・議論ラウンド（`send_message`）
-- 4名全員のRound 1提案が出揃ったら、4人全員の提案内容をまとめたテキストを作成し、各サブエージェントの `conversationId` に `send_message` で共有します。
-- それぞれの専門視点から「他のメンバーの案へのツッコミ・賛成・懸念点・ベストな折衷案」を議論させます。
-
-#### Issueへの記録（Phase 1）
-- Round 1（市場調査・各初期案）とRound 2（相互議論・合意形成）の内容をまとめ、GitHub Issueにコメント投稿します：
-  ```bash
-  node .agents/skills/game-create-team/scripts/github_api.mjs comment-issue <issue_number> <comment_file_path>
-  ```
-
----
-
-### Step 3: 要件定義 ＆ 基本設計書の策定
-
-進行プロデューサー（[00_producer.md](../../members/00_producer.md)）として、4人の議論結果を以下の項目を含む **「要件定義＆基本設計書」** にまとめます：
-1. **ゲーム基本情報**: ゲームID（`id`: 英小文字ハイフン繋ぎ）、タイトル、紹介文、タグ、アクセントカラー
-2. **ゲームルール＆モード仕様**: コアルール、ゲームモード（王道＋アレンジ要素やCPU難易度など）、勝敗・終了条件
-3. **演出・Juiciness仕様**: アニメーション、エフェクト、コンボ・スコア演出
-4. **モバイル縦画面UIレイアウト**: 上部・中央盤面・下部コントロールの配置（`375px〜430px` 幅で横はみ出しゼロ設計）
-5. **モジュール・状態設計**: `src/games/<id>/logic.ts`（純粋関数ロジック）、`src/games/<id>/index.tsx`（UIコンポーネント）、`src/games/<id>/__tests__/logic.test.ts`（単体テスト項目）
-
-策定した要件定義＆基本設計書を、GitHub Issueに **【Phase 2: 要件定義＆基本設計書】** としてコメント投稿します。
-
----
-
-### Step 4: ブランチ作成 ＆ 製造・単体テスト実装
-
-1. `main` ブランチから最新を取得し、作業用ブランチを作成します：
+1. **企画書と親Issueのステータス更新**:
+   - `docs/proposals/<game-id>.md` の決裁ボックスを `✅ Go（承認済み）` に更新する。
+2. **GitHub Milestone の作成**:
+   ```bash
+   node .agents/skills/game-create-team/scripts/github_api.mjs create-milestone "Game: <タイトル> (<game-id>)" "企画書: docs/proposals/<game-id>.md"
+   ```
+3. **親Issueの更新 ＆ 分割Task Issues（M1〜M5）の起票**:
+   - 企画Issueを親Issue（`type:epic,status:approved`）としてMilestoneに紐付ける：
+     ```bash
+     node .agents/skills/game-create-team/scripts/github_api.mjs update-issue <epic_num> --labels "type:epic,status:approved" --milestone <milestone_num>
+     ```
+   - ゲームの規模に合わせて、1セッション（5時間枠）で1〜2個ずつ消化できる粒度のTask Issuesを起票する（以下は標準5分割の例。ボリュームが大きい場合はM3を複数Issueに細分化してよい）：
+     - **`[M1] <タイトル>: コアロジック ＆ リプレイ性ボット検証`** (`--labels "type:task,phase:m1-core-logic,status:handoff" --milestone <milestone_num>`)
+     - **`[M2] <タイトル>: プレイアブルUI骨格 ＆ 基本コアループ実装`** (`--labels "type:task,phase:m2-prototype-ui" --milestone <milestone_num>`)
+     - **`[M3] <タイトル>: コンテンツ・ビルド多様性拡張 ＆ オートセーブ機構`** (`--labels "type:task,phase:m3-content-system" --milestone <milestone_num>`)
+     - **`[M4] <タイトル>: ビジュアル演出・Web Audio合成音・UI/UXポリッシュ`** (`--labels "type:task,phase:m4-art-sound" --milestone <milestone_num>`)
+     - **`[M5] <タイトル>: 総合QA・E2E録画・初見プレイテスト・最終PR`** (`--labels "type:task,phase:m5-qa-release" --milestone <milestone_num>`)
+4. **開発ロードマップ＆引き継ぎ台帳の作成**:
+   - [DEVELOPMENT_ROADMAP_TEMPLATE.md](../../../docs/templates/DEVELOPMENT_ROADMAP_TEMPLATE.md) から `docs/projects/<game-id>/ROADMAP.md` を作成し、発行されたMilestone番号・Issue番号・スプリント計画を記入する。
+   - `docs/README.md` のステータスを `🟢 開発中 (M1)` に更新する。
+5. **作業ブランチの作成**:
    ```bash
    git checkout main && git pull origin main
    git checkout -b feat/game-<game-id>
    ```
-2. リードゲームエンジニア（[05_game_developer.md](../../members/05_game_developer.md)）のガイドラインに従い、以下を実装します：
-   - `src/games/<game-id>/logic.ts`（ゲームのコアロジック・CPU思考ルーチン等）
-   - `src/games/<game-id>/__tests__/logic.test.ts`（Vitestによるルール・境界値・勝敗判定の単体テスト）
-   - `src/games/<game-id>/index.tsx`（モバイル縦画面フレーム対応・カジュアルポップUIのゲーム本体）
-   - `src/games/registry.ts`（`GAME_REGISTRY` への `React.lazy` 登録）
-   - `tests/e2e/platform.spec.ts`（作成した `/games/<game-id>` を開いてコンソールエラー・画面はみ出し・操作を検証するE2Eテストケースの追加または確認）
 
 ---
 
-### Step 5: QA自動検証 ＆ 企画3名（記憶引き継ぎ）による検収レビュー
+### Stage 3: スプリント開発 ＆ セッション引き継ぎ（5時間枠 / 日次サイクル）
 
-実装が完了したら、以下の **4名による検収** を実施します。
+**目的**: Google One Proの利用枠内で、今日できる範囲（目安：1〜2 Issue）を高品質に実装・テストし、次の枠へ完璧にバトンを繋ぐ。
 
-#### 1. QA自動検証エンジニアによる実行テスト
-以下の4コマンドを順番に実行し、すべてエラー0件で通過することを確認します：
-```bash
-npm run lint
-npm run test
-npm run build
-npm run test:e2e
-```
-
-#### 2. 企画メンバー3名（記憶引き継ぎ）によるコード＆仕様レビュー
-Step 2で起動した以下の3名の **既存の `conversationId`** に対して、`send_message` で実装ファイル（`src/games/<game-id>/index.tsx` と `logic.ts` の内容）およびテスト結果を送り、各自の専門視点でレビューさせます：
-- `classic-guardian`（王道番人）：コアルールの正確性、CPU挙動、ゲームバランスに破綻や手抜きがないか？
-- `buzz-planner`（バズ企画）：企画会議で合意した演出や独自の面白さが勝手に省略されず、楽しく実装されているか？
-- `mobile-ux-designer`（モバイルUX）：スマホ縦画面（最大幅 `430px`）で美しく収まり、タップ操作しやすくポップなデザインになっているか？
-
-#### 3. 修正ループ（全員 `✅ LGTM` になるまで）
-- もしQAテストの失敗、または企画レビュワー3名のうち1人でも `❌ 要修正`（または改善指摘）を出した場合は、リードゲームエンジニアがコードを修正し、再度テストとレビューを行います。
-- 4名全員の `✅ LGTM` が揃ったら、GitHub Issueに **【Phase 3: QA自動検証＆企画3名による検収レビュー結果】** をコメント投稿します。
-
----
-
-### Step 6: Push ＆ Pull Request作成
-
-1. `git status` で不要なファイルが含まれていないことを確認し、変更をコミット＆Pushします：
+#### Step 3.1: スプリント開始宣言
+1. `npm run gct:status` と `docs/projects/<game-id>/ROADMAP.md` の「次回セッションへの引き継ぎ（Next Action）」を確認する。
+2. 今回の枠で着手する Task Issue のラベルを `status:in-progress` に更新する：
    ```bash
-   git add src/ tests/
-   git commit -m "feat(game): <ゲームタイトル> (<game-id>) を追加 (#<issue_number>)"
+   node .agents/skills/game-create-team/scripts/github_api.mjs update-issue <task_num> --add-labels "status:in-progress" --remove-labels "status:handoff"
+   ```
+
+#### Step 3.2: マイルストーン別の実装と検証
+- **M1（コアロジック＆ボット検証）**:
+  - `src/games/<game-id>/types.ts`, `data.ts`, `logic.ts` を純粋関数で実装。
+  - `__tests__/logic.test.ts` と `__tests__/fun-metrics.test.ts`（[fun_metrics.md](./references/fun_metrics.md) 準拠）を実装し、複数戦略ボットで「スキル差」「戦略の多様性（単一解でないこと）」「上達の階段」「ニアミス率」をすべてPASSさせる。
+- **M2（UI骨格＆基本ループ）**:
+  - `src/games/<game-id>/index.tsx` を実装し、`src/games/registry.ts` に `React.lazy` で登録。最初からリザルトまで1プレイ通して遊べるようにする。
+- **M3（コンテンツ拡張＆セーブ機構）**:
+  - 全ビルド・シナジー要素、ステージ進行、および `storage.ts`（`localStorage` による途中中断オートセーブ＆再開、ハイスコア・戦績記録）を実装し、単体テストを追加する。
+- **M4（アート・サウンド・UXポリッシュ）**:
+  - `03_art_sound.md` に従い、Canvas/SVGの視覚演出と `audio.ts`（Web Audio API 合成音、全操作サウンド、`window.__<gameIdCamel>AudioCount` 計測）を実装する。
+
+#### Step 3.3: スプリント終了処理（Commit / Push / Handover）
+1. **品質チェック**:
+   ```bash
+   npm run lint && npm run test && npm run build
+   ```
+   エラーが0件であることを確認する。
+2. **GitHub Task Issue の完了更新**:
+   - 実装内容とテスト結果（M1ならボット実測値レポート）を Issue にコメントし、クローズする：
+     ```bash
+     node .agents/skills/game-create-team/scripts/github_api.mjs comment-issue <task_num> <summary_text_or_file>
+     node .agents/skills/game-create-team/scripts/github_api.mjs update-issue <task_num> --state closed --remove-labels "status:in-progress"
+     ```
+   - 次に着手すべき未完了Task Issueがあれば、`status:handoff` ラベルを付与する。
+3. **ROADMAP（引き継ぎ台帳）の更新 ＆ コミット・Push**:
+   - `docs/projects/<game-id>/ROADMAP.md` の進捗表と「次回セッションへの引き継ぎ（Next Action）」を更新する。
+   ```bash
+   git add src/ tests/ docs/
+   git commit -m "feat(<game-id>): complete M<X> - <要約> (#<task_num>)"
    git push -u origin feat/game-<game-id>
    ```
-2. [github_api.mjs](./scripts/github_api.mjs) を使って `main` ブランチ向けのPull Requestを作成します（PR本文に必ず `Closes #<issue_number>` を記載します）：
+4. **次回スケジュール（5時間枠リセット／日次）のセット・報告**:
+   - ユーザーが自動継続スケジュールを希望している場合は、`schedule` ツール（例：5時間枠リセットに合わせて `DurationSeconds: 18000` 等、または指定時刻のCron）を設定するか、`/schedule` コマンドを案内する。
+   - 人間へ「今回完了したIssue」「Milestoneの進捗率」「次回再開時のNext Action」を簡潔に報告する。
+
+---
+
+### Stage 4: 総合QA・録画プレイテスト・リリースPR作成（M5）
+
+**目的**: 全実装（M1〜M4）完了後、徹底的な検証を行ってPull Requestを作成する。
+
+1. **E2E自動テスト ＆ プレイ動画・スクショ撮影（`06_qa.md`）**:
+   - `tests/e2e/<game-id>.spec.ts` を作成し、モバイル画面でのエラー0件、横はみ出しゼロ、最小フォント12px以上、Web Audio発音、セーブ/リトライ動作を検証するとともに、プレイ動画（`.webm`）とスクリーンショットを `test-results/<game-id>/` に撮影する。
+2. **初見プレイテスト ＆ 専門検収**:
+   - `07_blind_playtester` にプレイ動画とスクショを渡し、直感的理解度と「もう1回やりたいか（5段階評価で4以上必須）」を判定させる。
+   - `02_game_designer`、`03_art_sound`、`04_critic` にも検収させ、全員の `✅ LGTM` を揃える（要修正なら修正して再検証）。
+3. **最終技術QAゲート**:
    ```bash
-   node .agents/skills/game-create-team/scripts/github_api.mjs create-pr feat/game-<game-id> "feat(game): <ゲームタイトル> を追加 (#<issue_number>)" <pr_body_file_path>
+   npm run lint && npm run test && npm run build && npm run test:e2e
    ```
-3. 作成したPRのURLをGitHub Issueにもコメント投稿し、ユーザーへ「PRのマージ待ち（ユーザーが承認・マージボタンを押すとGitHub Pagesへ自動デプロイされます）」である旨を報告して完了します。
-   - **【絶対厳守】AIエージェント自身がPRをマージすることは厳禁です。必ずオープン状態のPRのままユーザーのレビュー・承認を待ってください。**
+4. **Pull Request 作成（マージはしない）**:
+   - `docs/projects/<game-id>/ROADMAP.md` と `docs/README.md` のステータスを `✅ 完成・PR審査中` に更新してコミット＆Push。
+   ```bash
+   node .agents/skills/game-create-team/scripts/github_api.mjs create-pr feat/game-<game-id> "feat(game): <タイトル> (<game-id>) の実装完了 (Closes #<epic_num>)" <pr_body_file>
+   ```
+   - M5 Task Issueをクローズし、Milestoneを `closed` に更新（またはPRマージ時に連動）する。
+   - 人間（最高責任者）へPR URLと検収サマリーを報告し、最終確認とマージを依頼する。

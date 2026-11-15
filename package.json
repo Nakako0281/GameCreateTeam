@@ -9,7 +9,9 @@
     "lint": "tsc --noEmit",
     "test": "vitest run src",
     "test:e2e": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gct:status": "node .agents/skills/game-create-team/scripts/github_api.mjs status",
+    "gct:labels": "node .agents/skills/game-create-team/scripts/github_api.mjs ensure-labels"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
