@@ -67,10 +67,57 @@ export function GameCard({ game }: GameCardProps) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-6xl drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
-              {game.thumbnailEmoji ?? '🎮'}
-            </span>
+          <div className="flex h-full w-full items-center justify-center bg-slate-900/90 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.28),transparent_70%)]" />
+            <svg
+              viewBox="0 0 120 120"
+              className="h-24 w-24 drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
+              aria-hidden="true"
+            >
+              {/* Crossed Blades Background */}
+              <path
+                d="M20 100 L100 20 M86 18 L102 18 L102 34"
+                stroke="#f59e0b"
+                strokeWidth="5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path
+                d="M100 100 L20 20 M34 18 L18 18 L18 34"
+                stroke="#38bdf8"
+                strokeWidth="5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* 3D Isometric Die Body */}
+              <rect
+                x="30"
+                y="30"
+                width="60"
+                height="60"
+                rx="14"
+                fill="#1e293b"
+                stroke="#fbbf24"
+                strokeWidth="4"
+              />
+              <rect
+                x="35"
+                y="35"
+                width="50"
+                height="50"
+                rx="10"
+                fill="#0f172a"
+                stroke="#475569"
+                strokeWidth="1.5"
+              />
+              {/* 6 Pip Dots */}
+              <circle cx="46" cy="45" r="4.5" fill="#fbbf24" />
+              <circle cx="74" cy="45" r="4.5" fill="#fbbf24" />
+              <circle cx="46" cy="60" r="4.5" fill="#38bdf8" />
+              <circle cx="74" cy="60" r="4.5" fill="#38bdf8" />
+              <circle cx="46" cy="75" r="4.5" fill="#f43f5e" />
+              <circle cx="74" cy="75" r="4.5" fill="#f43f5e" />
+            </svg>
           </div>
         )}
 

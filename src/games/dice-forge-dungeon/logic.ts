@@ -291,7 +291,7 @@ export function initGameState(
       traitDescription: bossTpl.traitDescription,
     },
     rewardOffer: null,
-    combatLog: [`🏰 Floor 1（エリア1）に突入！ボス予告：${bossTpl.name}`],
+    combatLog: [`Floor 1（エリア1）に突入！ボス予告：${bossTpl.name}`],
     stats: {
       turnsPlayed: 0,
       totalDamageDealt: 0,
@@ -673,7 +673,7 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
   const synergySteps: TurnSynergyStep[] = [
     {
       label: '基礎出力',
-      detail: `⚔️${rawAttackSum} / 🛡️${rawShieldSum}`,
+      detail: `ATK ${rawAttackSum} / DEF ${rawShieldSum}`,
       color: 'sky',
     },
     {
@@ -688,7 +688,7 @@ export function calculateTurnPreview(state: GameState): TurnPreview {
     },
     {
       label: '最終確定',
-      detail: `${totalDamage} DMG / +${totalShieldGain} 🛡️`,
+      detail: `${totalDamage} DMG / +${totalShieldGain} DEF`,
       color: 'rose',
     },
   ]
@@ -760,13 +760,13 @@ function advanceToNextFloor(
 
   if (nextNodeType === 'altar') {
     state.phase = 'altar'
-    state.combatLog.unshift(`⛩️ Floor ${state.floor}: 秘境の魔導祭壇を発見した。`)
+    state.combatLog.unshift(`Floor ${state.floor}: 秘境の魔導祭壇を発見した。`)
     return
   }
   if (nextNodeType === 'shop') {
     state.phase = 'shop'
     state.rewardOffer = generateRewardOffer(state)
-    state.combatLog.unshift(`🏪 Floor ${state.floor}: 鍛冶屋＆魔導商店に到着した。`)
+    state.combatLog.unshift(`Floor ${state.floor}: 鍛冶屋＆魔導商店に到着した。`)
     return
   }
 
@@ -795,7 +795,7 @@ function startBattleOnCurrentFloor(
   state.enemy = spawnEnemyForFloor(state, state.floor, battleType)
   startTurnSetup(state)
   state.combatLog.unshift(
-    `⚔️ Floor ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が立ち塞がる！`
+    `Floor ${state.floor}: ${state.enemy.name} (HP ${state.enemy.maxHp}) が立ち塞がる！`
   )
 }
 
@@ -983,7 +983,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
         if (state.floor >= 12) {
           state.phase = 'victory'
           state.combatLog.unshift(
-            `🏆 最終ボス「${state.enemy.name}」を撃破！運命の塔を完全制覇した！`
+            `最終ボス「${state.enemy.name}」を撃破！運命の塔を完全制覇した！`
           )
           return state
         }
@@ -991,7 +991,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
         state.phase = 'reward'
         state.rewardOffer = generateRewardOffer(state)
         state.combatLog.unshift(
-          `✨ ${state.enemy.name} を撃破！（+${rewardGold}G）鍛造報酬を選択しよう。`
+          `${state.enemy.name} を撃破！（+${rewardGold}G）鍛造報酬を選択しよう。`
         )
         return state
       }
@@ -1050,7 +1050,7 @@ export function step(prevState: GameState, action: GameAction): GameState {
 
       if (state.hp <= 0) {
         state.phase = 'gameover'
-        state.combatLog.unshift(`💀 ${state.enemy.name} の攻撃に倒れた…`)
+        state.combatLog.unshift(`${state.enemy.name} の攻撃に倒れた…`)
         return state
       }
 

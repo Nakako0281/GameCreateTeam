@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { GAME_REGISTRY } from '../registry'
+import {
+  STARTER_CLASSES,
+  ENGRAVINGS,
+  RELICS,
+  ENEMY_TEMPLATES,
+} from '../dice-forge-dungeon/data'
+
+const EMOJI_REGEX =
+  /[\p{Extended_Pictographic}\u2600-\u26FF\u2700-\u27BF\u{1F300}-\u{1FAFF}]/u
 
 describe('GAME_REGISTRY 整合性テスト', () => {
   it('少なくとも1つ以上のゲームが登録されていること', () => {
@@ -25,5 +34,22 @@ describe('GAME_REGISTRY 整合性テスト', () => {
       expect(game.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(game.component).toBeDefined()
     }
+  })
+
+  it('【R-09 絵文字完全禁止】レジストリおよびゲームデータ定義にUnicode絵文字が1文字も含まれていないこと', () => {
+    for (const game of GAME_REGISTRY) {
+      expect(EMOJI_REGEX.test(game.title)).toBe(false)
+      expect(EMOJI_REGEX.test(game.shortDescription)).toBe(false)
+      expect(EMOJI_REGEX.test(game.howToPlay)).toBe(false)
+      expect(EMOJI_REGEX.test(game.thumbnailEmoji ?? '')).toBe(false)
+    }
+
+    const serializedData = JSON.stringify({
+      STARTER_CLASSES,
+      ENGRAVINGS,
+      RELICS,
+      ENEMY_TEMPLATES,
+    })
+    expect(EMOJI_REGEX.test(serializedData)).toBe(false)
   })
 })
