@@ -2,16 +2,17 @@
 
 > [!IMPORTANT]
 > **【最高責任者（人間）決裁ボックス】**
-> - **現在のステータス**: `🟡 レビュー・Goサイン待ち (status:awaiting-approval)`
-> - **企画提出日**: 2026-11-15
+> - **現在のステータス**: `🟢 Goサイン承認済み・開発進行中 (status:approved)`
+> - **企画提出日**: 2026-11-15 ／ **Go承認日**: 2026-11-15
 > - **GitHub 企画Issue**: `#12` (https://github.com/Nakako0281/GameCreateTeam/issues/12)
 > - **関連市場調査レポート**: [docs/proposals/dice-forge-dungeon-research.md](./dice-forge-dungeon-research.md)
 > - **決裁アクション**:
->   - [ ] **✅ Go（承認）** ── この企画で開発計画（GitHub Milestone / 分割Issue作成）および段階的実装へ進む
+>   - [x] **✅ Go（承認）** ── この企画で開発計画（GitHub Milestone / 分割Issue作成）および段階的実装へ進む
 >   - [ ] **🔄 条件付きGo / 修正指示** ── 下記フィードバックを反映して企画調整後に進行（または再提出）
 >   - [ ] **❌ 却下** ── 別企画（次点候補の『グリッド・シタデル』等）へ切り替え
 > - **最高責任者からのフィードバック・指示メモ**:
->   - *(チャット、または本ファイル／GitHub IssueにてGoサインや修正点をご指示ください)*
+>   - レビュー指摘台帳（`docs/REVIEW_GUIDELINES_AND_LOG.md`）による再発防止・矛盾チェック体制を構築すること（対応済み）。
+>   - 無料フリー素材（効果音・BGM等）は人間側で後から配置できるよう専用フォルダを用意し、ゲーム完成まで進めること。
 
 ---
 
