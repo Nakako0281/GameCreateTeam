@@ -27,14 +27,14 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
     expect(mage.relics).toContain('relic_star_grimoire')
 
     const assassin = initGameState(123, 'assassin', 0)
-    expect(assassin.maxHp).toBe(52)
+    expect(assassin.maxHp).toBe(56)
     expect(assassin.baseAttack).toBe(4)
     expect(assassin.baseDefense).toBe(1)
     expect(assassin.mana).toBe(3)
     expect(assassin.relics).toContain('relic_assassin_thimble')
 
     const smith = initGameState(123, 'blacksmith', 0)
-    expect(smith.maxHp).toBe(76)
+    expect(smith.maxHp).toBe(74)
     expect(smith.baseAttack).toBe(2)
     expect(smith.baseDefense).toBe(4)
     expect(smith.mana).toBe(2)

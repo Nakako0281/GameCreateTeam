@@ -101,9 +101,9 @@ test.describe('ダイス・フォージ・ダンジョン モバイルE2E ＆ Is
     // ② キャラクター選択画面 (Issue #25-1: 3クラスの明確なステータス・得意出目・特性差)
     await page.getByTestId('title-start-btn').click()
     await expect(page.getByTestId('class-select-panel')).toBeVisible()
-    await expect(page.getByTestId('class-select-mage')).toContainText('得意: 大目(5・6)')
-    await expect(page.getByTestId('class-select-assassin')).toContainText('得意: 小目(1・2)')
-    await expect(page.getByTestId('class-select-blacksmith')).toContainText('得意: 偶数(2・4・6)')
+    await expect(page.getByTestId('class-select-mage')).toContainText('得意: 5・6')
+    await expect(page.getByTestId('class-select-assassin')).toContainText('得意: 1・2')
+    await expect(page.getByTestId('class-select-blacksmith')).toContainText('得意: 2・4・6')
     await assertZeroEmojiAndZeroSentenceOnPage()
     await assertMinFontAndNoOverflow()
     const classSelectZones = await getThreeZoneBounds()
@@ -123,6 +123,19 @@ test.describe('ダイス・フォージ・ダンジョン モバイルE2E ＆ Is
     await expect(page.getByText('Lv.1')).toBeVisible()
     await expect(page.getByTestId('always-visible-abilities')).toBeVisible()
     await expect(page.getByTestId('always-visible-abilities')).toContainText('星見の魔導書')
+
+    // 上部能力バー内のバッジが親コンテナ右端でクリップ（見切れ）されていないこと (R-15)
+    const noAbilityClip = await page.evaluate(() => {
+      const container = document.querySelector('[data-testid="always-visible-abilities"]')
+      if (!container) return false
+      const cRect = container.getBoundingClientRect()
+      const children = Array.from(container.querySelectorAll('span'))
+      return children.every((el) => {
+        const r = el.getBoundingClientRect()
+        return r.right <= cRect.right + 1 && r.left >= cRect.left - 1
+      })
+    })
+    expect(noAbilityClip).toBe(true)
 
     // 重複ボタン（「自動」「一斉攻撃」）が撤廃されていること
     await expect(page.getByTestId('dice-forge-auto-assign-btn')).toHaveCount(0)
@@ -155,8 +168,10 @@ test.describe('ダイス・フォージ・ダンジョン モバイルE2E ＆ Is
       path: path.join(OUT_DIR, '02_battle_slots_preview.png'),
     })
 
-    // 2手目で強斬撃をタップして敵へ即時ダメージを与える
-    await page.getByTestId('slot-strike_1').click()
+    // 2手目で毒連撃をタップして敵が生存した状態の攻撃ヒットストップ＆数値非重複を検証・撮影
+    await page.getByTestId('slot-strike_2').click()
+    await expect(page.getByTestId('dice-forge-reward-modal')).toHaveCount(0)
+    await expect(page.getByTestId('battle-floating-popup')).toBeVisible()
     await page.screenshot({
       path: path.join(OUT_DIR, '03_action_hitstop_impact.png'),
     })

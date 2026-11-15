@@ -555,10 +555,10 @@ export function renderDungeonArena(
   ctx.strokeRect(18, 0, 26, horizonY)
   ctx.strokeRect(width - 44, 0, 26, horizonY)
 
-  // Flickering Wall Torches
+  // Flickering Wall Torches (positioned clear of character heads)
   const torchPositions = [
-    { x: 96, y: horizonY - 56 },
-    { x: width - 96, y: horizonY - 56 },
+    { x: Math.round(width * 0.41), y: horizonY - 62 },
+    { x: Math.round(width * 0.59), y: horizonY - 62 },
   ]
   for (const tp of torchPositions) {
     const flicker = 0.88 + Math.sin(t * 14 + tp.x) * 0.12
@@ -680,38 +680,40 @@ export function renderDungeonArena(
     ctx.restore()
   }
 
-  // 4. Draw Monster Sprite (Right Side)
+  // 4. Draw Monster Sprite (Right Side, hidden after defeat in reward/victory phase)
   const enemyBaseX = width * 0.73 + anim.enemyOffsetX
   const enemyBaseY = horizonY + 20 + anim.enemyOffsetY
   const enemyBob = Math.sin(t * 3.8 + 1.2) * 3
 
-  // Enemy Shadow
-  ctx.fillStyle = 'rgba(2, 6, 23, 0.7)'
-  ctx.beginPath()
-  ctx.ellipse(
-    enemyBaseX,
-    horizonY + 25,
-    params.isBoss ? 40 : 32,
-    10,
-    0,
-    0,
-    Math.PI * 2
-  )
-  ctx.fill()
+  if (params.mode !== 'reward' && params.mode !== 'victory') {
+    // Enemy Shadow
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.7)'
+    ctx.beginPath()
+    ctx.ellipse(
+      enemyBaseX,
+      horizonY + 25,
+      params.isBoss ? 40 : 32,
+      10,
+      0,
+      0,
+      Math.PI * 2
+    )
+    ctx.fill()
 
-  ctx.save()
-  ctx.translate(enemyBaseX, enemyBaseY + enemyBob)
-  ctx.scale(anim.enemyScale, anim.enemyScale)
-  drawMonsterSprite(
-    ctx,
-    0,
-    0,
-    params.enemyIcon,
-    params.isBoss,
-    anim.enemyFlashWhite > 0,
-    t
-  )
-  ctx.restore()
+    ctx.save()
+    ctx.translate(enemyBaseX, enemyBaseY + enemyBob)
+    ctx.scale(anim.enemyScale, anim.enemyScale)
+    drawMonsterSprite(
+      ctx,
+      0,
+      0,
+      params.enemyIcon,
+      params.isBoss,
+      anim.enemyFlashWhite > 0,
+      t
+    )
+    ctx.restore()
+  }
 
   // 5. Draw Enemy Intent Badge (Above Enemy Head, clear of edges)
   if (params.enemyHp > 0 && params.mode !== 'title' && params.mode !== 'reward') {
@@ -804,15 +806,17 @@ export function renderDungeonArena(
     isHero: true,
   })
 
-  drawUnitStatusBar(ctx, enemyBaseX, horizonY + 35, {
-    hp: anim.displayedEnemyHp,
-    maxHp: params.enemyMaxHp,
-    actualHp: params.enemyHp,
-    shield: Math.round(anim.displayedEnemyShield),
-    poison: params.enemyPoison,
-    thorns: params.enemyThorns,
-    isHero: false,
-  })
+  if (params.mode !== 'reward' && params.mode !== 'victory') {
+    drawUnitStatusBar(ctx, enemyBaseX, horizonY + 35, {
+      hp: anim.displayedEnemyHp,
+      maxHp: params.enemyMaxHp,
+      actualHp: params.enemyHp,
+      shield: Math.round(anim.displayedEnemyShield),
+      poison: params.enemyPoison,
+      thorns: params.enemyThorns,
+      isHero: false,
+    })
+  }
 
   // 7. Slash Trails & Weapon Impact Arcs
   for (const s of anim.slashes) {
@@ -1236,7 +1240,8 @@ function drawUnitStatusBar(
     ctx.fill()
   }
 
-  ctx.strokeRect(left, y, barW, barH)
+  roundRect(ctx, left, y, barW, barH, 6)
+  ctx.stroke()
 
   // HP Numbers
   ctx.fillStyle = '#ffffff'
