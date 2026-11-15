@@ -12,7 +12,7 @@ test.describe('プラットフォーム モバイルE2E検証', () => {
 
     await page.goto('/')
     await expect(
-      page.getByText('ダイス・フォージ・ダンジョン：魔導刻印と運命の塔')
+      page.getByText('ダイス・フォージ・ダンジョン：魔導と運命の塔')
     ).toBeVisible()
     await expect(page.getByText('1 GAMES')).toBeVisible()
 

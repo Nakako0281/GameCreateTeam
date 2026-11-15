@@ -1,16 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Coins,
   Dices,
   Flame,
-  Hammer,
-  Layers,
   Lock,
   Play,
   RotateCcw,
   Shield,
   Sparkles,
   Swords,
+  TrendingUp,
   Trophy,
   Unlock,
   X,
@@ -24,7 +22,6 @@ import {
 import {
   ALL_SLOT_IDS,
   calculateTurnPreview,
-  canForgeEngravingOnDie,
   getSlotCategory,
   initGameState,
   step,
@@ -52,6 +49,8 @@ import {
   type ArenaAnimState,
 } from './visuals'
 
+const COMMAND_SLOTS: SlotId[] = ['strike_1', 'strike_2', 'guard_1', 'arcana_1']
+
 const WEAPON_CARDS: {
   id: SlotId
   title: string
@@ -62,43 +61,35 @@ const WEAPON_CARDS: {
 }[] = [
   {
     id: 'strike_1',
-    title: 'BLADE',
-    tag: 'DMG',
+    title: '斬撃',
+    tag: '強攻撃',
     borderClass: 'border-rose-500/50 hover:border-rose-400',
     activeBgClass: 'bg-rose-950/60 border-rose-400',
     badgeClass: 'bg-rose-500/25 text-rose-200',
   },
   {
     id: 'strike_2',
-    title: 'FANG',
-    tag: 'HIT',
-    borderClass: 'border-orange-500/50 hover:border-orange-400',
-    activeBgClass: 'bg-orange-950/60 border-orange-400',
-    badgeClass: 'bg-orange-500/25 text-orange-200',
+    title: '毒連撃',
+    tag: '2連+毒',
+    borderClass: 'border-emerald-500/50 hover:border-emerald-400',
+    activeBgClass: 'bg-emerald-950/60 border-emerald-400',
+    badgeClass: 'bg-emerald-500/25 text-emerald-200',
   },
   {
     id: 'guard_1',
-    title: 'AEGIS',
-    tag: 'DEF',
+    title: '盾防御',
+    tag: '防御',
     borderClass: 'border-sky-500/50 hover:border-sky-400',
     activeBgClass: 'bg-sky-950/60 border-sky-400',
     badgeClass: 'bg-sky-500/25 text-sky-200',
   },
   {
     id: 'arcana_1',
-    title: 'ARCANA',
-    tag: 'MP+ATK',
+    title: '魔導',
+    tag: 'MP+攻撃',
     borderClass: 'border-violet-500/50 hover:border-violet-400',
     activeBgClass: 'bg-violet-950/60 border-violet-400',
     badgeClass: 'bg-violet-500/25 text-violet-200',
-  },
-  {
-    id: 'alchemy_1',
-    title: 'VENOM',
-    tag: 'PSN+G',
-    borderClass: 'border-emerald-500/50 hover:border-emerald-400',
-    activeBgClass: 'bg-emerald-950/60 border-emerald-400',
-    badgeClass: 'bg-emerald-500/25 text-emerald-200',
   },
 ]
 
@@ -106,6 +97,15 @@ const CLASS_SHORT_NAMES: Record<StarterClassId, string> = {
   mage: '魔導師',
   assassin: '暗殺者',
   blacksmith: '鍛冶師',
+}
+
+const FORMATION_SHORT_LABELS: Record<string, string> = {
+  none: '出目倍率',
+  one_pair: 'ワンペア',
+  two_pair: 'ツーペア',
+  straight: 'ストレート',
+  three_kind: '3カード',
+  four_kind: '4カード',
 }
 
 const playClickSfx = () => playSound('dice_place')
@@ -140,14 +140,22 @@ export default function DiceForgeDungeonGame() {
   // Forge / Reward modal selection states
   const [selectedRewardEngraving, setSelectedRewardEngraving] =
     useState<EngravingId | null>(null)
-  const [selectedForgeDieId, setSelectedForgeDieId] = useState<number>(0)
-  const [selectedForgeFaceIdx, setSelectedForgeFaceIdx] = useState<number>(0)
   const [selectedRewardRelic, setSelectedRewardRelic] =
     useState<RelicId | null>(null)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const titleCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const floaterIdRef = useRef(1)
+  const executingTurnRef = useRef(false)
+  const autoTurnTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (autoTurnTimerRef.current !== null) {
+        window.clearTimeout(autoTurnTimerRef.current)
+      }
+    }
+  }, [])
 
   const animRef = useRef<ArenaAnimState>({
     time: 0,
@@ -192,8 +200,6 @@ export default function DiceForgeDungeonGame() {
     if (gameState?.phase === 'reward' && gameState.rewardOffer) {
       setSelectedRewardEngraving(gameState.rewardOffer.engravings[0] ?? null)
       setSelectedRewardRelic(gameState.rewardOffer.relics[0] ?? null)
-      setSelectedForgeDieId(0)
-      setSelectedForgeFaceIdx(0)
     }
   }, [gameState?.phase, gameState?.floor, gameState?.rewardOffer])
 
@@ -215,11 +221,11 @@ export default function DiceForgeDungeonGame() {
   // Calculate live per-slot delta preview for the currently selected die
   const slotLivePreviews = useMemo(() => {
     const map: Record<SlotId, string> = {
-      strike_1: '+DMG',
-      strike_2: '+HIT',
-      guard_1: '+DEF',
-      arcana_1: '+MP',
-      alchemy_1: '+PSN',
+      strike_1: '攻撃',
+      strike_2: '2連+毒',
+      guard_1: '防御',
+      arcana_1: 'MP+攻',
+      alchemy_1: '毒',
     }
     if (!gameState || gameState.phase !== 'battle' || !turnPreview) return map
     const activeDie =
@@ -228,7 +234,7 @@ export default function DiceForgeDungeonGame() {
       ) ?? gameState.dice.find((d) => d.assignedSlot === null)
     if (!activeDie) return map
 
-    for (const sId of ALL_SLOT_IDS) {
+    for (const sId of COMMAND_SLOTS) {
       if (gameState.slots[sId] !== null) continue
       const simState = step(gameState, {
         type: 'ASSIGN_DIE',
@@ -236,20 +242,23 @@ export default function DiceForgeDungeonGame() {
         slotId: sId,
       })
       const simPreview = calculateTurnPreview(simState)
-      const cat = getSlotCategory(sId)
-      if (cat === 'guard') {
+      if (sId === 'guard_1') {
         const diffDef = Math.max(
           1,
           simPreview.totalShieldGain - turnPreview.totalShieldGain
         )
-        map[sId] = `+${diffDef} DEF`
-      } else if (cat === 'alchemy') {
-        const diffPsn = Math.max(
+        map[sId] = `+${diffDef} 盾`
+      } else if (sId === 'strike_2') {
+        const diffDmg = Math.max(
           1,
+          simPreview.totalDamage - turnPreview.totalDamage
+        )
+        const diffPsn = Math.max(
+          0,
           simPreview.totalPoisonApplied - turnPreview.totalPoisonApplied
         )
-        map[sId] = `+${diffPsn} PSN`
-      } else if (cat === 'arcana') {
+        map[sId] = diffPsn > 0 ? `${diffDmg}+${diffPsn}毒` : `${diffDmg} 連撃`
+      } else if (sId === 'arcana_1') {
         const diffDmg = Math.max(
           1,
           simPreview.totalDamage - turnPreview.totalDamage
@@ -258,13 +267,13 @@ export default function DiceForgeDungeonGame() {
           1,
           simPreview.totalManaGain - turnPreview.totalManaGain
         )
-        map[sId] = `${diffDmg}D +${diffMp}M`
+        map[sId] = `${diffDmg} +${diffMp}MP`
       } else {
         const diffDmg = Math.max(
           1,
           simPreview.totalDamage - turnPreview.totalDamage
         )
-        map[sId] = `${diffDmg} DMG`
+        map[sId] = `${diffDmg} 攻撃`
       }
     }
     return map
@@ -364,12 +373,20 @@ export default function DiceForgeDungeonGame() {
         })
       }
 
+      // Prevent text overlap: push existing floaters on same side upward & clear older subtext
+      for (const f of a.floaters) {
+        if (Math.abs(f.x - cx) < 60) {
+          f.y -= 28
+          f.subtext = undefined
+        }
+      }
+
       floaterIdRef.current += 1
       a.floaters.push({
         id: floaterIdRef.current,
-        x: cx + (Math.random() - 0.5) * 18,
-        y: cy - 24,
-        vy: -58,
+        x: cx + (Math.random() - 0.5) * 14,
+        y: cy - 32,
+        vy: -54,
         text: opts.text,
         subtext: opts.subtext,
         color: opts.color,
@@ -461,16 +478,10 @@ export default function DiceForgeDungeonGame() {
         cvs.height = ch
       }
 
-      // Projected HP & Shield reflect live assigned dice immediately!
+      // Display actual current enemy HP on Canvas (do not prematurely drop HP bar before attack resolves)
       const preview =
         gameState.phase === 'battle' ? calculateTurnPreview(gameState) : null
-      const targetEnemyHp = preview
-        ? Math.max(
-            0,
-            gameState.enemy.hp -
-              Math.max(0, preview.totalDamage - gameState.enemy.shield)
-          )
-        : gameState.enemy.hp
+      const targetEnemyHp = gameState.enemy.hp
       const targetHeroShield = preview
         ? gameState.shield + preview.totalShieldGain
         : gameState.shield
@@ -590,6 +601,12 @@ export default function DiceForgeDungeonGame() {
 
   // Start new run
   const handleStartNewRun = (classId: StarterClassId = selectedClass) => {
+    if (autoTurnTimerRef.current !== null) {
+      window.clearTimeout(autoTurnTimerRef.current)
+      autoTurnTimerRef.current = null
+    }
+    executingTurnRef.current = false
+    setExecutingTurn(false)
     playClickSfx()
     const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
     const next = initGameState(seed, classId, 0)
@@ -597,6 +614,7 @@ export default function DiceForgeDungeonGame() {
     animRef.current.displayedHeroShield = next.shield
     animRef.current.displayedEnemyHp = next.enemy.hp
     animRef.current.displayedEnemyShield = next.enemy.shield
+    setActivePopupText(null)
     setGameState(next)
     setSelectedDieId(0)
   }
@@ -604,18 +622,29 @@ export default function DiceForgeDungeonGame() {
   // Resume saved run
   const handleResumeRun = () => {
     if (!savedRun) return
+    if (autoTurnTimerRef.current !== null) {
+      window.clearTimeout(autoTurnTimerRef.current)
+      autoTurnTimerRef.current = null
+    }
+    executingTurnRef.current = false
+    setExecutingTurn(false)
     playClickSfx()
     animRef.current.displayedHeroHp = savedRun.hp
     animRef.current.displayedHeroShield = savedRun.shield
     animRef.current.displayedEnemyHp = savedRun.enemy.hp
     animRef.current.displayedEnemyShield = savedRun.enemy.shield
+    setActivePopupText(null)
     setGameState(savedRun)
     setSelectedDieId(0)
   }
 
   // Reroll unlocked dice
   const handleReroll = () => {
-    if (!gameState || gameState.rerollsLeft <= 0 || executingTurn) return
+    if (!gameState || gameState.rerollsLeft <= 0 || executingTurnRef.current) return
+    if (autoTurnTimerRef.current !== null) {
+      window.clearTimeout(autoTurnTimerRef.current)
+      autoTurnTimerRef.current = null
+    }
     playDiceRollSfx()
     setRollingAnim(true)
     setTimeout(() => setRollingAnim(false), 240)
@@ -626,7 +655,7 @@ export default function DiceForgeDungeonGame() {
   // Toggle lock on a die
   const handleToggleLock = (dieId: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!gameState || executingTurn) return
+    if (!gameState || executingTurnRef.current) return
     playClickSfx()
     const clone = structuredClone(gameState)
     const die = clone.dice.find((d) => d.id === dieId)
@@ -640,7 +669,11 @@ export default function DiceForgeDungeonGame() {
   const handleManipulateDie = (
     mode: 'plus1' | 'minus1' | 'flip' = 'plus1'
   ) => {
-    if (!gameState || gameState.mana < 1 || executingTurn) return
+    if (!gameState || gameState.mana < 1 || executingTurnRef.current) return
+    if (autoTurnTimerRef.current !== null) {
+      window.clearTimeout(autoTurnTimerRef.current)
+      autoTurnTimerRef.current = null
+    }
     const targetId =
       selectedDieId ??
       gameState.dice.find((d) => d.assignedSlot === null)?.id ??
@@ -654,53 +687,176 @@ export default function DiceForgeDungeonGame() {
     setGameState(next)
     spawnImpactVisuals({
       target: 'hero',
-      text: mode === 'plus1' ? 'PIP +1' : mode === 'minus1' ? 'PIP -1' : 'FLIP',
+      text: mode === 'plus1' ? '+1' : mode === 'minus1' ? '-1' : 'FLIP',
       color: '#c084fc',
       slashType: 'arcana',
     })
   }
 
-  // Direct Weapon Card Tap: Assigns Die AND Immediately Executes Visual Strike on Canvas!
-  const handleWeaponCardTap = (slotId: SlotId) => {
-    if (!gameState || gameState.phase !== 'battle' || executingTurn) return
+  // Execute Turn Choreography (called manually via 一斉攻撃 OR automatically when 4 dice used / lethal)
+  const runExecuteTurn = useCallback(
+    (baseState: GameState) => {
+      if (baseState.phase !== 'battle' || executingTurnRef.current) return
+      if (autoTurnTimerRef.current !== null) {
+        window.clearTimeout(autoTurnTimerRef.current)
+        autoTurnTimerRef.current = null
+      }
 
-    const existingDieId = gameState.slots[slotId]
+      // If player hasn't placed all dice yet, automatically snap remaining dice into open command slots
+      let workingState = structuredClone(baseState)
+      const unassigned = workingState.dice.filter((d) => d.assignedSlot === null)
+      if (unassigned.length > 0) {
+        const prioritySlots: SlotId[] = [
+          'strike_1',
+          'guard_1',
+          'strike_2',
+          'arcana_1',
+        ]
+        for (const die of unassigned) {
+          const freeSlot = prioritySlots.find(
+            (s) => workingState.slots[s] === null
+          )
+          if (freeSlot) {
+            workingState = step(workingState, {
+              type: 'ASSIGN_DIE',
+              dieId: die.id,
+              slotId: freeSlot,
+            })
+          }
+        }
+        setGameState(workingState)
+      }
+
+      const preview = calculateTurnPreview(workingState)
+      executingTurnRef.current = true
+      setExecutingTurn(true)
+
+      // Step 1: Hero Finisher Impact
+      if (preview.totalDamage >= 18) {
+        playHeavyImpactSfx()
+      } else {
+        playSlashHitSfx(Math.max(1, preview.totalHits))
+      }
+
+      spawnImpactVisuals({
+        target: 'enemy',
+        text:
+          preview.totalDamage > 0
+            ? `-${preview.totalDamage}!`
+            : `+${preview.totalShieldGain} 盾`,
+        subtext:
+          preview.finalMult > 1
+            ? `COMBO x${preview.finalMult.toFixed(2)}`
+            : undefined,
+        color: preview.totalDamage >= 20 ? '#fbbf24' : '#fb7185',
+        slashType: 'sword',
+        shake: preview.totalDamage >= 20 ? 10 : 6,
+        hitstop: 0.08,
+        goldFlash: preview.totalDamage >= 20 ? 0.22 : 0,
+      })
+
+      // Step 2: Enemy Counterattack or Level Up after 320ms
+      setTimeout(() => {
+        const next = step(workingState, { type: 'EXECUTE_TURN' })
+
+        if (next.phase === 'reward' || next.phase === 'victory') {
+          playVictorySfx()
+        } else if (next.phase === 'gameover') {
+          playGameOverSfx()
+        } else if (preview.expectedIncomingDamage > 0) {
+          playDamageSfx()
+          spawnImpactVisuals({
+            target: 'hero',
+            text: `-${preview.expectedIncomingDamage}`,
+            color: '#f43f5e',
+            slashType: 'enemy_claw',
+            shake: 9,
+            hitstop: 0.07,
+            redFlash: 0.36,
+          })
+        } else {
+          playShieldGainSfx()
+          spawnImpactVisuals({
+            target: 'hero',
+            text: 'GUARD!',
+            color: '#38bdf8',
+            slashType: 'shield',
+            shake: 3,
+          })
+        }
+
+        if (next.phase === 'victory' || next.phase === 'gameover') {
+          const finalScore =
+            next.stats.totalDamageDealt * 10 +
+            next.floor * 500 +
+            (next.phase === 'victory' ? 5000 : 0)
+          const updatedMeta = recordRunCompletion(next, finalScore)
+          setMetaStats(updatedMeta)
+        }
+
+        setGameState(next)
+        executingTurnRef.current = false
+        setExecutingTurn(false)
+      }, 340)
+    },
+    [spawnImpactVisuals]
+  )
+
+  // Direct Command Card Tap: Assigns Die (auto-fills next open slot on repeat tap) & triggers immediate attack animation!
+  const handleWeaponCardTap = (slotId: SlotId) => {
+    if (!gameState || gameState.phase !== 'battle' || executingTurnRef.current)
+      return
+
     const activeUnassigned =
       gameState.dice.find(
         (d) => d.id === selectedDieId && d.assignedSlot === null
       ) ?? gameState.dice.find((d) => d.assignedSlot === null)
 
-    // If slot already has a die and no unassigned die is selected, unassign it
-    if (existingDieId !== null && !activeUnassigned) {
-      playDiceSnapSfx()
-      const next = step(gameState, {
-        type: 'ASSIGN_DIE',
-        dieId: existingDieId,
-        slotId: null,
-      })
-      setGameState(next)
-      setSelectedDieId(existingDieId)
+    // If all 4 dice are already assigned, tapping an occupied card frees that die for adjustment
+    if (!activeUnassigned) {
+      const existingDieId = gameState.slots[slotId]
+      if (existingDieId !== null) {
+        if (autoTurnTimerRef.current !== null) {
+          window.clearTimeout(autoTurnTimerRef.current)
+          autoTurnTimerRef.current = null
+        }
+        playDiceSnapSfx()
+        const next = step(gameState, {
+          type: 'ASSIGN_DIE',
+          dieId: existingDieId,
+          slotId: null,
+        })
+        setGameState(next)
+        setSelectedDieId(existingDieId)
+      }
       return
     }
 
-    const dieToUse =
-      activeUnassigned ??
-      (selectedDieId !== null
-        ? gameState.dice.find((d) => d.id === selectedDieId)
-        : undefined)
-    if (!dieToUse) return
+    // Repeat tap on occupied command card -> auto-route next unassigned die to another open command!
+    let targetSlotId = slotId
+    if (gameState.slots[targetSlotId] !== null) {
+      const fallbackOrder: SlotId[] = [
+        'strike_1',
+        'strike_2',
+        'arcana_1',
+        'guard_1',
+      ]
+      const openSlot = fallbackOrder.find((s) => gameState.slots[s] === null)
+      if (!openSlot) return
+      targetSlotId = openSlot
+    }
 
     const prevPreview = calculateTurnPreview(gameState)
     const nextState = step(gameState, {
       type: 'ASSIGN_DIE',
-      dieId: dieToUse.id,
-      slotId,
+      dieId: activeUnassigned.id,
+      slotId: targetSlotId,
     })
     const nextPreview = calculateTurnPreview(nextState)
     setGameState(nextState)
 
     // Trigger Immediate Tactile Combat Animation on Canvas!
-    const cat = getSlotCategory(slotId)
+    const cat = getSlotCategory(targetSlotId)
     const dmgDelta = Math.max(
       0,
       nextPreview.totalDamage - prevPreview.totalDamage
@@ -718,26 +874,27 @@ export default function DiceForgeDungeonGame() {
       playShieldGainSfx()
       spawnImpactVisuals({
         target: 'hero',
-        text: `+${ Math.max(defDelta, dieToUse.currentPip) } DEF`,
+        text: `+${Math.max(defDelta, activeUnassigned.currentPip)} 盾`,
         color: '#38bdf8',
         slashType: 'shield',
         shake: 3,
       })
-    } else if (cat === 'alchemy') {
-      playSlashHitSfx(1)
+    } else if (targetSlotId === 'strike_2') {
+      playSlashHitSfx(2)
       spawnImpactVisuals({
         target: 'enemy',
-        text: `+${Math.max(psnDelta, dieToUse.currentPip)} PSN`,
+        text: `-${Math.max(dmgDelta, activeUnassigned.currentPip)}!`,
+        subtext: psnDelta > 0 ? `+${psnDelta} 毒` : '2HIT',
         color: '#34d399',
         slashType: 'dagger',
-        shake: 4,
-        hitstop: 0.05,
+        shake: 5,
+        hitstop: 0.06,
       })
     } else if (cat === 'arcana') {
       playSlashHitSfx(2)
       spawnImpactVisuals({
         target: 'enemy',
-        text: `-${Math.max(dmgDelta, dieToUse.currentPip)}!`,
+        text: `-${Math.max(dmgDelta, activeUnassigned.currentPip)}!`,
         subtext: `+${Math.max(1, nextPreview.totalManaGain - prevPreview.totalManaGain)} MP`,
         color: '#c084fc',
         slashType: 'arcana',
@@ -749,13 +906,13 @@ export default function DiceForgeDungeonGame() {
       if (isHeavy) {
         playHeavyImpactSfx()
       } else {
-        playSlashHitSfx(slotId === 'strike_2' ? 2 : 1)
+        playSlashHitSfx(1)
       }
       spawnImpactVisuals({
         target: 'enemy',
-        text: `-${Math.max(dmgDelta, dieToUse.currentPip)}!`,
-        color: slotId === 'strike_2' ? '#fbbf24' : '#fb7185',
-        slashType: slotId === 'strike_2' ? 'dagger' : 'sword',
+        text: `-${Math.max(dmgDelta, activeUnassigned.currentPip)}!`,
+        color: '#fb7185',
+        slashType: 'sword',
         shake: isHeavy ? 8 : 5,
         hitstop: isHeavy ? 0.085 : 0.06,
         goldFlash: isHeavy ? 0.18 : 0,
@@ -765,115 +922,47 @@ export default function DiceForgeDungeonGame() {
     if (nextPreview.formation.id !== 'none') {
       playComboFanfareSfx(nextPreview.finalMult)
       animRef.current.comboBanner = {
-        text: nextPreview.formation.name,
+        text:
+          FORMATION_SHORT_LABELS[nextPreview.formation.id] ??
+          nextPreview.formation.name,
         mult: `x${nextPreview.finalMult.toFixed(2)}`,
         alpha: 1,
         scale: 1.35,
       }
     }
+
+    // Auto-resolve turn when all 4 dice are used OR lethal damage is queued!
+    const allAssigned = nextState.dice.every((d) => d.assignedSlot !== null)
+    const projectedTotalEnemyDmg =
+      Math.max(0, nextPreview.totalDamage - nextState.enemy.shield) +
+      nextState.enemy.poison +
+      nextPreview.totalPoisonApplied
+    const isLethal = projectedTotalEnemyDmg >= nextState.enemy.hp
+
+    if (allAssigned || isLethal) {
+      if (autoTurnTimerRef.current !== null) {
+        window.clearTimeout(autoTurnTimerRef.current)
+      }
+      autoTurnTimerRef.current = window.setTimeout(() => {
+        runExecuteTurn(nextState)
+      }, 320)
+    }
   }
 
   // Quick-assign any remaining unassigned dice and execute turn choreography
   const handleExecuteTurn = () => {
-    if (!gameState || gameState.phase !== 'battle' || executingTurn) return
-
-    // If player hasn't placed all dice yet, automatically snap remaining dice into best open weapons first
-    let workingState = structuredClone(gameState)
-    const unassigned = workingState.dice.filter((d) => d.assignedSlot === null)
-    if (unassigned.length > 0) {
-      const prioritySlots: SlotId[] = [
-        'strike_1',
-        'guard_1',
-        'strike_2',
-        'arcana_1',
-        'alchemy_1',
-      ]
-      for (const die of unassigned) {
-        const freeSlot = prioritySlots.find(
-          (s) => workingState.slots[s] === null
-        )
-        if (freeSlot) {
-          workingState = step(workingState, {
-            type: 'ASSIGN_DIE',
-            dieId: die.id,
-            slotId: freeSlot,
-          })
-        }
-      }
-      setGameState(workingState)
-    }
-
-    const preview = calculateTurnPreview(workingState)
-    setExecutingTurn(true)
-
-    // Step 1: Hero Finisher Impact
-    if (preview.totalDamage >= 18) {
-      playHeavyImpactSfx()
-    } else {
-      playSlashHitSfx(Math.max(1, preview.totalHits))
-    }
-
-    spawnImpactVisuals({
-      target: 'enemy',
-      text: preview.totalDamage > 0 ? `-${preview.totalDamage}!` : `+${preview.totalShieldGain} DEF`,
-      subtext:
-        preview.finalMult > 1
-          ? `COMBO x${preview.finalMult.toFixed(2)}`
-          : undefined,
-      color: preview.totalDamage >= 20 ? '#fbbf24' : '#fb7185',
-      slashType: 'sword',
-      shake: preview.totalDamage >= 20 ? 10 : 6,
-      hitstop: 0.08,
-      goldFlash: preview.totalDamage >= 20 ? 0.22 : 0,
-    })
-
-    // Step 2: Enemy Counterattack or Death Burst after 320ms
-    setTimeout(() => {
-      const next = step(workingState, { type: 'EXECUTE_TURN' })
-
-      if (next.phase === 'reward' || next.phase === 'victory') {
-        playVictorySfx()
-      } else if (next.phase === 'gameover') {
-        playGameOverSfx()
-      } else if (preview.expectedIncomingDamage > 0) {
-        playDamageSfx()
-        spawnImpactVisuals({
-          target: 'hero',
-          text: `-${preview.expectedIncomingDamage}`,
-          color: '#f43f5e',
-          slashType: 'enemy_claw',
-          shake: 9,
-          hitstop: 0.07,
-          redFlash: 0.36,
-        })
-      } else {
-        playShieldGainSfx()
-        spawnImpactVisuals({
-          target: 'hero',
-          text: 'BLOCK!',
-          color: '#38bdf8',
-          slashType: 'shield',
-          shake: 3,
-        })
-      }
-
-      if (next.phase === 'victory' || next.phase === 'gameover') {
-        const finalScore =
-          next.stats.totalDamageDealt * 10 +
-          next.floor * 500 +
-          (next.phase === 'victory' ? 5000 : 0)
-        const updatedMeta = recordRunCompletion(next, finalScore)
-        setMetaStats(updatedMeta)
-      }
-
-      setGameState(next)
-      setExecutingTurn(false)
-    }, 340)
+    if (!gameState) return
+    runExecuteTurn(gameState)
   }
 
   // Quick-assign helper (for instant 1-tap weapon load if desired)
   const handleQuickLoadWeapons = () => {
-    if (!gameState || gameState.phase !== 'battle' || executingTurn) return
+    if (!gameState || gameState.phase !== 'battle' || executingTurnRef.current)
+      return
+    if (autoTurnTimerRef.current !== null) {
+      window.clearTimeout(autoTurnTimerRef.current)
+      autoTurnTimerRef.current = null
+    }
     playDiceSnapSfx()
     let s = structuredClone(gameState)
     for (const sId of ALL_SLOT_IDS) {
@@ -900,7 +989,7 @@ export default function DiceForgeDungeonGame() {
     setGameState(s)
     spawnImpactVisuals({
       target: 'enemy',
-      text: `${prev.totalDamage} DMG`,
+      text: `${prev.totalDamage} 攻撃`,
       subtext: `x${prev.finalMult.toFixed(2)}`,
       color: '#fbbf24',
       slashType: 'sword',
@@ -909,7 +998,7 @@ export default function DiceForgeDungeonGame() {
     })
   }
 
-  // Confirm Floor Reward & Forge
+  // Confirm Stage Clear Level Up Reward (Auto-slots chosen skill without 24-face manual UI)
   const handleConfirmReward = (
     nextNode: 'normal' | 'elite' | 'altar' | 'shop' | 'boss'
   ) => {
@@ -918,12 +1007,15 @@ export default function DiceForgeDungeonGame() {
     const next = step(gameState, {
       type: 'CHOOSE_REWARD',
       engravingId: selectedRewardEngraving ?? undefined,
-      targetDieId: selectedForgeDieId,
-      targetFaceIndex: selectedForgeFaceIdx,
       relicId: selectedRewardRelic ?? undefined,
       replaceRelicIndex: 0,
       nextNodeType: nextNode,
     })
+    animRef.current.displayedHeroHp = next.hp
+    animRef.current.displayedHeroShield = next.shield
+    animRef.current.displayedEnemyHp = next.enemy.hp
+    animRef.current.displayedEnemyShield = next.enemy.shield
+    setActivePopupText(null)
     setGameState(next)
   }
 
@@ -1023,7 +1115,7 @@ export default function DiceForgeDungeonGame() {
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-emerald-400/50 bg-emerald-600 py-3 text-sm font-black text-white shadow-md transition hover:bg-emerald-500 active:scale-98"
             >
               <RotateCcw className="h-4 w-4" />
-              <span>CONTINUE (F{savedRun.floor}/12)</span>
+              <span>つづきから (STAGE {savedRun.floor}/12)</span>
             </button>
           )}
           <button
@@ -1033,7 +1125,7 @@ export default function DiceForgeDungeonGame() {
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-base font-black text-slate-950 shadow-lg shadow-amber-500/25 transition hover:from-amber-400 hover:to-orange-400 active:scale-98"
           >
             <Play className="h-5 w-5 fill-current" />
-            <span>BATTLE START</span>
+            <span>冒険スタート</span>
           </button>
         </div>
       </div>
@@ -1041,24 +1133,31 @@ export default function DiceForgeDungeonGame() {
   }
 
   // ============================================================================
-  // 2. MAIN GAMEPLAY VIEWPORT (Battle / Reward / Altar / Shop / Victory / GameOver)
+  // 2. MAIN GAMEPLAY VIEWPORT (Battle / LevelUp / Result)
   // ============================================================================
+  const projectedTotalDmg = turnPreview
+    ? Math.max(0, turnPreview.totalDamage - gameState.enemy.shield) +
+      gameState.enemy.poison +
+      turnPreview.totalPoisonApplied
+    : 0
+  const isTurnLethal =
+    gameState.phase === 'battle' && projectedTotalDmg >= gameState.enemy.hp
+
   return (
     <div
       data-testid="dice-forge-canvas"
       className="relative flex h-full w-full flex-col justify-between bg-slate-950 p-2.5 text-slate-100 select-none overflow-hidden"
     >
-      {/* Top Compact HUD Bar (Zero Emojis, All Custom Vector Icons) */}
+      {/* Top Compact HUD Bar (Zero Emojis, Clear Stage & Level Display) */}
       <div className="flex items-center justify-between gap-1 rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1.5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="rounded-lg bg-amber-500/20 px-2 py-0.5 text-xs font-black text-amber-300 border border-amber-500/30">
-            F{gameState.floor}/12
+            STAGE {gameState.floor}/12
           </span>
-          <div className="flex items-center gap-1 text-xs font-extrabold text-amber-400">
-            <Coins className="h-3.5 w-3.5" />
-            <span>{gameState.gold}G</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs font-extrabold text-violet-300">
+          <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 text-xs font-black text-emerald-300 border border-emerald-500/30">
+            Lv.{gameState.floor}
+          </span>
+          <div className="flex items-center gap-0.5 text-xs font-extrabold text-violet-300">
             <Zap className="h-3.5 w-3.5 text-violet-400" />
             <span>
               {gameState.mana}/{gameState.maxMana}
@@ -1066,13 +1165,12 @@ export default function DiceForgeDungeonGame() {
           </div>
         </div>
 
-        {/* Relic Vector Badges + 6-Face Net Inspect Button */}
+        {/* Relic Badges + Hero Status Button */}
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1">
             {gameState.relics.map((rId) => (
               <div
                 key={rId}
-                title={`${RELICS[rId].name}: ${RELICS[rId].description}`}
                 className="flex h-6 w-6 items-center justify-center rounded-md border border-amber-500/40 bg-slate-800 text-xs font-black text-amber-300"
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -1088,8 +1186,8 @@ export default function DiceForgeDungeonGame() {
             }}
             className="flex cursor-pointer items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-extrabold text-slate-200 hover:bg-slate-700"
           >
-            <Layers className="h-3.5 w-3.5 text-sky-400" />
-            <span>24F</span>
+            <TrendingUp className="h-3.5 w-3.5 text-sky-400" />
+            <span>Lv.{gameState.floor} 能力</span>
           </button>
         </div>
       </div>
@@ -1097,7 +1195,7 @@ export default function DiceForgeDungeonGame() {
       {/* Live 60fps Canvas Dungeon Battlefield (Expands to fill upper viewport) */}
       <div
         data-testid="battle-duel-stage"
-        className="relative my-1.5 flex-1 min-h-[210px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-inner"
+        className="relative my-1.5 flex-1 min-h-[200px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-inner"
       >
         <canvas
           ref={canvasRef}
@@ -1127,7 +1225,7 @@ export default function DiceForgeDungeonGame() {
         )}
       </div>
 
-      {/* Direct Action Weapon Cards (Tapping any weapon immediately strikes with the selected die!) */}
+      {/* 4 Major RPG Command Cards (1:1 with 4 Dice, Repeat-Tap Auto-Advances!) */}
       {gameState.phase === 'battle' && turnPreview && (
         <div className="flex flex-col gap-1.5">
           {/* Combo Multiplier & Total Damage Preview Strip */}
@@ -1135,22 +1233,34 @@ export default function DiceForgeDungeonGame() {
             <div className="flex items-center gap-2">
               <Swords className="h-4 w-4 text-rose-400" />
               <span className="text-sm font-black text-rose-300">
-                {turnPreview.totalDamage} DMG
+                {turnPreview.totalDamage}
               </span>
               <Shield className="ml-1 h-4 w-4 text-sky-400" />
               <span className="text-sm font-black text-sky-300">
                 +{turnPreview.totalShieldGain}
               </span>
+              {isTurnLethal && (
+                <span className="rounded-md bg-rose-500/30 px-1.5 py-0.5 text-xs font-black text-rose-200 border border-rose-400/50">
+                  撃破
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-black text-amber-300 border border-amber-500/40">
-                x{turnPreview.finalMult.toFixed(2)}
+              <span
+                className={`rounded-md px-2 py-0.5 text-xs font-black border ${
+                  turnPreview.formation.id !== 'none'
+                    ? 'bg-amber-500/25 text-amber-200 border-amber-400/60'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                }`}
+              >
+                {FORMATION_SHORT_LABELS[turnPreview.formation.id] ?? '倍率'} x
+                {turnPreview.finalMult.toFixed(2)}
               </span>
             </div>
           </div>
 
-          {/* 5 Interactive Weapon / Skill Cards */}
-          <div className="grid grid-cols-5 gap-1.5">
+          {/* 4 Interactive RPG Command Cards */}
+          <div className="grid grid-cols-4 gap-1.5">
             {WEAPON_CARDS.map((w) => {
               const assignedDieId = gameState.slots[w.id]
               const assignedDie =
@@ -1167,13 +1277,13 @@ export default function DiceForgeDungeonGame() {
                   type="button"
                   data-testid={`slot-${w.id}`}
                   onClick={() => handleWeaponCardTap(w.id)}
-                  className={`relative flex h-[88px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 p-1.5 transition-all active:scale-95 ${
+                  className={`relative flex h-[90px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 p-1.5 transition-all active:scale-95 ${
                     assignedDie
                       ? w.activeBgClass
                       : `bg-slate-900/90 ${w.borderClass}`
                   }`}
                 >
-                  <span className="text-xs font-black tracking-tight text-slate-200">
+                  <span className="text-xs font-black tracking-tight text-slate-100">
                     {w.title}
                   </span>
 
@@ -1197,7 +1307,7 @@ export default function DiceForgeDungeonGame() {
                     className={`w-full truncate rounded-md px-1 py-0.5 text-center text-xs font-extrabold ${w.badgeClass}`}
                   >
                     {assignedDie
-                      ? `P${assignedDie.currentPip}`
+                      ? `セット (${assignedDie.currentPip})`
                       : slotLivePreviews[w.id]}
                   </span>
                 </button>
@@ -1226,6 +1336,10 @@ export default function DiceForgeDungeonGame() {
                   onClick={() => {
                     playClickSfx()
                     if (isAssigned) {
+                      if (autoTurnTimerRef.current !== null) {
+                        window.clearTimeout(autoTurnTimerRef.current)
+                        autoTurnTimerRef.current = null
+                      }
                       const next = step(gameState, {
                         type: 'ASSIGN_DIE',
                         dieId: die.id,
@@ -1254,7 +1368,6 @@ export default function DiceForgeDungeonGame() {
                       type="button"
                       onClick={(e) => handleToggleLock(die.id, e)}
                       className="absolute top-1 right-1 rounded-md bg-slate-950/80 p-1 text-slate-400 hover:text-amber-300"
-                      title="Lock Die"
                     >
                       {die.locked ? (
                         <Lock className="h-3 w-3 text-amber-400" />
@@ -1280,17 +1393,17 @@ export default function DiceForgeDungeonGame() {
             })}
           </div>
 
-          {/* Bottom Tactile Control Strip */}
+          {/* Bottom Tactile Control Strip (All 12px+ Clear Japanese Labels) */}
           <div className="grid grid-cols-12 gap-1.5">
             <button
               type="button"
               data-testid="dice-forge-reroll-btn"
               disabled={gameState.rerollsLeft <= 0 || executingTurn}
               onClick={handleReroll}
-              className="col-span-3 flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-slate-700 bg-slate-800 py-2.5 text-xs font-black text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
+              className="col-span-3 flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-700 bg-slate-800 py-1.5 text-xs font-black text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
             >
               <Dices className="h-4 w-4 text-amber-400" />
-              <span>ROLL ({gameState.rerollsLeft})</span>
+              <span>振り直({gameState.rerollsLeft})</span>
             </button>
 
             <button
@@ -1298,10 +1411,10 @@ export default function DiceForgeDungeonGame() {
               data-testid="dice-forge-manipulate-btn"
               disabled={gameState.mana < 1 || executingTurn}
               onClick={() => handleManipulateDie('plus1')}
-              className="col-span-3 flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-violet-500/40 bg-violet-950/70 py-2.5 text-xs font-black text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
+              className="col-span-3 flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border border-violet-500/40 bg-violet-950/70 py-1.5 text-xs font-black text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
             >
               <Zap className="h-4 w-4 text-violet-400" />
-              <span>+1 PIP</span>
+              <span>出目+1</span>
             </button>
 
             <button
@@ -1309,9 +1422,10 @@ export default function DiceForgeDungeonGame() {
               data-testid="dice-forge-auto-assign-btn"
               disabled={executingTurn}
               onClick={handleQuickLoadWeapons}
-              className="col-span-2 flex cursor-pointer items-center justify-center rounded-xl border border-sky-500/40 bg-sky-950/70 py-2.5 text-xs font-black text-sky-200 transition hover:bg-sky-900/80"
+              className="col-span-2 flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border border-sky-500/40 bg-sky-950/70 py-1.5 text-xs font-black text-sky-200 transition hover:bg-sky-900/80"
             >
-              <span>LOAD</span>
+              <Sparkles className="h-4 w-4 text-sky-400" />
+              <span>自動</span>
             </button>
 
             <button
@@ -1319,170 +1433,121 @@ export default function DiceForgeDungeonGame() {
               data-testid="dice-forge-execute-turn"
               disabled={executingTurn}
               onClick={handleExecuteTurn}
-              className="col-span-4 flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 py-2.5 text-xs font-black text-slate-950 shadow-md shadow-rose-500/20 transition hover:from-rose-400 hover:to-amber-400 active:scale-95"
+              className="col-span-4 flex cursor-pointer items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 py-2 text-xs font-black text-slate-950 shadow-md shadow-rose-500/20 transition hover:from-rose-400 hover:to-amber-400 active:scale-95"
             >
               <Flame className="h-4 w-4 fill-current" />
-              <span>STRIKE</span>
+              <span>一斉攻撃</span>
             </button>
           </div>
         </div>
       )}
 
       {/* ============================================================================ */}
-      {/* 3. FLOOR CLEAR & FORGE REWARD MODAL (Zero Emojis, Visual Pip Die Forging) */}
+      {/* 3. STAGE CLEAR & LEVEL UP MODAL (Simple 3-Choice Skill + Auto Growth) */}
       {/* ============================================================================ */}
       {gameState.phase === 'reward' && gameState.rewardOffer && (
         <div
           data-testid="dice-forge-reward-modal"
-          className="absolute inset-0 z-30 flex flex-col justify-between bg-slate-950/95 p-3 backdrop-blur-md"
+          className="absolute inset-0 z-30 flex flex-col justify-between bg-slate-950/95 p-3.5 backdrop-blur-md"
         >
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
             <div className="flex items-center gap-2">
-              <Hammer className="h-5 w-5 text-amber-400" />
+              <TrendingUp className="h-5 w-5 text-amber-400" />
               <span className="text-base font-black text-amber-300">
-                FORGE DICE FACE
+                LEVEL UP! Lv.{gameState.floor} → Lv.{gameState.floor + 1}
               </span>
             </div>
             <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-black text-emerald-300">
-              FLOOR {gameState.floor} CLEAR
+              STAGE {gameState.floor} CLEAR
             </span>
           </div>
 
-          {/* Step 1: Pick New Engraving (Visual Pip Die Cards) */}
-          <div className="my-1.5 grid grid-cols-3 gap-2">
-            {gameState.rewardOffer.engravings.map((engId, idx) => {
-              const eng = ENGRAVINGS[engId]
-              const isSelected = selectedRewardEngraving === engId
-              return (
-                <button
-                  key={engId}
-                  type="button"
-                  data-testid={`reward-engraving-${idx}`}
-                  onClick={() => {
-                    playClickSfx()
-                    setSelectedRewardEngraving(engId)
-                  }}
-                  className={`flex cursor-pointer flex-col items-center rounded-2xl border-2 p-2 transition-all ${
-                    isSelected
-                      ? 'border-amber-400 bg-amber-500/15 shadow-md'
-                      : 'border-slate-800 bg-slate-900'
-                  }`}
-                >
-                  <PipDieSvg
-                    pip={eng.pip}
-                    archetype={eng.archetype}
-                    isSpecial
-                    hasAttack={Boolean(eng.bonusAttack)}
-                    hasShield={Boolean(eng.bonusShield)}
-                    hasPoison={Boolean(eng.applyPoison)}
-                    hasMana={Boolean(eng.bonusMana)}
-                    multiHit={eng.multiHit}
-                    size={46}
-                  />
-                  <span className="mt-1 truncate w-full text-center text-xs font-black text-white">
-                    {eng.name}
-                  </span>
-                  <div className="mt-0.5 flex flex-wrap justify-center gap-1 text-xs font-extrabold text-amber-300">
-                    {eng.bonusAttack && <span>+{eng.bonusAttack}ATK</span>}
-                    {eng.bonusShield && <span>+{eng.bonusShield}DEF</span>}
-                    {eng.applyPoison && <span>+{eng.applyPoison}PSN</span>}
-                    {eng.bonusMana && <span>+{eng.bonusMana}MP</span>}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Step 2: Select Target Die & 6 Faces */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-2.5">
-            <div className="mb-2 grid grid-cols-4 gap-1.5">
-              {gameState.dice.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => {
-                    playClickSfx()
-                    setSelectedForgeDieId(d.id)
-                  }}
-                  className={`cursor-pointer rounded-xl py-1.5 text-xs font-black transition ${
-                    selectedForgeDieId === d.id
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  DIE {d.id + 1}
-                </button>
-              ))}
+          <div className="my-auto flex flex-col gap-4">
+            {/* Automatic Level-Up Stat Growth Banner */}
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-center text-xs font-black">
+              <div className="text-emerald-300">最大HP +4</div>
+              <div className="text-rose-300">基礎攻撃 +1</div>
+              <div className="text-sky-300">HP +9回復</div>
             </div>
 
-            <div className="grid grid-cols-6 gap-1.5">
-              {gameState.dice[selectedForgeDieId].faces.map((f) => {
-                const fEng = ENGRAVINGS[f.engravingId]
-                const valid = selectedRewardEngraving
-                  ? canForgeEngravingOnDie(
-                      gameState.dice[selectedForgeDieId],
-                      selectedRewardEngraving,
-                      f.faceIndex
-                    )
-                  : true
+            {/* 3-Choice Power-Up Skill Cards (Auto-slotted into dice on confirm) */}
+            <div className="grid grid-cols-3 gap-2">
+              {gameState.rewardOffer.engravings.map((engId, idx) => {
+                const eng = ENGRAVINGS[engId]
+                const isSelected = selectedRewardEngraving === engId
                 return (
                   <button
-                    key={f.faceIndex}
+                    key={engId}
                     type="button"
-                    disabled={!valid}
+                    data-testid={`reward-engraving-${idx}`}
                     onClick={() => {
                       playClickSfx()
-                      setSelectedForgeFaceIdx(f.faceIndex)
+                      setSelectedRewardEngraving(engId)
                     }}
-                    className={`flex cursor-pointer flex-col items-center rounded-xl border-2 p-1 transition ${
-                      selectedForgeFaceIdx === f.faceIndex
-                        ? 'border-amber-400 bg-amber-500/20'
-                        : 'border-slate-800 bg-slate-950'
-                    } disabled:opacity-35`}
-                  >
-                    <PipDieSvg
-                      pip={f.pip}
-                      archetype={fEng.archetype}
-                      isSpecial={!f.engravingId.startsWith('base_')}
-                      size={34}
-                    />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Optional Relic Choice */}
-          {gameState.rewardOffer.relics.length > 0 && (
-            <div className="grid grid-cols-3 gap-1.5">
-              {gameState.rewardOffer.relics.map((rId) => {
-                const rel = RELICS[rId]
-                const isSelected = selectedRewardRelic === rId
-                return (
-                  <button
-                    key={rId}
-                    type="button"
-                    onClick={() => {
-                      playClickSfx()
-                      setSelectedRewardRelic(rId)
-                    }}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-xl border p-2 text-left ${
+                    className={`flex cursor-pointer flex-col items-center rounded-2xl border-2 p-2.5 transition-all ${
                       isSelected
-                        ? 'border-violet-400 bg-violet-950/60'
+                        ? 'border-amber-400 bg-amber-500/15 shadow-md scale-[1.02]'
                         : 'border-slate-800 bg-slate-900'
                     }`}
                   >
-                    <Sparkles className="h-4 w-4 shrink-0 text-violet-400" />
-                    <span className="truncate text-xs font-extrabold text-violet-200">
-                      {rel.name}
+                    <PipDieSvg
+                      pip={eng.pip}
+                      archetype={eng.archetype}
+                      isSpecial
+                      hasAttack={Boolean(eng.bonusAttack)}
+                      hasShield={Boolean(eng.bonusShield)}
+                      hasPoison={Boolean(eng.applyPoison)}
+                      hasMana={Boolean(eng.bonusMana)}
+                      multiHit={eng.multiHit}
+                      size={48}
+                    />
+                    <span className="mt-1.5 truncate w-full text-center text-xs font-black text-white">
+                      {eng.name}
                     </span>
+                    <div className="mt-1 flex flex-wrap justify-center gap-1 text-xs font-extrabold text-amber-300">
+                      {eng.bonusAttack && <span>+{eng.bonusAttack}攻</span>}
+                      {eng.bonusShield && <span>+{eng.bonusShield}盾</span>}
+                      {eng.applyPoison && <span>+{eng.applyPoison}毒</span>}
+                      {eng.bonusMana && <span>+{eng.bonusMana}MP</span>}
+                      {eng.multiHit && <span>{eng.multiHit}連撃</span>}
+                    </div>
                   </button>
                 )
               })}
             </div>
-          )}
 
-          {/* Next Floor Route Buttons */}
+            {/* Optional Relic Choice */}
+            {gameState.rewardOffer.relics.length > 0 && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {gameState.rewardOffer.relics.map((rId) => {
+                  const rel = RELICS[rId]
+                  const isSelected = selectedRewardRelic === rId
+                  return (
+                    <button
+                      key={rId}
+                      type="button"
+                      onClick={() => {
+                        playClickSfx()
+                        setSelectedRewardRelic(rId)
+                      }}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-xl border p-2.5 text-left ${
+                        isSelected
+                          ? 'border-violet-400 bg-violet-950/60'
+                          : 'border-slate-800 bg-slate-900'
+                      }`}
+                    >
+                      <Sparkles className="h-4 w-4 shrink-0 text-violet-400" />
+                      <span className="truncate text-xs font-extrabold text-violet-200">
+                        {rel.name}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Next Stage Progression Buttons */}
           <div className="flex gap-2">
             {gameState.rewardOffer.nextFloorChoices.map((nodeType) => (
               <button
@@ -1490,10 +1555,18 @@ export default function DiceForgeDungeonGame() {
                 type="button"
                 data-testid={`next-floor-${nodeType}`}
                 onClick={() => handleConfirmReward(nodeType)}
-                className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:from-amber-400 hover:to-orange-400 active:scale-98"
+                className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-sm font-black text-slate-950 shadow-lg transition hover:from-amber-400 hover:to-orange-400 active:scale-98"
               >
-                <Hammer className="h-4 w-4" />
-                <span>FORGE &amp; NEXT ({nodeType.toUpperCase()})</span>
+                <Play className="h-4 w-4 fill-current" />
+                <span>
+                  次のステージへ (STAGE {gameState.floor + 1}
+                  {nodeType === 'boss'
+                    ? '・BOSS'
+                    : nodeType === 'elite'
+                      ? '・強敵'
+                      : ''}
+                  )
+                </span>
               </button>
             ))}
           </div>
@@ -1501,141 +1574,44 @@ export default function DiceForgeDungeonGame() {
       )}
 
       {/* ============================================================================ */}
-      {/* 4. ALTAR / SHOP PHASE OVERLAY */}
+      {/* 4. FALLBACK ALTAR / SHOP PHASE OVERLAY (Legacy Save Compatibility) */}
       {/* ============================================================================ */}
       {(gameState.phase === 'altar' || gameState.phase === 'shop') && (
-        <div className="absolute inset-0 z-30 flex flex-col justify-between bg-slate-950/95 p-4 backdrop-blur-md">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <span className="text-base font-black text-amber-300">
-              {gameState.phase === 'altar' ? 'ARCANE ALTAR' : 'BLACKSMITH SHOP'}
-            </span>
-            <span className="text-xs font-extrabold text-amber-400">
-              {gameState.gold}G / HP {gameState.hp}/{gameState.maxHp}
-            </span>
+        <div className="absolute inset-0 z-30 flex flex-col justify-center gap-4 bg-slate-950/95 p-4 backdrop-blur-md">
+          <div className="text-center text-base font-black text-amber-300">
+            STAGE {gameState.floor}
           </div>
-
-          {gameState.phase === 'altar' ? (
-            <div className="my-auto flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  playShieldGainSfx()
-                  setGameState(
-                    step(gameState, { type: 'ALTAR_ACTION', choice: 'heal_full' })
-                  )
-                }}
-                className="flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-500/50 bg-emerald-950/50 p-4 text-sm font-black text-emerald-200"
-              >
-                <span>FULL HP RESTORE</span>
-                <span>HP 100%</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playForgeHammerSfx()
-                  setGameState(
-                    step(gameState, {
-                      type: 'ALTAR_ACTION',
-                      choice: 'upgrade_two_faces',
-                      targetDieId: 0,
-                    })
-                  )
-                }}
-                className="flex cursor-pointer items-center justify-between rounded-2xl border border-amber-500/50 bg-amber-950/50 p-4 text-sm font-black text-amber-200"
-              >
-                <span>FORGE 2 RARE FACES</span>
-                <span>DIE 1</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playComboFanfareSfx(1.5)
-                  setGameState(
-                    step(gameState, {
-                      type: 'ALTAR_ACTION',
-                      choice: 'sacrifice_hp_for_relic',
-                    })
-                  )
-                }}
-                className="flex cursor-pointer items-center justify-between rounded-2xl border border-violet-500/50 bg-violet-950/50 p-4 text-sm font-black text-violet-200"
-              >
-                <span>GAIN RANDOM RELIC</span>
-                <span>-12 HP</span>
-              </button>
-            </div>
-          ) : (
-            <div className="my-auto flex flex-col gap-3">
-              <button
-                type="button"
-                disabled={gameState.gold < 25}
-                onClick={() => {
-                  playShieldGainSfx()
-                  setGameState(step(gameState, { type: 'SHOP_BUY_HEAL' }))
-                }}
-                className="flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-500/40 bg-slate-900 p-3.5 text-sm font-black text-emerald-300 disabled:opacity-40"
-              >
-                <span>REPAIR ARMOR (+22 HP)</span>
-                <span>25G</span>
-              </button>
-              {gameState.rewardOffer?.engravings.map((engId) => {
-                const eng = ENGRAVINGS[engId]
-                return (
-                  <button
-                    key={engId}
-                    type="button"
-                    disabled={gameState.gold < eng.cost}
-                    onClick={() => {
-                      playForgeHammerSfx()
-                      setGameState(
-                        step(gameState, {
-                          type: 'SHOP_BUY_ENGRAVING',
-                          engravingId: engId,
-                          targetDieId: 0,
-                          targetFaceIndex: 0,
-                        })
-                      )
-                    }}
-                    className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 p-3 text-sm font-black text-amber-200 disabled:opacity-40"
-                  >
-                    <div className="flex items-center gap-2">
-                      <PipDieSvg
-                        pip={eng.pip}
-                        archetype={eng.archetype}
-                        isSpecial
-                        size={36}
-                      />
-                      <span>{eng.name}</span>
-                    </div>
-                    <span>{eng.cost}G</span>
-                  </button>
+          <button
+            type="button"
+            onClick={() => {
+              playShieldGainSfx()
+              setGameState(
+                step(
+                  gameState,
+                  gameState.phase === 'altar'
+                    ? { type: 'ALTAR_ACTION', choice: 'heal_full' }
+                    : { type: 'LEAVE_SHOP' }
                 )
-              })}
-              <button
-                type="button"
-                onClick={() => {
-                  playClickSfx()
-                  setGameState(step(gameState, { type: 'LEAVE_SHOP' }))
-                }}
-                className="mt-2 w-full cursor-pointer rounded-2xl bg-amber-500 py-3.5 text-sm font-black text-slate-950"
-              >
-                NEXT FLOOR
-              </button>
-            </div>
-          )}
+              )
+            }}
+            className="w-full cursor-pointer rounded-2xl bg-amber-500 py-3.5 text-sm font-black text-slate-950"
+          >
+            次のステージへ
+          </button>
         </div>
       )}
 
       {/* ============================================================================ */}
-      {/* 5. 24-FACE DICE CROSS NET MODAL (Visual Pip Inspection) */}
+      {/* 5. HERO STATUS MODAL (Clean RPG Status & Acquired Skills) */}
       {/* ============================================================================ */}
       {showDiceNetModal && (
         <div
           data-testid="dice-forge-net-modal"
-          className="absolute inset-0 z-40 flex flex-col justify-between bg-slate-950/95 p-3 backdrop-blur-md"
+          className="absolute inset-0 z-40 flex flex-col justify-between bg-slate-950/95 p-3.5 backdrop-blur-md"
         >
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
             <span className="text-sm font-black text-sky-300">
-              24 DICE FACES
+              HERO STATUS (Lv.{gameState.floor})
             </span>
             <button
               type="button"
@@ -1647,39 +1623,78 @@ export default function DiceForgeDungeonGame() {
             </button>
           </div>
 
-          <div className="my-2 flex flex-col gap-2 overflow-y-auto">
-            {gameState.dice.map((die) => (
-              <div
-                key={die.id}
-                className="rounded-xl border border-slate-800 bg-slate-900 p-2"
-              >
-                <div className="mb-1.5 text-xs font-black text-amber-300">
-                  DIE {die.id + 1}
-                </div>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {die.faces.map((f) => {
-                    const eng = ENGRAVINGS[f.engravingId]
-                    return (
-                      <div
-                        key={f.faceIndex}
-                        className="flex flex-col items-center rounded-lg bg-slate-950 p-1"
-                      >
-                        <PipDieSvg
-                          pip={f.pip}
-                          archetype={eng.archetype}
-                          isSpecial={!f.engravingId.startsWith('base_')}
-                          hasAttack={Boolean(eng.bonusAttack)}
-                          hasShield={Boolean(eng.bonusShield)}
-                          hasPoison={Boolean(eng.applyPoison)}
-                          hasMana={Boolean(eng.bonusMana)}
-                          size={36}
-                        />
-                      </div>
-                    )
-                  })}
+          <div className="my-2 flex flex-1 flex-col gap-3 overflow-y-auto">
+            {/* Core Stats */}
+            <div className="grid grid-cols-3 gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2.5 text-center text-xs font-black">
+              <div>
+                <div className="text-slate-400">HP</div>
+                <div className="text-emerald-300">
+                  {gameState.hp}/{gameState.maxHp}
                 </div>
               </div>
-            ))}
+              <div>
+                <div className="text-slate-400">基礎攻撃</div>
+                <div className="text-rose-300">+{gameState.floor - 1}</div>
+              </div>
+              <div>
+                <div className="text-slate-400">MP</div>
+                <div className="text-violet-300">
+                  {gameState.mana}/{gameState.maxMana}
+                </div>
+              </div>
+            </div>
+
+            {/* Relics */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900 p-2.5">
+              <div className="mb-2 text-xs font-black text-amber-300">
+                所持遺物 ({gameState.relics.length}/5)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {gameState.relics.map((rId) => (
+                  <span
+                    key={rId}
+                    className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-slate-950 px-2 py-1 text-xs font-bold text-amber-200"
+                  >
+                    <Sparkles className="h-3 w-3 text-amber-400" />
+                    {RELICS[rId].name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Acquired Special Dice Skills */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900 p-2.5">
+              <div className="mb-2 text-xs font-black text-sky-300">
+                習得ダイススキル
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {gameState.dice.flatMap((die) =>
+                  die.faces
+                    .filter((f) => !f.engravingId.startsWith('base_'))
+                    .map((f, idx) => {
+                      const eng = ENGRAVINGS[f.engravingId]
+                      return (
+                        <div
+                          key={`${die.id}-${f.faceIndex}-${idx}`}
+                          className="flex items-center gap-2 rounded-lg bg-slate-950 p-1.5 text-xs font-bold text-slate-200"
+                        >
+                          <PipDieSvg
+                            pip={f.pip}
+                            archetype={eng.archetype}
+                            isSpecial
+                            hasAttack={Boolean(eng.bonusAttack)}
+                            hasShield={Boolean(eng.bonusShield)}
+                            hasPoison={Boolean(eng.applyPoison)}
+                            hasMana={Boolean(eng.bonusMana)}
+                            size={28}
+                          />
+                          <span className="truncate">{eng.name}</span>
+                        </div>
+                      )
+                    })
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1704,18 +1719,18 @@ export default function DiceForgeDungeonGame() {
           </div>
 
           <h2 className="text-xl font-black text-white">
-            {gameState.phase === 'victory' ? 'TOWER CONQUERED' : 'DEFEATED'}
+            {gameState.phase === 'victory' ? '完全制覇！' : '敗北'}
           </h2>
 
           <div className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-3 text-xs font-extrabold">
             <div className="flex flex-col">
-              <span className="text-slate-400">FLOOR</span>
+              <span className="text-slate-400">到達ステージ</span>
               <span className="text-base font-black text-amber-300">
-                F{gameState.floor}/12
+                STAGE {gameState.floor}/12
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-400">MAX DMG</span>
+              <span className="text-slate-400">最大ダメージ</span>
               <span className="text-base font-black text-rose-300">
                 {gameState.stats.maxSingleTurnDamage}
               </span>
@@ -1728,7 +1743,7 @@ export default function DiceForgeDungeonGame() {
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-sm font-black text-slate-950 shadow-lg"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>RETRY</span>
+            <span>もう一度遊ぶ</span>
           </button>
         </div>
       )}
