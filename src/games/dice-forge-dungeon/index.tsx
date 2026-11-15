@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Dices,
+  Gem,
   Lock,
   Play,
   RotateCcw,
-  Sparkles,
   Swords,
   TrendingUp,
   Trophy,
@@ -105,7 +105,7 @@ const FORMATION_SHORT_LABELS: Record<string, string> = {
   four_kind: '4カード',
 }
 
-function formatEngravingEffectText(eng: EngravingDef): string {
+function formatEngravingEffectParts(eng: EngravingDef): string[] {
   const parts: string[] = []
   if (eng.bonusAttack) parts.push(`威力+${eng.bonusAttack}`)
   if (eng.bonusShield) parts.push(`盾+${eng.bonusShield}`)
@@ -123,7 +123,7 @@ function formatEngravingEffectText(eng: EngravingDef): string {
   if (eng.permanentEvenBonus) parts.push(`偶数永続+${eng.permanentEvenBonus}`)
   if (eng.rerollGain) parts.push(`振直+${eng.rerollGain}`)
   if (eng.goldGain) parts.push(`+${eng.goldGain}G`)
-  return parts.slice(0, 3).join(' ')
+  return parts.slice(0, 3)
 }
 
 const playClickSfx = () => playSound('dice_place')
@@ -273,6 +273,9 @@ export default function DiceForgeDungeonGame() {
       const isEnemy = opts.target === 'enemy'
       const cx = Math.round(isEnemy ? cvsW * 0.72 : cvsW * 0.28)
       const cy = Math.round(cvsH * 0.54)
+      // Position floating damage/shield popups toward arena center-mid so they never collide with Lv/ATK head badges
+      const fx = Math.round(isEnemy ? cvsW * 0.56 : cvsW * 0.42)
+      const fy = Math.round(cvsH * 0.56)
 
       if (opts.hitstop) a.hitstopTimer = Math.max(a.hitstopTimer, opts.hitstop)
       if (opts.shake) a.screenShake = Math.max(a.screenShake, opts.shake)
@@ -339,8 +342,8 @@ export default function DiceForgeDungeonGame() {
       }
 
       for (const f of a.floaters) {
-        if (Math.abs(f.x - cx) < 60) {
-          f.y -= 28
+        if (Math.abs(f.x - fx) < 60) {
+          f.y -= 24
           f.subtext = undefined
         }
       }
@@ -348,16 +351,16 @@ export default function DiceForgeDungeonGame() {
       floaterIdRef.current += 1
       a.floaters.push({
         id: floaterIdRef.current,
-        x: cx + (Math.random() - 0.5) * 14,
-        y: cy - 32,
-        vy: -54,
+        x: fx + (Math.random() - 0.5) * 8,
+        y: fy,
+        vy: -18,
         text: opts.text,
         subtext: opts.subtext,
         color: opts.color,
-        scale: 1.35,
+        scale: 1.25,
         alpha: 1,
         life: 0,
-        maxLife: 0.85,
+        maxLife: 0.78,
       })
 
       setActivePopupText(opts.text)
@@ -622,6 +625,9 @@ export default function DiceForgeDungeonGame() {
     })
     if (next.phase === 'reward' || next.phase === 'victory') {
       playVictorySfx()
+      animRef.current.floaters = []
+      animRef.current.slashes = []
+      setActivePopupText(null)
       finalizeRunIfEnded(next)
     }
   }
@@ -647,6 +653,9 @@ export default function DiceForgeDungeonGame() {
 
         if (next.phase === 'reward' || next.phase === 'victory') {
           playVictorySfx()
+          animRef.current.floaters = []
+          animRef.current.slashes = []
+          setActivePopupText(null)
           finalizeRunIfEnded(next)
         } else if (next.phase === 'gameover') {
           playGameOverSfx()
@@ -789,6 +798,9 @@ export default function DiceForgeDungeonGame() {
     // Immediate victory/reward check if enemy died from this strike
     if (nextState.phase === 'reward' || nextState.phase === 'victory') {
       playVictorySfx()
+      animRef.current.floaters = []
+      animRef.current.slashes = []
+      setActivePopupText(null)
       finalizeRunIfEnded(nextState)
       return
     }
@@ -846,11 +858,11 @@ export default function DiceForgeDungeonGame() {
       className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-slate-950 p-2 text-slate-100 select-none"
     >
       {/* ==================================================================== */}
-      {/* ZONE A: FIXED HEIGHT TOP STATUS & ALWAYS-VISIBLE ABILITIES (78px)    */}
+      {/* ZONE A: FIXED HEIGHT TOP STATUS & ALWAYS-VISIBLE ABILITIES (92px)    */}
       {/* ==================================================================== */}
       <div
         data-testid="layout-zone-top"
-        className="flex h-[78px] shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-slate-800 bg-slate-900/95 px-2.5 py-1.5"
+        className="flex h-[92px] shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-slate-800 bg-slate-900/95 px-2.5 py-1.5"
       >
         {!gameState ? (
           <>
@@ -868,12 +880,12 @@ export default function DiceForgeDungeonGame() {
             </div>
             <div
               data-testid="always-visible-abilities"
-              className="flex items-center justify-between gap-2 overflow-hidden text-xs font-bold text-slate-300"
+              className="flex flex-wrap items-center justify-between gap-1 text-xs font-bold text-slate-300"
             >
               {screenMode === 'title' ? (
                 <span>全12ステージの塔をダイスと戦略で踏破</span>
               ) : (
-                <span className="truncate">
+                <span>
                   [{CLASS_SHORT_NAMES[selectedClass]}] HP{activeClassDef.maxHp}{' '}
                   攻{activeClassDef.baseAttack} 防{activeClassDef.baseDefense}{' '}
                   MP{activeClassDef.startingMana} | {activeClassDef.passiveLabel}
@@ -893,7 +905,7 @@ export default function DiceForgeDungeonGame() {
                   Lv.{gameState.floor}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-emerald-300">
                   HP{gameState.hp}/{gameState.maxHp}
                 </span>
@@ -905,22 +917,22 @@ export default function DiceForgeDungeonGame() {
               </div>
             </div>
 
-            {/* Row 2: Always-Visible Class Trait + Relics + Forged Count */}
+            {/* Row 2: Always-Visible Class Trait + Relics (Flex-wrap, Supports up to 5 Relics cleanly) + Inspect Button */}
             <div
               data-testid="always-visible-abilities"
-              className="flex items-center justify-between gap-1.5 overflow-hidden"
+              className="flex items-center justify-between gap-1"
             >
-              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto no-scrollbar">
-                <span className="shrink-0 rounded-md border border-sky-500/40 bg-sky-950/80 px-1.5 py-0.5 text-xs font-extrabold text-sky-200">
+              <div className="flex max-h-[54px] flex-1 flex-wrap items-center gap-1 overflow-y-auto no-scrollbar">
+                <span className="rounded-md border border-sky-500/40 bg-sky-950/80 px-1.5 py-0.5 text-xs font-extrabold whitespace-nowrap text-sky-200">
                   {activeClassDef.passiveLabel}
                 </span>
                 {gameState.relics.map((rId) => (
                   <span
                     key={rId}
                     title={RELICS[rId].shortEffect}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-500/40 bg-slate-950 px-1.5 py-0.5 text-xs font-extrabold text-amber-200"
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-slate-950 px-1.5 py-0.5 text-xs font-extrabold whitespace-nowrap text-amber-200"
                   >
-                    <Sparkles className="h-3 w-3 text-amber-400" />
+                    <Gem className="h-3 w-3 shrink-0 text-amber-400" />
                     <span>{RELICS[rId].name}</span>
                   </span>
                 ))}
@@ -947,7 +959,7 @@ export default function DiceForgeDungeonGame() {
       {/* ==================================================================== */}
       <div
         data-testid="layout-zone-stage"
-        className="relative my-1.5 flex-1 min-h-[180px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-inner"
+        className="relative my-1.5 flex-1 min-h-[168px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-inner"
       >
         <div
           data-testid="battle-duel-stage"
@@ -969,7 +981,7 @@ export default function DiceForgeDungeonGame() {
             className="pointer-events-none absolute right-6 bottom-3 h-24 w-24"
           />
 
-          {activePopupText && (
+          {activePopupText && gameState?.phase === 'battle' && (
             <div
               data-testid="battle-floating-popup"
               className="pointer-events-none absolute top-3 left-3 rounded-full border border-amber-400/80 bg-slate-950/90 px-3 py-0.5 text-xs font-black text-amber-300 shadow-lg"
@@ -981,11 +993,11 @@ export default function DiceForgeDungeonGame() {
       </div>
 
       {/* ==================================================================== */}
-      {/* ZONE C: FIXED HEIGHT BOTTOM CONTROL DECK (312px — ZERO JITTER)       */}
+      {/* ZONE C: FIXED HEIGHT BOTTOM CONTROL DECK (324px — ZERO JITTER)       */}
       {/* ==================================================================== */}
       <div
         data-testid="layout-zone-bottom"
-        className="flex h-[312px] shrink-0 flex-col justify-between overflow-hidden"
+        className="flex h-[324px] shrink-0 flex-col justify-between overflow-hidden"
       >
         {/* C-1: DEDICATED TITLE SCREEN */}
         {!gameState && screenMode === 'title' && (
@@ -1139,30 +1151,53 @@ export default function DiceForgeDungeonGame() {
 
         {/* C-3: BATTLE CONTROLS (1 DIE = 1 INSTANT ACTION, NO AUTO/ALL-IN BUTTONS) */}
         {gameState && gameState.phase === 'battle' && turnPreview && (
-          <div className="flex h-full flex-col justify-between gap-1.5">
-            {/* Guide & Combo Strip */}
-            <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-xs font-black">
-              <div className="flex items-center gap-1.5 text-amber-300">
-                <span>
-                  {executingEnemyTurn
-                    ? '敵の反撃ターン'
-                    : activeDie
-                      ? `出目[${activeDie.currentPip}]を選択中`
-                      : 'ターン終了'}
-                </span>
-                <span className="text-slate-400">|</span>
-                <span className="text-slate-200">残{unusedCount}/4個</span>
+          <div className="flex h-full flex-col justify-between gap-1">
+            {/* Guide, Selected Die Effect & Combo Strip */}
+            <div className="flex flex-col gap-0.5 rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-xs font-black">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-amber-300">
+                  <span>
+                    {executingEnemyTurn
+                      ? '敵の反撃ターン'
+                      : activeDie
+                        ? `出目[${activeDie.currentPip}] ${ENGRAVINGS[activeDie.currentEngravingId].name}`
+                        : 'ターン終了'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-300">残{unusedCount}/4</span>
+                  <span
+                    className={`rounded-md border px-1.5 py-0.5 text-xs font-black ${
+                      turnPreview.formation.id !== 'none'
+                        ? 'border-amber-400/60 bg-amber-500/25 text-amber-200'
+                        : 'border-slate-700 bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    {FORMATION_SHORT_LABELS[turnPreview.formation.id] ?? '倍率'} x
+                    {turnPreview.finalMult.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <span
-                className={`rounded-md border px-2 py-0.5 text-xs font-black ${
-                  turnPreview.formation.id !== 'none'
-                    ? 'border-amber-400/60 bg-amber-500/25 text-amber-200'
-                    : 'border-slate-700 bg-slate-800 text-slate-300'
-                }`}
-              >
-                {FORMATION_SHORT_LABELS[turnPreview.formation.id] ?? '倍率'} x
-                {turnPreview.finalMult.toFixed(2)}
-              </span>
+              {activeDie && !executingEnemyTurn && (
+                <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold text-sky-200">
+                  {activeDie.currentEngravingId.startsWith('base_') ? (
+                    <span className="text-slate-400">
+                      下の技をタップすると即座に発動
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-amber-300">発動効果:</span>
+                      {formatEngravingEffectParts(
+                        ENGRAVINGS[activeDie.currentEngravingId]
+                      ).map((part, pIdx) => (
+                        <span key={pIdx} className="whitespace-nowrap">
+                          {part}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 4 Direct Instant Action Buttons */}
@@ -1179,7 +1214,7 @@ export default function DiceForgeDungeonGame() {
                     disabled={isDisabled}
                     data-testid={`slot-${card.id}`}
                     onClick={() => handleCommandTap(card.id)}
-                    className={`flex h-[106px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 bg-slate-900/95 p-1.5 transition-all active:scale-95 disabled:opacity-50 ${
+                    className={`flex h-[98px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 bg-slate-900/95 p-1.5 transition-all active:scale-95 disabled:opacity-50 ${
                       isBonus
                         ? `${card.borderClass} ${card.activeRingClass}`
                         : card.borderClass
@@ -1189,16 +1224,16 @@ export default function DiceForgeDungeonGame() {
                       {card.title}
                     </span>
 
-                    <WeaponIconSvg slotId={card.id} className="h-7 w-7" />
+                    <WeaponIconSvg slotId={card.id} className="h-6 w-6" />
 
                     <span
-                      className={`w-full rounded-md px-1 py-0.5 text-center text-xs font-black leading-tight ${card.badgeClass}`}
+                      className={`w-full rounded-md px-1 py-0.5 text-center text-xs font-black leading-tight whitespace-nowrap ${card.badgeClass}`}
                     >
                       {preview ? preview.summaryLabel : card.conditionLabel}
                     </span>
 
                     <span
-                      className={`text-xs font-extrabold leading-tight ${
+                      className={`text-xs font-extrabold leading-tight whitespace-nowrap ${
                         isBonus ? 'text-amber-300' : 'text-slate-400'
                       }`}
                     >
@@ -1209,7 +1244,7 @@ export default function DiceForgeDungeonGame() {
               })}
             </div>
 
-            {/* 4 Physical 3D Pip Dice */}
+            {/* 4 Physical 3D Pip Dice (Lock Toggle Placed at Bottom Row — Zero Overlap with Die Icons) */}
             <div className="grid grid-cols-4 gap-1.5">
               {gameState.dice.map((die) => {
                 const eng = ENGRAVINGS[die.currentEngravingId]
@@ -1236,46 +1271,69 @@ export default function DiceForgeDungeonGame() {
                         setSelectedDieId(die.id)
                       }
                     }}
-                    className={`relative flex h-[96px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 py-1 transition-all ${
+                    className={`relative flex h-[96px] cursor-pointer flex-col items-center justify-between rounded-2xl border-2 px-1 py-1.5 transition-all ${
                       isUsed
                         ? 'cursor-default border-slate-800 bg-slate-900/30 opacity-40'
-                        : isSelected
-                          ? 'border-amber-400 bg-amber-500/15 -translate-y-0.5 shadow-lg shadow-amber-500/20'
-                          : 'border-slate-800 bg-slate-900/90 hover:border-slate-700'
+                        : die.locked
+                          ? 'border-sky-400 bg-sky-500/10 shadow-md shadow-sky-500/15'
+                          : isSelected
+                            ? 'border-amber-400 bg-amber-500/15 -translate-y-0.5 shadow-lg shadow-amber-500/20'
+                            : 'border-slate-800 bg-slate-900/90 hover:border-slate-700'
                     } ${rollingAnim && !die.locked && !isUsed ? 'animate-bounce' : ''}`}
                   >
-                    {!isUsed ? (
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleLock(die.id, e)}
-                        className="absolute top-1 right-1 rounded-md bg-slate-950/80 p-1 text-slate-400 hover:text-amber-300"
-                      >
-                        {die.locked ? (
-                          <Lock className="h-3 w-3 text-amber-400" />
-                        ) : (
-                          <Unlock className="h-3 w-3" />
-                        )}
-                      </button>
-                    ) : (
+                    {isUsed && (
                       <span className="absolute top-1 right-1.5 rounded bg-slate-800 px-1 text-xs font-black text-slate-300">
                         済
                       </span>
                     )}
 
-                    <PipDieSvg
-                      pip={die.currentPip}
-                      archetype={eng.archetype}
-                      isSpecial={!die.currentEngravingId.startsWith('base_')}
-                      hasAttack={Boolean(eng.bonusAttack)}
-                      hasShield={Boolean(eng.bonusShield)}
-                      hasPoison={Boolean(eng.applyPoison)}
-                      hasMana={Boolean(eng.bonusMana)}
-                      multiHit={eng.multiHit}
-                      size={48}
-                    />
-                    <span className="mt-0.5 text-xs font-extrabold text-slate-300">
-                      {isUsed ? '発動済' : isSelected ? '選択中' : `出目 ${die.currentPip}`}
-                    </span>
+                    <div className="flex flex-1 items-center justify-center">
+                      <PipDieSvg
+                        pip={die.currentPip}
+                        archetype={eng.archetype}
+                        isSpecial={!die.currentEngravingId.startsWith('base_')}
+                        hasAttack={Boolean(eng.bonusAttack)}
+                        hasShield={Boolean(eng.bonusShield)}
+                        hasPoison={Boolean(eng.applyPoison)}
+                        hasMana={Boolean(eng.bonusMana)}
+                        multiHit={eng.multiHit}
+                        size={46}
+                      />
+                    </div>
+
+                    <div className="flex w-full items-center justify-center gap-1">
+                      {!isUsed && (
+                        <button
+                          type="button"
+                          aria-label={die.locked ? 'ロック解除' : '出目ロック'}
+                          onClick={(e) => handleToggleLock(die.id, e)}
+                          className={`rounded px-1 py-0.5 transition ${
+                            die.locked
+                              ? 'bg-sky-500/25 text-sky-300'
+                              : 'bg-slate-800 text-slate-400 hover:text-amber-300'
+                          }`}
+                        >
+                          {die.locked ? (
+                            <Lock className="h-3 w-3" />
+                          ) : (
+                            <Unlock className="h-3 w-3" />
+                          )}
+                        </button>
+                      )}
+                      <span
+                        className={`text-xs font-extrabold whitespace-nowrap ${
+                          isSelected ? 'text-amber-300' : 'text-slate-300'
+                        }`}
+                      >
+                        {isUsed
+                          ? '発動済'
+                          : die.locked
+                            ? '固定中'
+                            : isSelected
+                              ? '選択中'
+                              : `出目${die.currentPip}`}
+                      </span>
+                    </div>
                   </div>
                 )
               })}
@@ -1288,7 +1346,7 @@ export default function DiceForgeDungeonGame() {
                 data-testid="dice-forge-reroll-btn"
                 disabled={gameState.rerollsLeft <= 0 || executingEnemyTurn}
                 onClick={handleReroll}
-                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 py-2.5 text-xs font-black text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 py-2 text-xs font-black text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
               >
                 <Dices className="h-4 w-4 text-amber-400" />
                 <span>振り直し (残{gameState.rerollsLeft})</span>
@@ -1301,7 +1359,7 @@ export default function DiceForgeDungeonGame() {
                   gameState.mana < 1 || executingEnemyTurn || !activeDie
                 }
                 onClick={() => handleManipulateDie('plus1')}
-                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-950/70 py-2.5 text-xs font-black text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-950/70 py-2 text-xs font-black text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
               >
                 <Zap className="h-4 w-4 text-violet-400" />
                 <span>選択ダイス出目+1 (1MP)</span>
@@ -1316,23 +1374,23 @@ export default function DiceForgeDungeonGame() {
           gameState.rewardOffer && (
             <div
               data-testid="dice-forge-reward-modal"
-              className="flex h-full flex-col justify-between gap-1.5 rounded-2xl border border-emerald-500/40 bg-slate-900/95 p-2.5"
+              className="flex h-full flex-col justify-between gap-1 rounded-2xl border border-emerald-500/40 bg-slate-900/95 p-2"
             >
               <div className="flex items-center justify-between text-xs font-black">
                 <span className="text-amber-300">
-                  LEVEL UP! Lv.{gameState.floor + 1} (最大HP+3 攻+1 HP+5)
+                  LEVEL UP! Lv.{gameState.floor}→{gameState.floor + 1} (HP+3 攻+1 回復+5)
                 </span>
                 <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300">
                   STAGE {gameState.floor} CLEAR
                 </span>
               </div>
 
-              {/* 3 Dice Face Upgrades with Full Name & Clear Effect */}
+              {/* 3 Dice Face Upgrades with Target Face & Non-Wrapping Effect Tokens */}
               <div className="grid flex-1 grid-cols-3 gap-1.5">
                 {gameState.rewardOffer.engravings.map((engId, idx) => {
                   const eng = ENGRAVINGS[engId]
                   const isSelected = selectedRewardEngraving === engId
-                  const effText = formatEngravingEffectText(eng)
+                  const effParts = formatEngravingEffectParts(eng)
                   return (
                     <button
                       key={engId}
@@ -1348,8 +1406,8 @@ export default function DiceForgeDungeonGame() {
                           : 'border-slate-800 bg-slate-950/90 hover:border-slate-700'
                       }`}
                     >
-                      <span className="text-xs font-extrabold text-sky-300">
-                        ダイス面強化
+                      <span className="text-xs font-extrabold whitespace-nowrap text-sky-300">
+                        ダイス面強化[{eng.pip}]
                       </span>
                       <PipDieSvg
                         pip={eng.pip}
@@ -1360,22 +1418,32 @@ export default function DiceForgeDungeonGame() {
                         hasPoison={Boolean(eng.applyPoison)}
                         hasMana={Boolean(eng.bonusMana)}
                         multiHit={eng.multiHit}
-                        size={36}
+                        size={34}
                       />
                       <span className="text-xs font-black leading-tight text-white">
                         {eng.name}
                       </span>
-                      <span className="text-xs font-extrabold leading-tight text-amber-300">
-                        {effText}
-                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-1 text-xs font-extrabold leading-tight text-amber-300">
+                        {effParts.map((part, pIdx) => (
+                          <span key={pIdx} className="whitespace-nowrap">
+                            {part}
+                          </span>
+                        ))}
+                      </div>
                     </button>
                   )
                 })}
               </div>
 
-              {/* Optional Relic Choice with Full Effect Bar */}
+              {/* Optional Relic Choice with Explicit Heading & Full Effect Bar */}
               {gameState.rewardOffer.relics.length > 0 && (
                 <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs font-extrabold text-violet-300">
+                    <span>追加遺物を1つ選択</span>
+                    <span className="text-slate-400">
+                      所持 {gameState.relics.length}/5
+                    </span>
+                  </div>
                   <div className="grid grid-cols-3 gap-1">
                     {gameState.rewardOffer.relics.map((rId) => {
                       const rel = RELICS[rId]
@@ -1388,7 +1456,7 @@ export default function DiceForgeDungeonGame() {
                             playClickSfx()
                             setSelectedRewardRelic(rId)
                           }}
-                          className={`flex cursor-pointer items-center justify-center rounded-lg border px-1.5 py-1 text-center text-xs font-extrabold leading-tight ${
+                          className={`flex cursor-pointer items-center justify-center rounded-lg border px-1 py-1 text-center text-xs font-extrabold leading-tight ${
                             isSelected
                               ? 'border-violet-400 bg-violet-950/80 text-violet-100'
                               : 'border-slate-800 bg-slate-950 text-slate-300'
@@ -1415,7 +1483,7 @@ export default function DiceForgeDungeonGame() {
                     type="button"
                     data-testid={`next-floor-${nodeType}`}
                     onClick={() => handleConfirmReward(nodeType)}
-                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:from-amber-400 hover:to-orange-400"
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2 text-sm font-black text-slate-950 shadow-lg transition hover:from-amber-400 hover:to-orange-400"
                   >
                     <Play className="h-4 w-4 fill-current" />
                     <span>
@@ -1611,9 +1679,15 @@ export default function DiceForgeDungeonGame() {
                             <span className="font-black text-white">
                               {eng.name}
                             </span>
-                            <span className="text-amber-300">
-                              {formatEngravingEffectText(eng)}
-                            </span>
+                            <div className="flex flex-wrap gap-x-1 text-amber-300">
+                              {formatEngravingEffectParts(eng).map(
+                                (part, pIdx) => (
+                                  <span key={pIdx} className="whitespace-nowrap">
+                                    {part}
+                                  </span>
+                                )
+                              )}
+                            </div>
                           </div>
                         </div>
                       )

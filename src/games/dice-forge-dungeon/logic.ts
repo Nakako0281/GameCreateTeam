@@ -202,7 +202,7 @@ function startTurnSetup(state: GameState): void {
     state.starterClass === 'blacksmith' ||
     state.relics.includes('relic_barricade_core')
   if (hasBarricade) {
-    state.shield = Math.min(35, state.shield)
+    state.shield = Math.min(14, state.shield)
   } else {
     state.shield = 0
   }
@@ -509,9 +509,9 @@ export function calculateSingleDieAction(
     state.starterClass === 'mage' && pip >= 5 ? 1.4 : 1.0
   const mageHighPipMana = state.starterClass === 'mage' && pip >= 5 ? 1 : 0
   const assassinLowPipDmg =
-    state.starterClass === 'assassin' && pip <= 2 ? 5 : 0
+    state.starterClass === 'assassin' && pip <= 2 ? 6 : 0
   const assassinLowPipPoison =
-    state.starterClass === 'assassin' && pip <= 2 ? 3 : 0
+    state.starterClass === 'assassin' && pip <= 2 ? 4 : 0
 
   let damageRaw = 0
   let hits = 1
@@ -581,7 +581,7 @@ export function calculateSingleDieAction(
     } else {
       hits = eng.multiHit ?? 1
       damageRaw += Math.max(2, Math.floor(baseAtk * 0.58))
-      bonusTag = '1〜3で2連+毒'
+      bonusTag = '1〜3毒連'
     }
     if (eng.bonusShield) rawShield += Math.floor(eng.bonusShield * 0.4)
   } else if (slotId === 'guard_1') {
@@ -602,8 +602,8 @@ export function calculateSingleDieAction(
     }
     // 重騎士パッシブ＆スパイク盾：獲得シールドに応じて即座に追撃ダメージ
     let bashRatio = 0
-    if (state.starterClass === 'blacksmith') bashRatio += 0.5
-    if (hasSpikedBuckler) bashRatio += 0.6
+    if (state.starterClass === 'blacksmith') bashRatio += 0.3
+    if (hasSpikedBuckler) bashRatio += 0.5
     if (eng.shieldBashRatio) bashRatio += eng.shieldBashRatio * 0.5
     if (bashRatio > 0) {
       damageRaw += Math.floor(rawShield * bashRatio)
@@ -842,6 +842,9 @@ function handleEnemyDefeated(state: GameState): void {
     state.hp = Math.min(state.maxHp, state.hp + 7)
   } else {
     state.hp = Math.min(state.maxHp, state.hp + 2)
+  }
+  if (state.relics.includes('relic_merchant_coin')) {
+    state.hp = Math.min(state.maxHp, state.hp + 3)
   }
 
   if (state.floor >= 12) {
