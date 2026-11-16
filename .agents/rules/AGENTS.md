@@ -43,6 +43,10 @@
   - **開発ロードマップ＆引き継ぎ台帳**: Goサイン後は `docs/projects/<game-id>/ROADMAP.md` を作成し、毎セッション終了時に進捗と **「次回セッションの目標（Next Action）」** を更新・コミットする。
 - **GitHub CLI ツール（`github_api.mjs`）の活用**:
   - セッション開始・終了時は必ず `npm run gct:status`（`node .agents/skills/game-create-team/scripts/github_api.mjs status`）を実行し、Milestone・Issue・Label・PRの状態を最新に保つ。
+- **毎日 9:00 JST の日次定例プロトコル（トリアージ優先順位）**:
+  1. **集合 ＆ Issue確認**: `npm run gct:status` と `npm run gct:feedback` で未消化 Issue・人間コメント・承認済み企画を確認し、対応可能なものがあれば最優先で消化する。
+  2. **組織体制・ドキュメント整合性精査**: 着手可能な Issue がない場合、`AGENTS.md`・`.agents/rules/AGENTS.md`・`.agents/members/00〜07`・`.agents/skills/*/SKILL.md`・`docs/` 間で方針・体制・仕様の食い違いがないかをチームで横断精査し、差異があれば修正PR（または整理Issue）を作成する。
+  3. **新規ゲーム企画の推進**: Issue も組織の食い違いもなければ（かつ決裁待ち企画提案が滞留していなければ）、`.agents/skills/new-game/SKILL.md` に従って次のゲーム企画（市場調査〜企画書MD提出）を進める。
 
 ---
 

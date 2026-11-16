@@ -64,9 +64,9 @@ export function GamePlayPage() {
             <span>ホーム</span>
           </Link>
 
-          {/* 中央：ゲームタイトル */}
-          <h1 className="mx-2 truncate text-sm font-extrabold text-slate-800">
-            {game.title}
+          {/* 中央：ゲームタイトル（ヘッダー枠内で省略...が出ないようサブタイトルを省いた簡潔表示） */}
+          <h1 className="mx-1 truncate text-xs font-extrabold text-slate-800 sm:text-sm">
+            {game.title.split('：')[0]}
           </h1>
 
           {/* 右：紹介・遊び方モーダル ＆ リスタートボタン */}

@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Crosshair,
   Dices,
   Gem,
   Lock,
+  Pin,
   Play,
   RotateCcw,
   Swords,
   TrendingUp,
   Trophy,
-  Unlock,
+  Undo2,
   X,
   Zap,
 } from 'lucide-react'
@@ -21,6 +23,7 @@ import {
   calculateSingleDieAction,
   calculateTurnPreview,
   initGameState,
+  previewAfterSingleAction,
   step,
 } from './logic'
 import {
@@ -32,6 +35,8 @@ import {
 } from './storage'
 import { playSound } from './audio'
 import type {
+  ActionOutcomePreview,
+  DieState,
   EngravingDef,
   EngravingId,
   GameState,
@@ -128,6 +133,9 @@ function formatEngravingEffectParts(eng: EngravingDef): string[] {
 
 const playClickSfx = () => playSound('dice_place')
 const playDiceRollSfx = () => playSound('dice_roll')
+const playDiceLandSfx = (idx: number) => playSound('dice_land', idx)
+const playAimLockSfx = () => playSound('aim_lock')
+const playUndoSfx = () => playSound('undo_step')
 const playManaShiftSfx = () => playSound('magic_burst')
 const playShieldGainSfx = () => playSound('guard_shield')
 const playSlashHitSfx = (hits = 1) => playSound('attack_slash', hits)
@@ -138,6 +146,43 @@ const playForgeHammerSfx = () => playSound('forge_hammer')
 const playVictorySfx = () => playSound('victory')
 const playDamageSfx = () => playSound('attack_slash')
 const playGameOverSfx = () => playSound('attack_slash')
+
+interface RollSequenceState {
+  active: boolean
+  targetDieIds: number[]
+  settledMap: Record<number, boolean>
+  displayPips: Record<number, number>
+  justLandedId: number | null
+  anticipatingId: number | null
+  startedAt: number
+}
+
+const INITIAL_ROLL_SEQ: RollSequenceState = {
+  active: false,
+  targetDieIds: [],
+  settledMap: { 0: true, 1: true, 2: true, 3: true },
+  displayPips: { 0: 1, 1: 2, 2: 3, 3: 4 },
+  justLandedId: null,
+  anticipatingId: null,
+  startedAt: 0,
+}
+
+function hasReachOpportunity(pips: number[]): boolean {
+  if (pips.length < 3) return false
+  const counts = new Map<number, number>()
+  for (const p of pips) counts.set(p, (counts.get(p) ?? 0) + 1)
+  if (Array.from(counts.values()).some((c) => c >= 2)) return true
+  const uniqueSorted = Array.from(new Set(pips)).sort((a, b) => a - b)
+  if (
+    uniqueSorted.length >= 3 &&
+    uniqueSorted[uniqueSorted.length - 1] - uniqueSorted[0] <= 3
+  ) {
+    return true
+  }
+  const allEven = pips.every((p) => p % 2 === 0)
+  const allOdd = pips.every((p) => p % 2 === 1)
+  return allEven || allOdd
+}
 
 export default function DiceForgeDungeonGame() {
   const [savedRun, setSavedRun] = useState<GameState | null>(() =>
@@ -150,7 +195,16 @@ export default function DiceForgeDungeonGame() {
 
   // Battle interaction states
   const [selectedDieId, setSelectedDieId] = useState<number | null>(0)
-  const [rollingAnim, setRollingAnim] = useState(false)
+  const [rollSeq, setRollSeq] = useState<RollSequenceState>(INITIAL_ROLL_SEQ)
+  const [armedSlotId, setArmedSlotId] = useState<SlotId | null>(null)
+  const [undoStack, setUndoStack] = useState<GameState[]>([])
+  const [dragState, setDragState] = useState<{
+    dieId: number
+    x: number
+    y: number
+    active: boolean
+    hoveredSlotId: SlotId | null
+  } | null>(null)
   const [executingEnemyTurn, setExecutingEnemyTurn] = useState(false)
   const [showDiceNetModal, setShowDiceNetModal] = useState(false)
   const [activePopupText, setActivePopupText] = useState<string | null>(null)
@@ -165,14 +219,33 @@ export default function DiceForgeDungeonGame() {
   const floaterIdRef = useRef(1)
   const executingTurnRef = useRef(false)
   const enemyTurnTimerRef = useRef<number | null>(null)
+  const rollTimersRef = useRef<number[]>([])
+  const rollIntervalRef = useRef<number | null>(null)
+  const rollTargetStateRef = useRef<GameState | null>(null)
+  const slotRefs = useRef<Partial<Record<SlotId, HTMLButtonElement | null>>>({})
+  const suppressDieClickRef = useRef(false)
+  const livePreviewRef = useRef<ActionOutcomePreview | null>(null)
+  const isRollingRef = useRef(false)
+
+  const clearRollTimers = useCallback(() => {
+    for (const id of rollTimersRef.current) {
+      window.clearTimeout(id)
+    }
+    rollTimersRef.current = []
+    if (rollIntervalRef.current !== null) {
+      window.clearInterval(rollIntervalRef.current)
+      rollIntervalRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
       if (enemyTurnTimerRef.current !== null) {
         window.clearTimeout(enemyTurnTimerRef.current)
       }
+      clearRollTimers()
     }
-  }, [])
+  }, [clearRollTimers])
 
   const animRef = useRef<ArenaAnimState>({
     time: 0,
@@ -180,6 +253,7 @@ export default function DiceForgeDungeonGame() {
     screenShake: 0,
     redFlashAlpha: 0,
     goldFlashAlpha: 0,
+    rollCircleGlow: 0,
     heroOffsetX: 0,
     heroOffsetY: 0,
     heroPose: 'idle',
@@ -255,11 +329,33 @@ export default function DiceForgeDungeonGame() {
     return out
   }, [gameState, activeDie])
 
+  const armedActionPreview = useMemo<ActionOutcomePreview | null>(() => {
+    if (
+      !gameState ||
+      gameState.phase !== 'battle' ||
+      !activeDie ||
+      !armedSlotId ||
+      rollSeq.active
+    ) {
+      return null
+    }
+    return previewAfterSingleAction(gameState, activeDie, armedSlotId)
+  }, [gameState, activeDie, armedSlotId, rollSeq.active])
+
+  useEffect(() => {
+    livePreviewRef.current = armedActionPreview
+  }, [armedActionPreview])
+
+  useEffect(() => {
+    isRollingRef.current = rollSeq.active
+  }, [rollSeq.active])
+
   const spawnImpactVisuals = useCallback(
     (opts: {
       target: 'enemy' | 'hero'
       text: string
       subtext?: string
+      popupLabel?: string
       color: string
       slashType?: ArenaAnimState['slashes'][number]['type']
       shake?: number
@@ -273,9 +369,9 @@ export default function DiceForgeDungeonGame() {
       const isEnemy = opts.target === 'enemy'
       const cx = Math.round(isEnemy ? cvsW * 0.72 : cvsW * 0.28)
       const cy = Math.round(cvsH * 0.54)
-      // Position floating damage/shield popups toward arena center-mid so they never collide with Lv/ATK head badges
-      const fx = Math.round(isEnemy ? cvsW * 0.56 : cvsW * 0.42)
-      const fy = Math.round(cvsH * 0.56)
+      // Position floating damage/shield popups cleanly separated by side so Lv/ATK/Shield never overlap
+      const fx = Math.round(isEnemy ? cvsW * 0.64 : cvsW * 0.34)
+      const fy = Math.round(isEnemy ? cvsH * 0.52 : cvsH * 0.44)
 
       if (opts.hitstop) a.hitstopTimer = Math.max(a.hitstopTimer, opts.hitstop)
       if (opts.shake) a.screenShake = Math.max(a.screenShake, opts.shake)
@@ -342,8 +438,8 @@ export default function DiceForgeDungeonGame() {
       }
 
       for (const f of a.floaters) {
-        if (Math.abs(f.x - fx) < 60) {
-          f.y -= 24
+        if (Math.abs(f.x - fx) < 95) {
+          f.y -= 28
           f.subtext = undefined
         }
       }
@@ -351,7 +447,7 @@ export default function DiceForgeDungeonGame() {
       floaterIdRef.current += 1
       a.floaters.push({
         id: floaterIdRef.current,
-        x: fx + (Math.random() - 0.5) * 8,
+        x: fx + (Math.random() - 0.5) * 6,
         y: fy,
         vy: -18,
         text: opts.text,
@@ -363,7 +459,7 @@ export default function DiceForgeDungeonGame() {
         maxLife: 0.78,
       })
 
-      setActivePopupText(opts.text)
+      setActivePopupText(opts.popupLabel ?? opts.text)
     },
     []
   )
@@ -409,6 +505,7 @@ export default function DiceForgeDungeonGame() {
         a.screenShake = Math.max(0, a.screenShake - dt * 28)
         a.redFlashAlpha = Math.max(0, a.redFlashAlpha - dt * 2.2)
         a.goldFlashAlpha = Math.max(0, a.goldFlashAlpha - dt * 2.2)
+        a.rollCircleGlow = Math.max(0, a.rollCircleGlow - dt * 1.4)
         a.enemyFlashWhite = Math.max(0, a.enemyFlashWhite - dt)
 
         a.heroOffsetX += (0 - a.heroOffsetX) * Math.min(1, dt * 14)
@@ -514,6 +611,8 @@ export default function DiceForgeDungeonGame() {
           : 0,
         isBoss: gameState ? gameState.enemy.isBoss : false,
         isElite: gameState ? gameState.enemy.isElite : false,
+        isRolling: isRollingRef.current,
+        actionPreview: livePreviewRef.current,
       })
 
       rafId = requestAnimationFrame(renderLoop)
@@ -534,6 +633,140 @@ export default function DiceForgeDungeonGame() {
     }
   }, [])
 
+  const finishRollCelebration = useCallback((targetState: GameState) => {
+    const preview = calculateTurnPreview(targetState)
+    if (preview.formation.id !== 'none') {
+      animRef.current.comboBanner = {
+        text: FORMATION_SHORT_LABELS[preview.formation.id] ?? preview.formation.name,
+        mult: `x${preview.finalMult.toFixed(2)}`,
+        alpha: 1.4,
+        scale: 1.32,
+      }
+      animRef.current.goldFlashAlpha = 0.16
+      playComboFanfareSfx(preview.finalMult)
+    }
+  }, [])
+
+  const skipDiceRollSequence = useCallback(() => {
+    if (!rollTargetStateRef.current) return
+    clearRollTimers()
+    const target = rollTargetStateRef.current
+    rollTargetStateRef.current = null
+    setRollSeq((prev) => {
+      if (!prev.active) return prev
+      return {
+        ...prev,
+        active: false,
+        settledMap: { 0: true, 1: true, 2: true, 3: true },
+        justLandedId: null,
+        anticipatingId: null,
+      }
+    })
+    finishRollCelebration(target)
+  }, [clearRollTimers, finishRollCelebration])
+
+  const startDiceRollSequence = useCallback(
+    (targetState: GameState, targetDieIds: number[]) => {
+      clearRollTimers()
+      if (targetDieIds.length === 0) {
+        setRollSeq(INITIAL_ROLL_SEQ)
+        return
+      }
+
+      rollTargetStateRef.current = targetState
+      playDiceRollSfx()
+      animRef.current.rollCircleGlow = 1.0
+
+      const settledInit: Record<number, boolean> = { 0: true, 1: true, 2: true, 3: true }
+      const pipInit: Record<number, number> = { 0: 1, 1: 2, 2: 3, 3: 4 }
+      for (const d of targetState.dice) {
+        pipInit[d.id] = d.currentPip
+      }
+      for (const id of targetDieIds) {
+        settledInit[id] = false
+        pipInit[id] = ((pipInit[id] + 2) % 6) + 1
+      }
+
+      setRollSeq({
+        active: true,
+        targetDieIds,
+        settledMap: settledInit,
+        displayPips: pipInit,
+        justLandedId: null,
+        anticipatingId: null,
+        startedAt: performance.now(),
+      })
+
+      // 45ms毎に未確定ダイスの出目をパラパラ回転させる
+      rollIntervalRef.current = window.setInterval(() => {
+        setRollSeq((prev) => {
+          if (!prev.active) return prev
+          const nextPips = { ...prev.displayPips }
+          for (const id of prev.targetDieIds) {
+            if (!prev.settledMap[id]) {
+              const cur = nextPips[id] ?? 1
+              nextPips[id] = ((cur + Math.floor(Math.random() * 5)) % 6) + 1
+            }
+          }
+          return { ...prev, displayPips: nextPips }
+        })
+      }, 45)
+
+      // 最終ダイス着地前のリーチ判定（既に確定している＋固定中ダイスで役リーチか）
+      const lastId = targetDieIds[targetDieIds.length - 1]
+      const precedingPips = targetState.dice
+        .filter((d) => d.id !== lastId && d.assignedSlot === null)
+        .map((d) => d.currentPip)
+      const isReach = targetDieIds.length >= 2 && hasReachOpportunity(precedingPips)
+
+      let lastFinishMs = 0
+      targetDieIds.forEach((dieId, idx) => {
+        const isLast = idx === targetDieIds.length - 1
+        const reachDelay = isLast && isReach ? 90 : 0
+        const settleAt = 190 + idx * 105 + reachDelay
+        lastFinishMs = settleAt
+
+        if (isLast && isReach) {
+          const antTimer = window.setTimeout(() => {
+            setRollSeq((prev) =>
+              prev.active ? { ...prev, anticipatingId: dieId } : prev
+            )
+          }, Math.max(0, settleAt - 120))
+          rollTimersRef.current.push(antTimer)
+        }
+
+        const tId = window.setTimeout(() => {
+          playDiceLandSfx(idx)
+          setRollSeq((prev) => {
+            if (!prev.active) return prev
+            return {
+              ...prev,
+              settledMap: { ...prev.settledMap, [dieId]: true },
+              justLandedId: dieId,
+              anticipatingId: prev.anticipatingId === dieId ? null : prev.anticipatingId,
+            }
+          })
+        }, settleAt)
+        rollTimersRef.current.push(tId)
+      })
+
+      const doneTimer = window.setTimeout(() => {
+        clearRollTimers()
+        rollTargetStateRef.current = null
+        setRollSeq((prev) => ({
+          ...prev,
+          active: false,
+          settledMap: { 0: true, 1: true, 2: true, 3: true },
+          justLandedId: null,
+          anticipatingId: null,
+        }))
+        finishRollCelebration(targetState)
+      }, lastFinishMs + 95)
+      rollTimersRef.current.push(doneTimer)
+    },
+    [clearRollTimers, finishRollCelebration]
+  )
+
   // Start new run
   const handleStartNewRun = (classId: StarterClassId = selectedClass) => {
     if (enemyTurnTimerRef.current !== null) {
@@ -542,9 +775,12 @@ export default function DiceForgeDungeonGame() {
     }
     executingTurnRef.current = false
     setExecutingEnemyTurn(false)
+    setArmedSlotId(null)
+    setUndoStack([])
     playClickSfx()
     const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0
     const next = initGameState(seed, classId, 0)
+    animRef.current.comboBanner = null
     animRef.current.displayedHeroHp = next.hp
     animRef.current.displayedHeroShield = next.shield
     animRef.current.displayedEnemyHp = next.enemy.hp
@@ -552,6 +788,7 @@ export default function DiceForgeDungeonGame() {
     setActivePopupText(null)
     setGameState(next)
     setSelectedDieId(0)
+    startDiceRollSequence(next, [0, 1, 2, 3])
   }
 
   // Resume saved run
@@ -561,9 +798,15 @@ export default function DiceForgeDungeonGame() {
       window.clearTimeout(enemyTurnTimerRef.current)
       enemyTurnTimerRef.current = null
     }
+    clearRollTimers()
+    rollTargetStateRef.current = null
+    setRollSeq(INITIAL_ROLL_SEQ)
     executingTurnRef.current = false
     setExecutingEnemyTurn(false)
+    setArmedSlotId(null)
+    setUndoStack([])
     playClickSfx()
+    animRef.current.comboBanner = null
     animRef.current.displayedHeroHp = savedRun.hp
     animRef.current.displayedHeroShield = savedRun.shield
     animRef.current.displayedEnemyHp = savedRun.enemy.hp
@@ -582,17 +825,23 @@ export default function DiceForgeDungeonGame() {
     ) {
       return
     }
-    playDiceRollSfx()
-    setRollingAnim(true)
-    setTimeout(() => setRollingAnim(false), 240)
+    setArmedSlotId(null)
+    setUndoStack([]) // RNGを消費するため過去のUndoはクリア
+    animRef.current.comboBanner = null
     const lockIds = gameState.dice.filter((d) => d.locked).map((d) => d.id)
-    setGameState(step(gameState, { type: 'REROLL_DICE', lockDieIds: lockIds }))
+    const rollingIds = gameState.dice
+      .filter((d) => !d.locked && d.assignedSlot === null)
+      .map((d) => d.id)
+    const next = step(gameState, { type: 'REROLL_DICE', lockDieIds: lockIds })
+    setGameState(next)
+    startDiceRollSequence(next, rollingIds)
   }
 
   // Toggle lock on an unused die
   const handleToggleLock = (dieId: number, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!gameState || executingTurnRef.current) return
+    if (rollSeq.active) skipDiceRollSequence()
     playClickSfx()
     const clone = structuredClone(gameState)
     const die = clone.dice.find((d) => d.id === dieId)
@@ -607,6 +856,7 @@ export default function DiceForgeDungeonGame() {
     mode: 'plus1' | 'minus1' | 'flip' = 'plus1'
   ) => {
     if (!gameState || gameState.mana < 1 || executingTurnRef.current) return
+    if (rollSeq.active) skipDiceRollSequence()
     const targetId =
       activeDie?.id ?? gameState.dice.find((d) => d.assignedSlot === null)?.id
     if (targetId === undefined) return
@@ -616,10 +866,31 @@ export default function DiceForgeDungeonGame() {
       dieId: targetId,
       mode,
     })
+    if (next.phase === 'battle') {
+      setUndoStack((prev) => [...prev, gameState])
+      // Sync comboBanner immediately with updated pips so canvas & bar never show conflicting formations
+      const updatedPreview = calculateTurnPreview(next)
+      if (updatedPreview.formation.id !== 'none') {
+        animRef.current.comboBanner = {
+          text:
+            FORMATION_SHORT_LABELS[updatedPreview.formation.id] ??
+            updatedPreview.formation.name,
+          mult: `x${updatedPreview.finalMult.toFixed(2)}`,
+          alpha: 1.35,
+          scale: 1.25,
+        }
+      } else {
+        animRef.current.comboBanner = null
+      }
+    } else {
+      setUndoStack([])
+      animRef.current.comboBanner = null
+    }
     setGameState(next)
     spawnImpactVisuals({
       target: 'hero',
       text: mode === 'plus1' ? '+1' : mode === 'minus1' ? '-1' : 'FLIP',
+      popupLabel: mode === 'plus1' ? '出目 +1' : mode === 'minus1' ? '出目 -1' : '出目反転',
       color: '#c084fc',
       slashType: 'arcana',
     })
@@ -627,7 +898,9 @@ export default function DiceForgeDungeonGame() {
       playVictorySfx()
       animRef.current.floaters = []
       animRef.current.slashes = []
+      animRef.current.comboBanner = null
       setActivePopupText(null)
+      setArmedSlotId(null)
       finalizeRunIfEnded(next)
     }
   }
@@ -638,6 +911,8 @@ export default function DiceForgeDungeonGame() {
       if (stateAfter4thDie.phase !== 'battle' || executingTurnRef.current) return
       executingTurnRef.current = true
       setExecutingEnemyTurn(true)
+      setArmedSlotId(null)
+      setUndoStack([])
 
       enemyTurnTimerRef.current = window.setTimeout(() => {
         const incoming =
@@ -655,13 +930,16 @@ export default function DiceForgeDungeonGame() {
           playVictorySfx()
           animRef.current.floaters = []
           animRef.current.slashes = []
+          animRef.current.comboBanner = null
           setActivePopupText(null)
           finalizeRunIfEnded(next)
         } else if (next.phase === 'gameover') {
           playGameOverSfx()
+          animRef.current.comboBanner = null
           spawnImpactVisuals({
             target: 'hero',
             text: `-${expectedUnblocked}`,
+            popupLabel: `被弾 -${expectedUnblocked}`,
             color: '#f43f5e',
             slashType: 'enemy_claw',
             shake: 10,
@@ -674,6 +952,7 @@ export default function DiceForgeDungeonGame() {
           spawnImpactVisuals({
             target: 'hero',
             text: `-${expectedUnblocked}`,
+            popupLabel: `被弾 -${expectedUnblocked}`,
             color: '#f43f5e',
             slashType: 'enemy_claw',
             shake: 9,
@@ -685,6 +964,7 @@ export default function DiceForgeDungeonGame() {
           spawnImpactVisuals({
             target: 'hero',
             text: 'GUARD!',
+            popupLabel: '完全ガード!',
             color: '#38bdf8',
             slashType: 'shield',
             shake: 3,
@@ -694,13 +974,166 @@ export default function DiceForgeDungeonGame() {
         setGameState(next)
         executingTurnRef.current = false
         setExecutingEnemyTurn(false)
+        if (next.phase === 'battle') {
+          startDiceRollSequence(next, [0, 1, 2, 3])
+        }
       }, 360)
     },
-    [finalizeRunIfEnded, spawnImpactVisuals]
+    [finalizeRunIfEnded, spawnImpactVisuals, startDiceRollSequence]
   )
 
-  // Direct 1-Die = 1-Instant-Action Command Tap
-  const handleCommandTap = (slotId: SlotId) => {
+  // Execute action for a specific die and slot (called on 2nd tap or drag-drop)
+  const executeDieOnSlot = useCallback(
+    (die: DieState, slotId: SlotId) => {
+      if (
+        !gameState ||
+        gameState.phase !== 'battle' ||
+        executingTurnRef.current ||
+        die.assignedSlot !== null
+      ) {
+        return
+      }
+
+      const actionPreview = calculateSingleDieAction(gameState, die, slotId)
+      const nextState = step(gameState, {
+        type: 'ASSIGN_DIE',
+        dieId: die.id,
+        slotId,
+      })
+
+      const remainingDice = nextState.dice.filter((d) => d.assignedSlot === null)
+      if (nextState.phase === 'battle' && remainingDice.length > 0) {
+        setUndoStack((prev) => [...prev, gameState])
+      } else {
+        setUndoStack([])
+      }
+
+      setArmedSlotId(null)
+      setGameState(nextState)
+
+      // Trigger Immediate Tactile Combat Visuals & SFX
+      if (slotId === 'guard_1') {
+        playShieldGainSfx()
+        spawnImpactVisuals({
+          target: 'hero',
+          text: `盾+${actionPreview.shieldGain}`,
+          subtext:
+            actionPreview.damage > 0 ? `追撃 ${actionPreview.damage}` : undefined,
+          popupLabel:
+            actionPreview.damage > 0
+              ? `鉄壁盾 +${actionPreview.shieldGain} / 追撃 ${actionPreview.damage}`
+              : `鉄壁盾 +${actionPreview.shieldGain}`,
+          color: '#38bdf8',
+          slashType: 'shield',
+          shake: 3,
+        })
+        if (actionPreview.damage > 0) {
+          spawnImpactVisuals({
+            target: 'enemy',
+            text: `-${actionPreview.damage}!`,
+            popupLabel: `鉄壁盾 +${actionPreview.shieldGain} / 追撃 -${actionPreview.damage}`,
+            color: '#60a5fa',
+            slashType: 'sword',
+            shake: 4,
+            hitstop: 0.05,
+          })
+        }
+      } else if (slotId === 'strike_2') {
+        playSlashHitSfx(actionPreview.hits)
+        spawnImpactVisuals({
+          target: 'enemy',
+          text: `-${actionPreview.damage}!`,
+          subtext:
+            actionPreview.poisonApplied > 0
+              ? `+${actionPreview.poisonApplied}毒`
+              : `${actionPreview.hits}HIT`,
+          popupLabel:
+            actionPreview.poisonApplied > 0
+              ? `毒連撃 -${actionPreview.damage} / +${actionPreview.poisonApplied}毒`
+              : `毒連撃 -${actionPreview.damage}`,
+          color: '#34d399',
+          slashType: 'dagger',
+          shake: actionPreview.bonusTriggered ? 6 : 4,
+          hitstop: 0.06,
+        })
+      } else if (slotId === 'arcana_1') {
+        if (actionPreview.isOverchargeBlast) {
+          playHeavyImpactSfx()
+        } else {
+          playSlashHitSfx(1)
+        }
+        spawnImpactVisuals({
+          target: 'enemy',
+          text: `-${actionPreview.damage}!`,
+          subtext: actionPreview.isOverchargeBlast
+            ? 'MP必殺砲'
+            : `+${actionPreview.manaGain}MP`,
+          popupLabel: actionPreview.isOverchargeBlast
+            ? `必殺魔導砲 -${actionPreview.damage}!`
+            : `魔導砲 -${actionPreview.damage} / +${actionPreview.manaGain}MP`,
+          color: '#c084fc',
+          slashType: 'arcana',
+          shake: actionPreview.isOverchargeBlast ? 9 : 4,
+          hitstop: actionPreview.isOverchargeBlast ? 0.08 : 0.05,
+          goldFlash: actionPreview.isOverchargeBlast ? 0.2 : 0,
+        })
+      } else {
+        const isHeavy = actionPreview.bonusTriggered || actionPreview.damage >= 16
+        if (isHeavy) {
+          playHeavyImpactSfx()
+        } else {
+          playSlashHitSfx(1)
+        }
+        spawnImpactVisuals({
+          target: 'enemy',
+          text: `-${actionPreview.damage}!`,
+          subtext: actionPreview.bonusTriggered ? actionPreview.bonusTag : undefined,
+          popupLabel: `強斬撃 -${actionPreview.damage}!`,
+          color: isHeavy ? '#fbbf24' : '#fb7185',
+          slashType: 'sword',
+          shake: isHeavy ? 8 : 5,
+          hitstop: isHeavy ? 0.08 : 0.05,
+          goldFlash: isHeavy ? 0.16 : 0,
+        })
+      }
+
+      if (turnPreview && turnPreview.formation.id !== 'none' && actionPreview.bonusTriggered) {
+        playComboFanfareSfx(turnPreview.finalMult)
+      }
+
+      // Immediate victory/reward check if enemy died from this strike
+      if (nextState.phase === 'reward' || nextState.phase === 'victory') {
+        playVictorySfx()
+        animRef.current.floaters = []
+        animRef.current.slashes = []
+        animRef.current.comboBanner = null
+        setActivePopupText(null)
+        finalizeRunIfEnded(nextState)
+        return
+      }
+      if (nextState.phase === 'gameover') {
+        playGameOverSfx()
+        animRef.current.comboBanner = null
+        finalizeRunIfEnded(nextState)
+        return
+      }
+
+      // Check if all 4 dice are now used -> trigger enemy turn after short beat
+      if (remainingDice.length === 0) {
+        triggerEnemyTurn(nextState)
+      }
+    },
+    [
+      finalizeRunIfEnded,
+      gameState,
+      spawnImpactVisuals,
+      triggerEnemyTurn,
+      turnPreview,
+    ]
+  )
+
+  // 1st Tap = Arm & Preview on Arena (No Accidental Spend); 2nd Tap on same slot = Execute
+  const handleSlotTap = (slotId: SlotId) => {
     if (
       !gameState ||
       gameState.phase !== 'battle' ||
@@ -709,113 +1142,143 @@ export default function DiceForgeDungeonGame() {
     ) {
       return
     }
-
-    const actionPreview = calculateSingleDieAction(gameState, activeDie, slotId)
-    const nextState = step(gameState, {
-      type: 'ASSIGN_DIE',
-      dieId: activeDie.id,
-      slotId,
-    })
-    setGameState(nextState)
-
-    // Trigger Immediate Tactile Combat Visuals & SFX
-    if (slotId === 'guard_1') {
-      playShieldGainSfx()
-      spawnImpactVisuals({
-        target: 'hero',
-        text: `盾+${actionPreview.shieldGain}`,
-        subtext:
-          actionPreview.damage > 0 ? `追撃 ${actionPreview.damage}` : undefined,
-        color: '#38bdf8',
-        slashType: 'shield',
-        shake: 3,
-      })
-      if (actionPreview.damage > 0) {
-        spawnImpactVisuals({
-          target: 'enemy',
-          text: `-${actionPreview.damage}!`,
-          color: '#60a5fa',
-          slashType: 'sword',
-          shake: 4,
-          hitstop: 0.05,
-        })
-      }
-    } else if (slotId === 'strike_2') {
-      playSlashHitSfx(actionPreview.hits)
-      spawnImpactVisuals({
-        target: 'enemy',
-        text: `-${actionPreview.damage}!`,
-        subtext:
-          actionPreview.poisonApplied > 0
-            ? `+${actionPreview.poisonApplied}毒`
-            : `${actionPreview.hits}HIT`,
-        color: '#34d399',
-        slashType: 'dagger',
-        shake: actionPreview.bonusTriggered ? 6 : 4,
-        hitstop: 0.06,
-      })
-    } else if (slotId === 'arcana_1') {
-      if (actionPreview.isOverchargeBlast) {
-        playHeavyImpactSfx()
-      } else {
-        playSlashHitSfx(1)
-      }
-      spawnImpactVisuals({
-        target: 'enemy',
-        text: `-${actionPreview.damage}!`,
-        subtext: actionPreview.isOverchargeBlast
-          ? 'MP必殺砲'
-          : `+${actionPreview.manaGain}MP`,
-        color: '#c084fc',
-        slashType: 'arcana',
-        shake: actionPreview.isOverchargeBlast ? 9 : 4,
-        hitstop: actionPreview.isOverchargeBlast ? 0.08 : 0.05,
-        goldFlash: actionPreview.isOverchargeBlast ? 0.2 : 0,
-      })
-    } else {
-      const isHeavy = actionPreview.bonusTriggered || actionPreview.damage >= 16
-      if (isHeavy) {
-        playHeavyImpactSfx()
-      } else {
-        playSlashHitSfx(1)
-      }
-      spawnImpactVisuals({
-        target: 'enemy',
-        text: `-${actionPreview.damage}!`,
-        subtext: actionPreview.bonusTriggered ? actionPreview.bonusTag : undefined,
-        color: isHeavy ? '#fbbf24' : '#fb7185',
-        slashType: 'sword',
-        shake: isHeavy ? 8 : 5,
-        hitstop: isHeavy ? 0.08 : 0.05,
-        goldFlash: isHeavy ? 0.16 : 0,
-      })
-    }
-
-    if (turnPreview && turnPreview.formation.id !== 'none' && actionPreview.bonusTriggered) {
-      playComboFanfareSfx(turnPreview.finalMult)
-    }
-
-    // Immediate victory/reward check if enemy died from this strike
-    if (nextState.phase === 'reward' || nextState.phase === 'victory') {
-      playVictorySfx()
-      animRef.current.floaters = []
-      animRef.current.slashes = []
-      setActivePopupText(null)
-      finalizeRunIfEnded(nextState)
+    if (rollSeq.active) {
+      skipDiceRollSequence()
+      playAimLockSfx()
+      setArmedSlotId(slotId)
       return
     }
-    if (nextState.phase === 'gameover') {
-      playGameOverSfx()
-      finalizeRunIfEnded(nextState)
+    if (armedSlotId !== slotId) {
+      playAimLockSfx()
+      setArmedSlotId(slotId)
       return
     }
-
-    // Check if all 4 dice are now used -> trigger enemy turn after short beat
-    const remainingDice = nextState.dice.filter((d) => d.assignedSlot === null)
-    if (remainingDice.length === 0) {
-      triggerEnemyTurn(nextState)
-    }
+    executeDieOnSlot(activeDie, slotId)
   }
+
+  // Undo last action within current turn (up to 3rd die before enemy turn)
+  const handleUndo = () => {
+    if (undoStack.length === 0 || executingTurnRef.current) return
+    if (rollSeq.active) skipDiceRollSequence()
+    const prevState = undoStack[undoStack.length - 1]
+    setUndoStack((s) => s.slice(0, -1))
+    setArmedSlotId(null)
+    setGameState(prevState)
+    animRef.current.floaters = []
+    animRef.current.slashes = []
+    animRef.current.comboBanner = null
+    setActivePopupText(null)
+    playUndoSfx()
+  }
+
+  // Drag & Drop Die -> Command Slot (1-gesture instant strike with live arena preview)
+  const detectHoveredSlot = useCallback((clientX: number, clientY: number): SlotId | null => {
+    for (const card of COMMAND_CARDS) {
+      const el = slotRefs.current[card.id]
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (
+        clientX >= rect.left - 6 &&
+        clientX <= rect.right + 6 &&
+        clientY >= rect.top - 8 &&
+        clientY <= rect.bottom + 8
+      ) {
+        return card.id
+      }
+    }
+    return null
+  }, [])
+
+  const dragOriginRef = useRef<{
+    dieId: number
+    startX: number
+    startY: number
+    active: boolean
+    hoveredSlotId: SlotId | null
+  } | null>(null)
+
+  const handleDiePointerDown = (
+    die: DieState,
+    e: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (die.assignedSlot !== null || executingTurnRef.current) return
+    if ((e.target as HTMLElement).closest('button')) return
+    if (rollSeq.active) {
+      skipDiceRollSequence()
+    }
+    dragOriginRef.current = {
+      dieId: die.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+      hoveredSlotId: null,
+    }
+    setDragState({
+      dieId: die.id,
+      x: e.clientX,
+      y: e.clientY,
+      active: false,
+      hoveredSlotId: null,
+    })
+  }
+
+  const isPointerDragging = dragState !== null
+
+  useEffect(() => {
+    if (!isPointerDragging) return
+
+    const handleMove = (e: PointerEvent) => {
+      const origin = dragOriginRef.current
+      if (!origin) return
+      const dist = Math.hypot(e.clientX - origin.startX, e.clientY - origin.startY)
+      if (!origin.active && dist < 10) return
+
+      if (!origin.active) {
+        origin.active = true
+        setSelectedDieId(origin.dieId)
+      }
+      const hovered = detectHoveredSlot(e.clientX, e.clientY)
+      if (hovered !== origin.hoveredSlotId) {
+        origin.hoveredSlotId = hovered
+        if (hovered) playAimLockSfx()
+        setArmedSlotId(hovered)
+      }
+      setDragState({
+        dieId: origin.dieId,
+        x: e.clientX,
+        y: e.clientY,
+        active: true,
+        hoveredSlotId: hovered,
+      })
+    }
+
+    const handleUp = () => {
+      const origin = dragOriginRef.current
+      dragOriginRef.current = null
+      setDragState(null)
+      if (origin?.active) {
+        suppressDieClickRef.current = true
+        window.setTimeout(() => {
+          suppressDieClickRef.current = false
+        }, 0)
+        const draggedDie = gameState?.dice.find((d) => d.id === origin.dieId)
+        if (draggedDie && origin.hoveredSlotId) {
+          executeDieOnSlot(draggedDie, origin.hoveredSlotId)
+        } else {
+          setArmedSlotId(null)
+        }
+      }
+    }
+
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    window.addEventListener('pointercancel', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+      window.removeEventListener('pointercancel', handleUp)
+    }
+  }, [isPointerDragging, detectHoveredSlot, executeDieOnSlot, gameState])
 
   // Confirm Stage Clear Level Up Reward
   const handleConfirmReward = (
@@ -835,7 +1298,12 @@ export default function DiceForgeDungeonGame() {
     animRef.current.displayedEnemyHp = next.enemy.hp
     animRef.current.displayedEnemyShield = next.enemy.shield
     setActivePopupText(null)
+    setArmedSlotId(null)
+    setUndoStack([])
     setGameState(next)
+    if (next.phase === 'battle') {
+      startDiceRollSequence(next, [0, 1, 2, 3])
+    }
   }
 
   // Derived data for always-visible Top Bar (Zone A)
@@ -862,7 +1330,7 @@ export default function DiceForgeDungeonGame() {
       {/* ==================================================================== */}
       <div
         data-testid="layout-zone-top"
-        className="flex h-[92px] shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-slate-800 bg-slate-900/95 px-2.5 py-1.5"
+        className="flex h-[92px] shrink-0 flex-col justify-start gap-2 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/95 px-2.5 py-2"
       >
         {!gameState ? (
           <>
@@ -1027,10 +1495,10 @@ export default function DiceForgeDungeonGame() {
               <div className="flex flex-col items-center rounded-xl border border-slate-700 bg-slate-950/90 p-2.5 text-center">
                 <Swords className="h-6 w-6 text-rose-400" />
                 <span className="mt-1.5 text-xs font-black text-white">
-                  2. 技で即発動
+                  2. 狙って発動
                 </span>
                 <span className="mt-1 text-xs font-bold leading-tight text-slate-300">
-                  技を押した瞬間に攻撃や盾発動
+                  予測後に 2タップかD&D発動
                 </span>
               </div>
               <div className="flex flex-col items-center rounded-xl border border-slate-700 bg-slate-950/90 p-2.5 text-center">
@@ -1044,18 +1512,31 @@ export default function DiceForgeDungeonGame() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              {savedRun && (
+            {savedRun ? (
+              <div className="grid grid-cols-[1.4fr_1fr] gap-2">
                 <button
                   type="button"
                   data-testid="dice-forge-continue-btn"
                   onClick={handleResumeRun}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-600 py-2.5 text-sm font-black text-white shadow-md transition hover:bg-emerald-500"
+                  className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-emerald-400/50 bg-emerald-600 py-3.5 text-sm font-black whitespace-nowrap text-white shadow-md transition hover:bg-emerald-500"
                 >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>つづきから再開 (STAGE {savedRun.floor}/12)</span>
+                  <RotateCcw className="h-4 w-4 shrink-0" />
+                  <span>つづき (STAGE {savedRun.floor})</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  data-testid="title-start-btn"
+                  onClick={() => {
+                    playClickSfx()
+                    setScreenMode('class_select')
+                  }}
+                  className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-sm font-black whitespace-nowrap text-slate-950 shadow-lg shadow-amber-500/25 transition hover:from-amber-400 hover:to-orange-400"
+                >
+                  <Play className="h-4 w-4 shrink-0 fill-current" />
+                  <span>最初から</span>
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
                 data-testid="title-start-btn"
@@ -1068,7 +1549,7 @@ export default function DiceForgeDungeonGame() {
                 <Play className="h-5 w-5 fill-current" />
                 <span>ゲームスタート</span>
               </button>
-            </div>
+            )}
           </div>
         )}
 
@@ -1149,77 +1630,144 @@ export default function DiceForgeDungeonGame() {
           </div>
         )}
 
-        {/* C-3: BATTLE CONTROLS (1 DIE = 1 INSTANT ACTION, NO AUTO/ALL-IN BUTTONS) */}
+        {/* C-3: BATTLE CONTROLS (AIM-PREVIEW + DOUBLE-TAP/DRAG EXECUTE + SEQUENTIAL DICE ROLL) */}
         {gameState && gameState.phase === 'battle' && turnPreview && (
           <div className="flex h-full flex-col justify-between gap-1">
-            {/* Guide, Selected Die Effect & Combo Strip */}
-            <div className="flex flex-col gap-0.5 rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-xs font-black">
-              <div className="flex items-center justify-between">
+            {/* Guide, Aim Preview & Combo Strip (Fixed 44px Height — Zero Layout Shift) */}
+            <div className="flex h-[44px] shrink-0 flex-col justify-center gap-0.5 rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1 text-xs font-black">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-amber-300">
-                  <span>
-                    {executingEnemyTurn
-                      ? '敵の反撃ターン'
-                      : activeDie
-                        ? `出目[${activeDie.currentPip}] ${ENGRAVINGS[activeDie.currentEngravingId].name}`
-                        : 'ターン終了'}
-                  </span>
+                  {rollSeq.active ? (
+                    <span data-testid="dice-rolling-banner">
+                      運命のダイス回転中
+                    </span>
+                  ) : armedSlotId && armedActionPreview ? (
+                    <span data-testid="aim-status-banner" className="text-amber-200">
+                      照準: {COMMAND_CARDS.find((c) => c.id === armedSlotId)?.title}{' '}
+                      ({armedActionPreview.action.summaryLabel})
+                    </span>
+                  ) : (
+                    <span>
+                      {executingEnemyTurn
+                        ? '敵の反撃ターン'
+                        : activeDie
+                          ? `出目[${activeDie.currentPip}] ${ENGRAVINGS[activeDie.currentEngravingId].name}`
+                          : 'ターン終了'}
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <span className="text-slate-300">残{unusedCount}/4</span>
                   <span
                     className={`rounded-md border px-1.5 py-0.5 text-xs font-black ${
-                      turnPreview.formation.id !== 'none'
+                      turnPreview.formation.id !== 'none' && !rollSeq.active
                         ? 'border-amber-400/60 bg-amber-500/25 text-amber-200'
                         : 'border-slate-700 bg-slate-800 text-slate-300'
                     }`}
                   >
-                    {FORMATION_SHORT_LABELS[turnPreview.formation.id] ?? '倍率'} x
-                    {turnPreview.finalMult.toFixed(2)}
+                    {rollSeq.active
+                      ? '判定中'
+                      : `${FORMATION_SHORT_LABELS[turnPreview.formation.id] ?? '倍率'} x${turnPreview.finalMult.toFixed(2)}`}
                   </span>
                 </div>
               </div>
-              {activeDie && !executingEnemyTurn && (
-                <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold text-sky-200">
-                  {activeDie.currentEngravingId.startsWith('base_') ? (
-                    <span className="text-slate-400">
-                      下の技をタップすると即座に発動
-                    </span>
-                  ) : (
-                    <>
-                      <span className="text-amber-300">発動効果:</span>
-                      {formatEngravingEffectParts(
-                        ENGRAVINGS[activeDie.currentEngravingId]
-                      ).map((part, pIdx) => (
-                        <span key={pIdx} className="whitespace-nowrap">
-                          {part}
-                        </span>
-                      ))}
-                    </>
-                  )}
+              {rollSeq.active ? (
+                <div className="flex items-center gap-x-1.5 text-xs font-bold text-amber-200/90">
+                  <span>タップで即確定 / 1個ずつ着地</span>
                 </div>
+              ) : armedActionPreview ? (
+                <div className="flex items-center gap-x-2 text-xs font-bold">
+                  <span
+                    className={
+                      armedActionPreview.willKillEnemyNow ||
+                      armedActionPreview.willKillEnemyByPoison
+                        ? 'text-amber-300'
+                        : 'text-sky-200'
+                    }
+                  >
+                    {armedActionPreview.willKillEnemyNow
+                      ? '敵撃破確定!'
+                      : armedActionPreview.willKillEnemyByPoison
+                        ? '毒で撃破確定!'
+                        : `敵残HP ${armedActionPreview.enemyHpAfter}`}
+                  </span>
+                  {!armedActionPreview.willKillEnemyNow &&
+                    !armedActionPreview.willKillEnemyByPoison &&
+                    armedActionPreview.expectedIncomingAfter > 0 && (
+                      <span
+                        className={
+                          armedActionPreview.isFullGuard
+                            ? 'text-cyan-300'
+                            : 'text-rose-300'
+                        }
+                      >
+                        {armedActionPreview.isFullGuard
+                          ? '反撃完全ガード'
+                          : `反撃被弾 -${armedActionPreview.expectedUnblockedAfter}`}
+                      </span>
+                    )}
+                </div>
+              ) : (
+                activeDie &&
+                !executingEnemyTurn && (
+                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs font-bold text-sky-200">
+                    {activeDie.currentEngravingId.startsWith('base_') ? (
+                      <span className="text-slate-400">
+                        技1タップで予測 / 再タップ・ドラッグで発動
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-amber-300">発動効果:</span>
+                        {formatEngravingEffectParts(
+                          ENGRAVINGS[activeDie.currentEngravingId]
+                        ).map((part, pIdx) => (
+                          <span key={pIdx} className="whitespace-nowrap">
+                            {part}
+                          </span>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )
               )}
             </div>
 
-            {/* 4 Direct Instant Action Buttons */}
+            {/* 4 Command Cards (1st Tap = Arm & Preview, 2nd Tap / Drop = Instant Execute) */}
             <div className="grid grid-cols-4 gap-1.5">
               {COMMAND_CARDS.map((card) => {
                 const preview = commandActionPreviews[card.id]
                 const isBonus = preview?.bonusTriggered ?? false
                 const isDisabled = executingEnemyTurn || !activeDie
+                const isArmed = armedSlotId === card.id
+                const isDragHover = Boolean(
+                  dragState?.active && dragState.hoveredSlotId === card.id
+                )
 
                 return (
                   <button
                     key={card.id}
+                    ref={(el) => {
+                      slotRefs.current[card.id] = el
+                    }}
                     type="button"
                     disabled={isDisabled}
                     data-testid={`slot-${card.id}`}
-                    onClick={() => handleCommandTap(card.id)}
-                    className={`flex h-[98px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 bg-slate-900/95 p-1.5 transition-all active:scale-95 disabled:opacity-50 ${
-                      isBonus
-                        ? `${card.borderClass} ${card.activeRingClass}`
-                        : card.borderClass
+                    data-armed={isArmed ? 'true' : 'false'}
+                    onClick={() => handleSlotTap(card.id)}
+                    className={`relative flex h-[98px] cursor-pointer flex-col items-center justify-between rounded-xl border-2 bg-slate-900/95 p-1.5 transition-all active:scale-95 disabled:opacity-50 ${
+                      isDragHover
+                        ? 'scale-105 border-cyan-300 ring-2 ring-cyan-300/80 shadow-lg shadow-cyan-500/30'
+                        : isArmed
+                          ? '-translate-y-0.5 border-amber-300 ring-2 ring-amber-400/80 shadow-lg shadow-amber-500/25'
+                          : isBonus
+                            ? `${card.borderClass} ${card.activeRingClass}`
+                            : card.borderClass
                     }`}
                   >
+                    {isArmed && (
+                      <Crosshair className="absolute top-1 right-1 h-3.5 w-3.5 text-amber-300" />
+                    )}
+
                     <span className="text-xs font-black text-white">
                       {card.title}
                     </span>
@@ -1233,23 +1781,47 @@ export default function DiceForgeDungeonGame() {
                     </span>
 
                     <span
-                      className={`text-xs font-extrabold leading-tight whitespace-nowrap ${
-                        isBonus ? 'text-amber-300' : 'text-slate-400'
+                      className={`rounded px-1 text-xs font-extrabold leading-tight whitespace-nowrap ${
+                        isDragHover
+                          ? 'bg-cyan-400 text-slate-950'
+                          : isArmed
+                            ? 'bg-amber-400 text-slate-950'
+                            : isBonus
+                              ? 'text-amber-300'
+                              : 'text-slate-400'
                       }`}
                     >
-                      {preview ? preview.bonusTag : card.conditionLabel}
+                      {isDragHover
+                        ? '離して発動'
+                        : isArmed
+                          ? '再タップ発動'
+                          : preview
+                            ? preview.bonusTag
+                            : card.conditionLabel}
                     </span>
                   </button>
                 )
               })}
             </div>
 
-            {/* 4 Physical 3D Pip Dice (Lock Toggle Placed at Bottom Row — Zero Overlap with Die Icons) */}
-            <div className="grid grid-cols-4 gap-1.5">
+            {/* 4 Physical 3D Pip Dice (Sequential Roll + Drag Support + Lock Toggle) */}
+            <div
+              data-testid="dice-tray"
+              className="grid grid-cols-4 gap-1.5"
+            >
               {gameState.dice.map((die) => {
                 const eng = ENGRAVINGS[die.currentEngravingId]
                 const isSelected = activeDie?.id === die.id
                 const isUsed = die.assignedSlot !== null
+                const isDieRolling = rollSeq.active && !rollSeq.settledMap[die.id]
+                const isJustLanded = rollSeq.justLandedId === die.id
+                const isAnticipating = rollSeq.anticipatingId === die.id
+                const isBeingDragged = Boolean(
+                  dragState?.active && dragState.dieId === die.id
+                )
+                const shownPip = isDieRolling
+                  ? (rollSeq.displayPips[die.id] ?? die.currentPip)
+                  : die.currentPip
 
                 return (
                   <div
@@ -1257,7 +1829,14 @@ export default function DiceForgeDungeonGame() {
                     role="button"
                     tabIndex={0}
                     data-testid={`die-card-${die.id}`}
+                    data-rolling={isDieRolling ? 'true' : 'false'}
+                    onPointerDown={(e) => handleDiePointerDown(die, e)}
                     onClick={() => {
+                      if (suppressDieClickRef.current) return
+                      if (rollSeq.active) {
+                        skipDiceRollSequence()
+                        return
+                      }
                       if (isUsed || executingEnemyTurn) return
                       playClickSfx()
                       setSelectedDieId(die.id)
@@ -1268,18 +1847,26 @@ export default function DiceForgeDungeonGame() {
                         !isUsed &&
                         !executingEnemyTurn
                       ) {
+                        if (rollSeq.active) {
+                          skipDiceRollSequence()
+                          return
+                        }
                         setSelectedDieId(die.id)
                       }
                     }}
-                    className={`relative flex h-[96px] cursor-pointer flex-col items-center justify-between rounded-2xl border-2 px-1 py-1.5 transition-all ${
+                    className={`relative flex h-[96px] touch-none cursor-pointer flex-col items-center justify-between rounded-2xl border-2 px-1 py-1.5 transition-all ${
                       isUsed
                         ? 'cursor-default border-slate-800 bg-slate-900/30 opacity-40'
-                        : die.locked
-                          ? 'border-sky-400 bg-sky-500/10 shadow-md shadow-sky-500/15'
-                          : isSelected
-                            ? 'border-amber-400 bg-amber-500/15 -translate-y-0.5 shadow-lg shadow-amber-500/20'
-                            : 'border-slate-800 bg-slate-900/90 hover:border-slate-700'
-                    } ${rollingAnim && !die.locked && !isUsed ? 'animate-bounce' : ''}`}
+                        : isBeingDragged
+                          ? 'border-dashed border-amber-400/70 bg-slate-900/40 opacity-35'
+                          : isAnticipating
+                            ? 'border-amber-300 bg-amber-500/20 ring-2 ring-amber-400/70 shadow-lg shadow-amber-500/30'
+                            : die.locked
+                              ? 'border-sky-400 bg-sky-500/10 shadow-md shadow-sky-500/15'
+                              : isSelected
+                                ? 'border-amber-400 bg-amber-500/15 -translate-y-0.5 shadow-lg shadow-amber-500/20'
+                                : 'border-slate-800 bg-slate-900/90 hover:border-slate-700'
+                    }`}
                   >
                     {isUsed && (
                       <span className="absolute top-1 right-1.5 rounded bg-slate-800 px-1 text-xs font-black text-slate-300">
@@ -1287,16 +1874,26 @@ export default function DiceForgeDungeonGame() {
                       </span>
                     )}
 
-                    <div className="flex flex-1 items-center justify-center">
+                    <div
+                      className={`flex flex-1 items-center justify-center ${
+                        isDieRolling
+                          ? 'animate-dice-tumble'
+                          : isJustLanded
+                            ? 'animate-dice-land'
+                            : ''
+                      }`}
+                    >
                       <PipDieSvg
-                        pip={die.currentPip}
-                        archetype={eng.archetype}
-                        isSpecial={!die.currentEngravingId.startsWith('base_')}
-                        hasAttack={Boolean(eng.bonusAttack)}
-                        hasShield={Boolean(eng.bonusShield)}
-                        hasPoison={Boolean(eng.applyPoison)}
-                        hasMana={Boolean(eng.bonusMana)}
-                        multiHit={eng.multiHit}
+                        pip={shownPip}
+                        archetype={isDieRolling ? 'balanced' : eng.archetype}
+                        isSpecial={
+                          !isDieRolling && !die.currentEngravingId.startsWith('base_')
+                        }
+                        hasAttack={!isDieRolling && Boolean(eng.bonusAttack)}
+                        hasShield={!isDieRolling && Boolean(eng.bonusShield)}
+                        hasPoison={!isDieRolling && Boolean(eng.applyPoison)}
+                        hasMana={!isDieRolling && Boolean(eng.bonusMana)}
+                        multiHit={isDieRolling ? undefined : eng.multiHit}
                         size={46}
                       />
                     </div>
@@ -1305,33 +1902,41 @@ export default function DiceForgeDungeonGame() {
                       {!isUsed && (
                         <button
                           type="button"
-                          aria-label={die.locked ? 'ロック解除' : '出目ロック'}
+                          aria-label={die.locked ? 'ロック解除' : '出目キープ'}
                           onClick={(e) => handleToggleLock(die.id, e)}
                           className={`rounded px-1 py-0.5 transition ${
                             die.locked
-                              ? 'bg-sky-500/25 text-sky-300'
-                              : 'bg-slate-800 text-slate-400 hover:text-amber-300'
+                              ? 'bg-sky-500/30 text-sky-300'
+                              : 'bg-slate-800/80 text-slate-400 hover:text-amber-300'
                           }`}
                         >
                           {die.locked ? (
                             <Lock className="h-3 w-3" />
                           ) : (
-                            <Unlock className="h-3 w-3" />
+                            <Pin className="h-3 w-3" />
                           )}
                         </button>
                       )}
                       <span
                         className={`text-xs font-extrabold whitespace-nowrap ${
-                          isSelected ? 'text-amber-300' : 'text-slate-300'
+                          isDieRolling
+                            ? 'text-amber-300'
+                            : isSelected
+                              ? 'text-amber-300'
+                              : 'text-slate-300'
                         }`}
                       >
                         {isUsed
                           ? '発動済'
-                          : die.locked
-                            ? '固定中'
-                            : isSelected
-                              ? '選択中'
-                              : `出目${die.currentPip}`}
+                          : isDieRolling
+                            ? isAnticipating
+                              ? 'リーチ!'
+                              : '回転中'
+                            : die.locked
+                              ? '固定中'
+                              : isSelected
+                                ? '選択中'
+                                : `出目${die.currentPip}`}
                       </span>
                     </div>
                   </div>
@@ -1339,17 +1944,17 @@ export default function DiceForgeDungeonGame() {
               })}
             </div>
 
-            {/* Bottom Utility Buttons: Reroll & +1 Pip ONLY */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Bottom Utility Buttons: Reroll, +1 Pip & 1-Step Undo */}
+            <div className="grid h-[36px] shrink-0 grid-cols-[1.22fr_1.28fr_0.8fr] gap-1.5">
               <button
                 type="button"
                 data-testid="dice-forge-reroll-btn"
                 disabled={gameState.rerollsLeft <= 0 || executingEnemyTurn}
                 onClick={handleReroll}
-                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 py-2 text-xs font-black text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
+                className="flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-slate-700 bg-slate-800 px-1 text-xs font-black whitespace-nowrap text-slate-100 transition hover:bg-slate-700 disabled:opacity-40"
               >
-                <Dices className="h-4 w-4 text-amber-400" />
-                <span>振り直し (残{gameState.rerollsLeft})</span>
+                <Dices className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <span>振り直し(残{gameState.rerollsLeft})</span>
               </button>
 
               <button
@@ -1359,10 +1964,21 @@ export default function DiceForgeDungeonGame() {
                   gameState.mana < 1 || executingEnemyTurn || !activeDie
                 }
                 onClick={() => handleManipulateDie('plus1')}
-                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-950/70 py-2 text-xs font-black text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
+                className="flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-violet-500/40 bg-violet-950/70 px-1.5 text-xs font-black whitespace-nowrap text-violet-200 transition hover:bg-violet-900/80 disabled:opacity-40"
               >
-                <Zap className="h-4 w-4 text-violet-400" />
-                <span>選択ダイス出目+1 (1MP)</span>
+                <Zap className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                <span>出目+1(1MP)</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="dice-forge-undo-btn"
+                disabled={undoStack.length === 0 || executingEnemyTurn}
+                onClick={handleUndo}
+                className="flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-1.5 text-xs font-black whitespace-nowrap text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
+              >
+                <Undo2 className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                <span>戻す</span>
               </button>
             </div>
           </div>
@@ -1512,14 +2128,18 @@ export default function DiceForgeDungeonGame() {
                 type="button"
                 onClick={() => {
                   playShieldGainSfx()
-                  setGameState(
-                    step(
-                      gameState,
-                      gameState.phase === 'altar'
-                        ? { type: 'ALTAR_ACTION', choice: 'heal_full' }
-                        : { type: 'LEAVE_SHOP' }
-                    )
+                  const next = step(
+                    gameState,
+                    gameState.phase === 'altar'
+                      ? { type: 'ALTAR_ACTION', choice: 'heal_full' }
+                      : { type: 'LEAVE_SHOP' }
                   )
+                  setArmedSlotId(null)
+                  setUndoStack([])
+                  setGameState(next)
+                  if (next.phase === 'battle') {
+                    startDiceRollSequence(next, [0, 1, 2, 3])
+                  }
                 }}
                 className="w-full cursor-pointer rounded-xl bg-amber-500 py-3.5 text-sm font-black text-slate-950"
               >
@@ -1698,6 +2318,38 @@ export default function DiceForgeDungeonGame() {
           </div>
         </div>
       )}
+      {/* ==================================================================== */}
+      {/* FLOATING DRAGGED DIE OVERLAY                                         */}
+      {/* ==================================================================== */}
+      {dragState?.active && gameState && (() => {
+        const dragDie = gameState.dice.find((d) => d.id === dragState.dieId)
+        if (!dragDie) return null
+        const eng = ENGRAVINGS[dragDie.currentEngravingId]
+        return (
+          <div
+            data-testid="floating-drag-die"
+            className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full drop-shadow-[0_10px_20px_rgba(251,191,36,0.5)]"
+            style={{
+              left: `${dragState.x}px`,
+              top: `${dragState.y - 16}px`,
+            }}
+          >
+            <div className="scale-110 rounded-2xl border-2 border-amber-300 bg-slate-900/95 p-1">
+              <PipDieSvg
+                pip={dragDie.currentPip}
+                archetype={eng.archetype}
+                isSpecial={!dragDie.currentEngravingId.startsWith('base_')}
+                hasAttack={Boolean(eng.bonusAttack)}
+                hasShield={Boolean(eng.bonusShield)}
+                hasPoison={Boolean(eng.applyPoison)}
+                hasMana={Boolean(eng.bonusMana)}
+                multiHit={eng.multiHit}
+                size={52}
+              />
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

@@ -635,7 +635,7 @@ export const RELICS: Record<RelicId, RelicDef> = {
     cost: 60,
     icon: 'TOME',
     description: '出目5以上のダイス1個につき、全ダメージ＆シールドの乗算倍率が+0.20x上昇する。',
-    shortEffect: '大目5・6ごとに全効果+0.20倍',
+    shortEffect: '高目5・6ごとに全効果+0.20倍',
   },
   relic_ether_reactor: {
     id: 'relic_ether_reactor',
