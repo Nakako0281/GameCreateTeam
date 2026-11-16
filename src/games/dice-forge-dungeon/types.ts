@@ -269,6 +269,22 @@ export interface SingleDieActionPreview {
   isOverchargeBlast: boolean
 }
 
+export interface ActionOutcomePreview {
+  slotId: SlotId
+  action: SingleDieActionPreview
+  enemyHpAfter: number
+  enemyShieldAfter: number
+  enemyPoisonAfter: number
+  heroShieldAfter: number
+  heroHpAfterAction: number
+  heroManaAfter: number
+  willKillEnemyNow: boolean
+  willKillEnemyByPoison: boolean
+  expectedIncomingAfter: number
+  expectedUnblockedAfter: number
+  isFullGuard: boolean
+}
+
 export interface RewardOffer {
   engravings: EngravingId[]
   relics: RelicId[]

@@ -6,6 +6,7 @@ import {
   type EnemyTemplate,
 } from './data'
 import type {
+  ActionOutcomePreview,
   BuildArchetype,
   DiceFace,
   DieState,
@@ -702,6 +703,70 @@ export function calculateSingleDieAction(
     bonusTag,
     summaryLabel,
     isOverchargeBlast,
+  }
+}
+
+/**
+ * 指定ダイスを指定スロットに発動した場合の戦場予測（敵HP・盾・毒・被弾防御可否）を誤差ゼロで算出する
+ */
+export function previewAfterSingleAction(
+  state: GameState,
+  die: DieState,
+  slotId: SlotId
+): ActionOutcomePreview {
+  const action = calculateSingleDieAction(state, die, slotId)
+  const afterState = step(state, {
+    type: 'ASSIGN_DIE',
+    dieId: die.id,
+    slotId,
+  })
+
+  const willKillEnemyNow =
+    afterState.phase === 'reward' ||
+    afterState.phase === 'victory' ||
+    afterState.enemy.hp <= 0
+  const enemyHpAfter = willKillEnemyNow ? 0 : afterState.enemy.hp
+
+  const poisonTickDamage = afterState.relics.includes('relic_serpent_idol')
+    ? Math.floor(afterState.enemy.poison * 1.5)
+    : afterState.enemy.poison
+  const willKillEnemyByPoison =
+    !willKillEnemyNow && poisonTickDamage >= enemyHpAfter && enemyHpAfter > 0
+
+  let expectedIncomingAfter = 0
+  if (!willKillEnemyNow && !willKillEnemyByPoison) {
+    const intent = afterState.enemy.currentIntent
+    expectedIncomingAfter =
+      (intent.damage + afterState.enemy.strength) * (intent.hits || 1)
+    if (
+      afterState.relics.includes('relic_serpent_idol') &&
+      afterState.enemy.poison > 0
+    ) {
+      expectedIncomingAfter = Math.floor(expectedIncomingAfter * 0.75)
+    }
+  }
+
+  const expectedUnblockedAfter = Math.max(
+    0,
+    expectedIncomingAfter - afterState.shield
+  )
+  const isFullGuard =
+    expectedIncomingAfter > 0 && expectedUnblockedAfter === 0
+
+  return {
+    slotId,
+    action,
+    enemyHpAfter,
+    enemyShieldAfter: willKillEnemyNow ? 0 : afterState.enemy.shield,
+    enemyPoisonAfter: willKillEnemyNow ? 0 : afterState.enemy.poison,
+    heroShieldAfter: afterState.shield,
+    heroHpAfterAction: afterState.hp,
+    heroManaAfter: afterState.mana,
+    willKillEnemyNow,
+    willKillEnemyByPoison,
+    expectedIncomingAfter,
+    expectedUnblockedAfter,
+    isFullGuard,
   }
 }
 

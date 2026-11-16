@@ -15,7 +15,10 @@ declare global {
 
 export type SoundEffectKey =
   | 'dice_roll'
+  | 'dice_land'
   | 'dice_place'
+  | 'aim_lock'
+  | 'undo_step'
   | 'combo_step'
   | 'attack_slash'
   | 'guard_shield'
@@ -27,7 +30,10 @@ const ASSET_BASE = `${import.meta.env.BASE_URL || '/'}assets/games/dice-forge-du
 
 const SOUND_FILE_MAP: Record<SoundEffectKey, string> = {
   dice_roll: `${ASSET_BASE}/se_dice_roll.mp3`,
+  dice_land: `${ASSET_BASE}/se_dice_place.mp3`,
   dice_place: `${ASSET_BASE}/se_dice_place.mp3`,
+  aim_lock: `${ASSET_BASE}/se_dice_place.mp3`,
+  undo_step: `${ASSET_BASE}/se_dice_place.mp3`,
   combo_step: `${ASSET_BASE}/se_combo_step.mp3`,
   attack_slash: `${ASSET_BASE}/se_attack_slash.mp3`,
   guard_shield: `${ASSET_BASE}/se_guard_shield.mp3`,
@@ -117,20 +123,72 @@ function playFallbackSynth(
     }
 
     case 'dice_roll': {
-      for (let i = 0; i < 3; i++) {
-        const t = now + i * 0.055
+      // カラカラとダイスがカップ内で転がり跳ねる期待音
+      const clicks = [240, 310, 275, 360, 330, 420]
+      clicks.forEach((freq, i) => {
+        const t = now + i * 0.042
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.type = 'triangle'
-        osc.frequency.setValueAtTime(260 + i * 95, t)
-        osc.frequency.exponentialRampToValueAtTime(480 + i * 70, t + 0.04)
-        gain.gain.setValueAtTime(0.11, t)
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045)
+        osc.frequency.setValueAtTime(freq, t)
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.45, t + 0.032)
+        gain.gain.setValueAtTime(0.09, t)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.036)
         osc.connect(gain)
         gain.connect(ctx.destination)
         osc.start(t)
-        osc.stop(t + 0.05)
-      }
+        osc.stop(t + 0.04)
+      })
+      break
+    }
+
+    case 'dice_land': {
+      // 1個ずつタン・タン・タン・ターンと着地確定する音階上昇クリック
+      const scale = [392.0, 440.0, 523.25, 659.25]
+      const baseFreq = scale[Math.min(scale.length - 1, Math.max(0, stepIndex))]
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(baseFreq * 0.85, now)
+      osc.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.05)
+      gain.gain.setValueAtTime(0.16, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.085)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.09)
+      break
+    }
+
+    case 'aim_lock': {
+      // 照準ロックの精密なカチャッ音
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(520, now)
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.035)
+      gain.gain.setValueAtTime(0.11, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.05)
+      break
+    }
+
+    case 'undo_step': {
+      // 巻き戻しの軽快な下降音
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(540, now)
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.08)
+      gain.gain.setValueAtTime(0.12, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.095)
       break
     }
 
@@ -243,8 +301,12 @@ export function playSound(key: SoundEffectKey, stepIndex = 0): void {
   if (cached && cached !== 'missing') {
     const source = ctx.createBufferSource()
     source.buffer = cached
-    if (key === 'combo_step' && stepIndex > 0) {
-      source.playbackRate.value = Math.min(2.0, 1 + stepIndex * 0.1)
+    if ((key === 'combo_step' || key === 'dice_land') && stepIndex > 0) {
+      source.playbackRate.value = Math.min(2.0, 1 + stepIndex * 0.12)
+    } else if (key === 'undo_step') {
+      source.playbackRate.value = 0.78
+    } else if (key === 'aim_lock') {
+      source.playbackRate.value = 1.25
     }
     const gain = ctx.createGain()
     gain.gain.value = 0.45

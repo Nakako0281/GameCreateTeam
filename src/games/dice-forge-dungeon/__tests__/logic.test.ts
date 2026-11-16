@@ -5,6 +5,7 @@ import {
   canForgeEngravingOnDie,
   evaluateFormation,
   initGameState,
+  previewAfterSingleAction,
   step,
 } from '../logic'
 import {
@@ -192,5 +193,35 @@ describe('ダイス・フォージ・ダンジョン (dice-forge-dungeon) コア
 
     clearActiveRun()
     vi.unstubAllGlobals()
+  })
+
+  it('previewAfterSingleAction が照準時の敵HP・KILL判定・完全ガード判定を誤差ゼロで算出すること', () => {
+    const state = initGameState(321, 'blacksmith', 0)
+    state.enemy.hp = 12
+    state.enemy.maxHp = 40
+    state.enemy.shield = 0
+    state.enemy.currentIntent = {
+      type: 'attack',
+      damage: 10,
+      hits: 1,
+      shieldGain: 0,
+      strengthGain: 0,
+      label: '攻撃',
+    }
+    state.dice[0].currentPip = 6
+    state.dice[0].currentEngravingId = 'base_6'
+    state.dice[1].currentPip = 4
+    state.dice[1].currentEngravingId = 'base_4'
+
+    const strikePred = previewAfterSingleAction(state, state.dice[0], 'strike_1')
+    expect(strikePred.willKillEnemyNow).toBe(true)
+    expect(strikePred.enemyHpAfter).toBe(0)
+
+    state.enemy.hp = 50
+    const guardPred = previewAfterSingleAction(state, state.dice[1], 'guard_1')
+    expect(guardPred.willKillEnemyNow).toBe(false)
+    expect(guardPred.heroShieldAfter).toBeGreaterThanOrEqual(10)
+    expect(guardPred.isFullGuard).toBe(true)
+    expect(guardPred.expectedUnblockedAfter).toBe(0)
   })
 })

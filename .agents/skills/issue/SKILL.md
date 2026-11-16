@@ -41,11 +41,12 @@ node .agents/skills/game-create-team/scripts/github_api.mjs get-issue <issue_num
 
 #### パターンA：既存ゲームの改善要望・バグ報告・UI/演出改修 Issue の場合
 
-1. **チーム設計レビュー（サブエージェント必須：`02_game_designer` ＆ `03_art_sound`）**:
-   - UI・操作感・演出・ゲーム性に関する改善要望の場合、いきなりコードを書き始めず、`02_game_designer.md` と `03_art_sound.md` をベースにサブエージェントを定義・起動（`EnableWriteTools: false`）し、以下を設計レビューさせる：
+1. **チーム設計レビュー ＆ 自律提案（サブエージェント必須：`02_game_designer` ＆ `03_art_sound` / `R-18`）**:
+   - UI・操作感・演出・ゲーム性に関する改善要望の場合、いきなりコードを書き始めず、`02_game_designer.md` と `03_art_sound.md` をベースにサブエージェントを定義・起動（`EnableWriteTools: false`）し、**「指摘された箇所をつぎはぎ直すだけでなく、もっとこういうUIやゲームロジックにしたら良くなる」という複数案を比較検討**させた上で、要望の尊重と自律改善の最適バランスを選択する：
      - 世の中の名作ゲームとのギャップ整理（`R-08`）
      - 0ベースでの要素・数字の一貫性、連打クリア防止（`R-14`）
      - `375px〜390px` 固定ゾーン設計・文字省略 `...` 禁止のテキストバジェット・常時能力表示（`R-13`, `R-15`）
+     - ランダム抽選のドーパミン演出（`R-16`）と誤操作防止×高速テンポの両立（`R-17`）
 2. **ブランチ作成・実装・自動テスト追加（`05_engineer` / `06_qa`）**:
    - `main`（または進行中の該当PRブランチ）から作業ブランチを作成し、設計レビューを反映した改善実装を行う。
    - 同じ問題が再発しないよう、単体テスト（`vitest`）・ボットバランス検証（`fun-metrics`）・E2E テスト（`tests/e2e/*.spec.ts`：固定ゾーン高さ一致、絵文字0件、最小フォント12px、文字省略・クリップ検証等）に検証ゲートを追加する。
@@ -64,7 +65,7 @@ node .agents/skills/game-create-team/scripts/github_api.mjs get-issue <issue_num
    - **差し戻しループ**: どちらか一方でも `❌ 要修正`（または文字見切れ・分かりにくさの指摘）を出した場合は、手順2へ戻って修正し、全コマンド再実行 ➔ 再スクショ監査で **`✅ LGTM` が揃うまで繰り返す**。
 5. **コミット・Push・Issueコメント報告・Pull Request作成**:
    - 作業ブランチを `origin` へ Push する。
-   - `comment-issue <issue_number> <body_file>` で対応内容（チーム監査結果を含む）を Issue にコメント報告する。
+   - `comment-issue <issue_number> <body_file>` で対応内容（検討した複数案と採用理由、チーム監査結果を含む）を Issue にコメント報告する。
    - `create-pr <branch> "<title> (Closes #<issue_number>)" <body_file>` で Pull Request を作成し、ユーザーへ PR の URL を報告する（※マージは必ず人間が行うため、AIはマージしない）。
 
 #### パターンB：企画書提出 Issue（`type:proposal`）へのコメント（Goサイン / 修正指示）の場合

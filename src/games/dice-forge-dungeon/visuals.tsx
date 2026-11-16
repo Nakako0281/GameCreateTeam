@@ -1,5 +1,10 @@
 import React from 'react'
-import type { BuildArchetype, SlotId, StarterClassId } from './types'
+import type {
+  ActionOutcomePreview,
+  BuildArchetype,
+  SlotId,
+  StarterClassId,
+} from './types'
 
 export interface CanvasParticle {
   x: number
@@ -43,6 +48,7 @@ export interface ArenaAnimState {
   screenShake: number
   redFlashAlpha: number
   goldFlashAlpha: number
+  rollCircleGlow: number
   heroOffsetX: number
   heroOffsetY: number
   heroPose: 'idle' | 'slash' | 'guard' | 'cast' | 'hit'
@@ -496,6 +502,8 @@ export function renderDungeonArena(
     enemyIntentShield: number
     isBoss: boolean
     isElite: boolean
+    isRolling?: boolean
+    actionPreview?: ActionOutcomePreview | null
   }
 ): void {
   const t = anim.time
@@ -617,14 +625,27 @@ export function renderDungeonArena(
   ctx.save()
   ctx.translate(centerX, horizonY + 26)
   ctx.scale(1, 0.28)
+  const circleGlow = Math.max(anim.rollCircleGlow, params.isRolling ? 0.85 : 0)
   ctx.strokeStyle =
-    params.isBoss
-      ? 'rgba(244, 63, 94, 0.42)'
-      : 'rgba(56, 189, 248, 0.30)'
-  ctx.lineWidth = 3
+    circleGlow > 0.05
+      ? `rgba(251, 191, 36, ${0.4 + circleGlow * 0.6})`
+      : params.isBoss
+        ? 'rgba(244, 63, 94, 0.42)'
+        : 'rgba(56, 189, 248, 0.30)'
+  ctx.lineWidth = circleGlow > 0.05 ? 4.5 : 3
   ctx.beginPath()
   ctx.arc(0, 0, 128, 0, Math.PI * 2)
   ctx.stroke()
+  if (circleGlow > 0.05) {
+    ctx.rotate(t * 5)
+    ctx.strokeStyle = `rgba(56, 189, 248, ${circleGlow * 0.75})`
+    ctx.lineWidth = 2.5
+    ctx.setLineDash([14, 10])
+    ctx.beginPath()
+    ctx.arc(0, 0, 102, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
   ctx.restore()
 
   // 3. Draw Hero Sprite (Left Side)
@@ -647,7 +668,7 @@ export function renderDungeonArena(
     t
   )
 
-  // Hero Active Shield Dome
+  // Hero Active Shield Dome (+ Predicted Dotted Shield Ring when aiming guard)
   if (anim.displayedHeroShield > 0.5) {
     const shieldPulse = 0.85 + Math.sin(t * 6) * 0.15
     ctx.save()
@@ -660,16 +681,31 @@ export function renderDungeonArena(
     ctx.stroke()
     ctx.restore()
   }
+  if (
+    params.actionPreview &&
+    params.actionPreview.heroShieldAfter > params.heroShield
+  ) {
+    const predPulse = 0.55 + Math.sin(t * 10) * 0.35
+    ctx.save()
+    ctx.strokeStyle = `rgba(125, 211, 252, ${predPulse})`
+    ctx.lineWidth = 2.5
+    ctx.setLineDash([6, 4])
+    ctx.beginPath()
+    ctx.arc(heroBaseX, heroBaseY - 26, 44, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.restore()
+  }
 
   // Hero Level Badge (Above Hero Head)
   {
     const lvX = heroBaseX
-    const lvY = heroBaseY - 106
+    const lvY = heroBaseY - 114
     ctx.save()
     ctx.fillStyle = '#0f172a'
     ctx.strokeStyle = '#fbbf24'
     ctx.lineWidth = 2
-    roundRect(ctx, lvX - 28, lvY - 12, 56, 24, 12)
+    roundRect(ctx, lvX - 26, lvY - 11, 52, 22, 11)
     ctx.fill()
     ctx.stroke()
     ctx.fillStyle = '#fde68a'
@@ -677,6 +713,32 @@ export function renderDungeonArena(
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(`Lv.${params.floor}`, lvX, lvY + 0.5)
+
+    // Live Aim Outcome Sub-Badge on Hero Side (Clear that it applies to Player defense/damage)
+    const ap = params.actionPreview
+    if (
+      ap &&
+      params.mode === 'battle' &&
+      !ap.willKillEnemyNow &&
+      !ap.willKillEnemyByPoison &&
+      ap.expectedIncomingAfter > 0
+    ) {
+      const subY = lvY + 22
+      const isSafe = ap.isFullGuard
+      ctx.fillStyle = isSafe ? '#0284c7' : '#be123c'
+      ctx.strokeStyle = isSafe ? '#bae6fd' : '#fda4af'
+      ctx.lineWidth = 1.5
+      roundRect(ctx, lvX - 40, subY - 9, 80, 18, 9)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 11px sans-serif'
+      ctx.fillText(
+        isSafe ? 'GUARD OK' : `被弾 -${ap.expectedUnblockedAfter}`,
+        lvX,
+        subY + 0.5
+      )
+    }
     ctx.restore()
   }
 
@@ -720,37 +782,62 @@ export function renderDungeonArena(
     const intentX = enemyBaseX
     const intentY = heroBaseY - 106 + Math.sin(t * 5) * 1.5
     const totalIntentDmg = params.enemyIntentDamage * Math.max(1, params.enemyIntentHits)
+    const ap = params.actionPreview
+    const willKill = ap ? ap.willKillEnemyNow || ap.willKillEnemyByPoison : false
 
     // Intent Pill Box
     ctx.save()
-    ctx.fillStyle = totalIntentDmg >= 15 ? '#881337' : '#0f172a'
-    ctx.strokeStyle = totalIntentDmg >= 15 ? '#fb7185' : '#f59e0b'
+    ctx.fillStyle = willKill
+      ? '#1e293b'
+      : ap?.isFullGuard
+        ? '#0c4a6e'
+        : totalIntentDmg >= 15
+          ? '#881337'
+          : '#0f172a'
+    ctx.strokeStyle = willKill
+      ? '#fbbf24'
+      : ap?.isFullGuard
+        ? '#38bdf8'
+        : totalIntentDmg >= 15
+          ? '#fb7185'
+          : '#f59e0b'
     ctx.lineWidth = 2
     roundRect(ctx, intentX - 40, intentY - 13, 80, 26, 13)
     ctx.fill()
     ctx.stroke()
 
-    // Vector Sword Icon inside Intent Badge
-    ctx.strokeStyle = '#fda4af'
-    ctx.lineWidth = 2.4
-    ctx.beginPath()
-    ctx.moveTo(intentX - 26, intentY + 5)
-    ctx.lineTo(intentX - 14, intentY - 7)
-    ctx.moveTo(intentX - 20, intentY - 7)
-    ctx.lineTo(intentX - 14, intentY - 7)
-    ctx.lineTo(intentX - 14, intentY - 1)
-    ctx.stroke()
+    if (willKill) {
+      const killPulse = 1 + Math.sin(t * 12) * 0.06
+      ctx.translate(intentX, intentY)
+      ctx.scale(killPulse, killPulse)
+      ctx.fillStyle = '#fde68a'
+      ctx.font = '900 13px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ap?.willKillEnemyNow ? 'KILL!' : '毒KILL!', 0, 0.5)
+    } else {
+      // Vector Sword Icon inside Intent Badge
+      ctx.strokeStyle = ap?.isFullGuard ? '#7dd3fc' : '#fda4af'
+      ctx.lineWidth = 2.4
+      ctx.beginPath()
+      ctx.moveTo(intentX - 26, intentY + 5)
+      ctx.lineTo(intentX - 14, intentY - 7)
+      ctx.moveTo(intentX - 20, intentY - 7)
+      ctx.lineTo(intentX - 14, intentY - 7)
+      ctx.lineTo(intentX - 14, intentY - 1)
+      ctx.stroke()
 
-    // Intent Damage Text
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 12px sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    const dmgLabel =
-      params.enemyIntentHits > 1
-        ? `${params.enemyIntentDamage}x${params.enemyIntentHits}`
-        : `${params.enemyIntentDamage}`
-    ctx.fillText(`ATK ${dmgLabel}`, intentX - 8, intentY + 0.5)
+      // Intent Damage Text
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 12px sans-serif'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      const dmgLabel =
+        params.enemyIntentHits > 1
+          ? `${params.enemyIntentDamage}x${params.enemyIntentHits}`
+          : `${params.enemyIntentDamage}`
+      ctx.fillText(`ATK ${dmgLabel}`, intentX - 8, intentY + 0.5)
+    }
     ctx.restore()
   }
 
@@ -796,26 +883,47 @@ export function renderDungeonArena(
   }
 
   // 6. Draw Hero & Enemy Status Bars Directly on Canvas Bottom-Of-Sprites
-  drawUnitStatusBar(ctx, heroBaseX, horizonY + 35, {
-    hp: anim.displayedHeroHp,
-    maxHp: params.heroMaxHp,
-    actualHp: params.heroHp,
-    shield: Math.round(anim.displayedHeroShield),
-    poison: 0,
-    thorns: 0,
-    isHero: true,
-  })
+  drawUnitStatusBar(
+    ctx,
+    heroBaseX,
+    horizonY + 35,
+    {
+      hp: anim.displayedHeroHp,
+      maxHp: params.heroMaxHp,
+      actualHp: params.heroHp,
+      shield: Math.round(anim.displayedHeroShield),
+      predictedShield: params.actionPreview
+        ? params.actionPreview.heroShieldAfter
+        : undefined,
+      poison: 0,
+      thorns: 0,
+      isHero: true,
+    },
+    t
+  )
 
   if (params.mode !== 'reward' && params.mode !== 'victory') {
-    drawUnitStatusBar(ctx, enemyBaseX, horizonY + 35, {
-      hp: anim.displayedEnemyHp,
-      maxHp: params.enemyMaxHp,
-      actualHp: params.enemyHp,
-      shield: Math.round(anim.displayedEnemyShield),
-      poison: params.enemyPoison,
-      thorns: params.enemyThorns,
-      isHero: false,
-    })
+    drawUnitStatusBar(
+      ctx,
+      enemyBaseX,
+      horizonY + 35,
+      {
+        hp: anim.displayedEnemyHp,
+        maxHp: params.enemyMaxHp,
+        actualHp: params.enemyHp,
+        predictedHp: params.actionPreview
+          ? params.actionPreview.enemyHpAfter
+          : undefined,
+        shield: Math.round(anim.displayedEnemyShield),
+        poison: params.enemyPoison,
+        predictedPoison: params.actionPreview
+          ? params.actionPreview.enemyPoisonAfter
+          : undefined,
+        thorns: params.enemyThorns,
+        isHero: false,
+      },
+      t
+    )
   }
 
   // 7. Slash Trails & Weapon Impact Arcs
@@ -884,8 +992,8 @@ export function renderDungeonArena(
     ctx.restore()
   }
 
-  // 9. Combo Banner Popup (Center Top)
-  if (anim.comboBanner && anim.comboBanner.alpha > 0.02) {
+  // 9. Combo Banner Popup (Center Top — Battle Only so it never collides with Reward Clear Banner)
+  if (params.mode === 'battle' && anim.comboBanner && anim.comboBanner.alpha > 0.02) {
     const cb = anim.comboBanner
     ctx.save()
     ctx.globalAlpha = cb.alpha
@@ -1214,11 +1322,15 @@ function drawUnitStatusBar(
     hp: number
     maxHp: number
     actualHp: number
+    predictedHp?: number
     shield: number
+    predictedShield?: number
     poison: number
+    predictedPoison?: number
     thorns: number
     isHero: boolean
-  }
+  },
+  t: number
 ): void {
   const barW = 92
   const barH = 12
@@ -1240,34 +1352,57 @@ function drawUnitStatusBar(
     ctx.fill()
   }
 
+  // Flashing Predicted Damage Slice on Enemy HP Bar
+  if (info.predictedHp !== undefined && info.predictedHp < info.actualHp) {
+    const predRatio = Math.max(
+      0,
+      Math.min(1, info.predictedHp / Math.max(1, info.maxHp))
+    )
+    const startX = left + 1 + (barW - 2) * predRatio
+    const sliceW = Math.max(2, (barW - 2) * (ratio - predRatio))
+    const pulseAlpha = 0.45 + Math.sin(t * 14) * 0.4
+    ctx.fillStyle = `rgba(251, 191, 36, ${pulseAlpha})`
+    ctx.fillRect(startX, y + 1, sliceW, barH - 2)
+  }
+
   roundRect(ctx, left, y, barW, barH, 6)
   ctx.stroke()
 
-  // HP Numbers
+  // HP Numbers (Show "actual -> predicted" if aiming)
   ctx.fillStyle = '#ffffff'
   ctx.font = '900 10px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(
-    `${Math.max(0, Math.round(info.actualHp))}/${info.maxHp}`,
-    x,
-    y + barH * 0.5 + 0.5
-  )
+  const hpText =
+    info.predictedHp !== undefined && info.predictedHp !== info.actualHp
+      ? `${Math.max(0, Math.round(info.actualHp))}→${Math.max(0, Math.round(info.predictedHp))}`
+      : `${Math.max(0, Math.round(info.actualHp))}/${info.maxHp}`
+  ctx.fillText(hpText, x, y + barH * 0.5 + 0.5)
 
   // Shield / Poison Badges next to HP bar
-  if (info.shield > 0) {
-    ctx.fillStyle = '#1d4ed8'
-    ctx.strokeStyle = '#93c5fd'
+  const displayShield =
+    info.predictedShield !== undefined && info.predictedShield > info.shield
+      ? info.predictedShield
+      : info.shield
+  if (displayShield > 0) {
+    const isPredShield =
+      info.predictedShield !== undefined && info.predictedShield > info.shield
+    ctx.fillStyle = isPredShield ? '#0284c7' : '#1d4ed8'
+    ctx.strokeStyle = isPredShield ? '#bae6fd' : '#93c5fd'
     ctx.lineWidth = 1.5
     roundRect(ctx, left - 28, y - 1, 26, 14, 6)
     ctx.fill()
     ctx.stroke()
     ctx.fillStyle = '#ffffff'
     ctx.font = '900 9px sans-serif'
-    ctx.fillText(`${info.shield}`, left - 15, y + 6)
+    ctx.fillText(`${displayShield}`, left - 15, y + 6)
   }
 
-  if (info.poison > 0) {
+  const displayPoison =
+    info.predictedPoison !== undefined && info.predictedPoison > info.poison
+      ? info.predictedPoison
+      : info.poison
+  if (displayPoison > 0) {
     ctx.fillStyle = '#065f46'
     ctx.strokeStyle = '#34d399'
     ctx.lineWidth = 1.5
@@ -1276,7 +1411,7 @@ function drawUnitStatusBar(
     ctx.stroke()
     ctx.fillStyle = '#a7f3d0'
     ctx.font = '900 9px sans-serif'
-    ctx.fillText(`P${info.poison}`, left + barW + 17, y + 6)
+    ctx.fillText(`P${displayPoison}`, left + barW + 17, y + 6)
   }
 
   ctx.restore()
