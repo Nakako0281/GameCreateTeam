@@ -40,8 +40,9 @@
 
 ### セッション開始時（Mandatory Boot Sequence）
 1. `docs/STATE.md` を読み、現在のフェーズ・公開URL・稼働ツール・次アクションを把握する。
-2. `npm run ops:status` を実行し、オープンな `owner:human` / `owner:ai` Issue、オープンPR、直近で人間がCloseした `owner:human` Issueを確認する。
+2. `npm run ops:status` を実行し、オープンな `owner:human` / `owner:ai` Issue、オープンPR、直近で人間がCloseした `owner:human` Issue、および **未ラベルの人間起票Issue（`all_open_issues`）** を確認して即座にトリアージ（ラベル・Milestone・優先度設定）する。
 3. 設計判断を伴う場合は `docs/ADR/` と `docs/POSTMORTEM_AND_LESSONS.md`、法務・規約要件は `docs/LEGAL_AND_COMPLIANCE_CHECKLIST.md` を参照し、過去の決定や失敗を繰り返さない。
+4. **最新事実の一次ソース検証義務（No Stale Knowledge）**: AIモデル・API単価・法令・祝日・為替・外部サービス仕様など変化の速い事実を扱う際は、記憶や旧記述に頼らず必ず `search_web` 等で最新の公式一次ソースを確認し、鮮度上限（LLM料金テーブルは14日以内）と改定予定日（`priceEffectiveUntil`）を厳守する。
 
 ### 失敗・指摘・数値悪化時の進化ルール（「気をつけます」禁止）
 - バグ、AdSense審査落ち、SEO順位低下、人間からの指摘が発生したら、必ず `docs/POSTMORTEM_AND_LESSONS.md` に記録する。

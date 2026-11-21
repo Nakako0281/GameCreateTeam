@@ -10,7 +10,9 @@ description: 毎日定例で実行する自律運用スキル。GitHub上の人�
 1. **現状把握（Boot）**:
    - `docs/STATE.md` を読む。
    - `npm run ops:status` を実行する。
+   - `all_open_issues` に **未ラベルの人間起票Issue** が含まれる場合は即座に `get-issue` で精査し、`owner:ai` / `priority:p0`（または適切な優先度・Milestone）を付与して最優先トリアージを行う。
    - `recently_closed_human_issues` があれば `node scripts/ops_github.mjs get-issue <num>` で人間の完了内容・コメント（独自ドメインURL、GSC/GA4/AdSense設定値、判断結果など）を取得し、`docs/STATE.md` や設定ファイルの更新計画に反映する。
+   - LLM料金データ等（`PRICING_LAST_VERIFIED` 14日鮮度上限・`priceEffectiveUntil` 7日以内予告）やAI関連の最新情報に鮮度接近・警告・変更が必要な箇所があれば、必ず `search_web` 等で公式一次ソースを確認してから実装に入る。
 
 2. **優先順位トリアージ**:
    - **P0**: 既存PRへのレビュー指摘・CI失敗の修正、またはセキュリティ/稼働障害対応。

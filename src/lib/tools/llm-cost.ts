@@ -28,10 +28,16 @@ export interface ModelCostRow {
   provider: string
   name: string
   tier: string
+  releasedAt: string
+  inputPerMillionUsd: number
+  outputPerMillionUsd: number
+  cachedInputPerMillionUsd: number
   perRequestUsd: number
   monthlyUsd: number
   monthlyJpy: number
   batchApplied: boolean
+  priceEffectiveUntil?: string
+  sourceUrl: string
   notes: string
 }
 
@@ -94,12 +100,28 @@ export function calculateSingleModelCost(
     | 'provider'
     | 'name'
     | 'tier'
+    | 'releasedAt'
     | 'inputPerMillionUsd'
     | 'outputPerMillionUsd'
     | 'cachedInputPerMillionUsd'
     | 'supportsBatch50'
+    | 'priceEffectiveUntil'
+    | 'sourceUrl'
     | 'notes'
-  >,
+  > | {
+    id: string
+    provider: string
+    name: string
+    tier: string
+    releasedAt: string
+    inputPerMillionUsd: number
+    outputPerMillionUsd: number
+    cachedInputPerMillionUsd: number
+    supportsBatch50: boolean
+    priceEffectiveUntil?: string
+    sourceUrl: string
+    notes: string
+  },
   input: CostSimulationInput
 ): ModelCostRow {
   const safeInputTokens = Math.max(0, input.inputTokens)
@@ -131,10 +153,16 @@ export function calculateSingleModelCost(
     provider: model.provider,
     name: model.name,
     tier: model.tier,
+    releasedAt: model.releasedAt,
+    inputPerMillionUsd: model.inputPerMillionUsd,
+    outputPerMillionUsd: model.outputPerMillionUsd,
+    cachedInputPerMillionUsd: model.cachedInputPerMillionUsd,
     perRequestUsd,
     monthlyUsd,
     monthlyJpy,
     batchApplied,
+    priceEffectiveUntil: model.priceEffectiveUntil,
+    sourceUrl: model.sourceUrl,
     notes: model.notes,
   }
 }
@@ -142,7 +170,23 @@ export function calculateSingleModelCost(
 export function calculateAllModelCosts(
   input: CostSimulationInput
 ): ModelCostRow[] {
-  const models: LlmModelPrice[] = [...LLM_MODELS]
+  const models: Array<
+    LlmModelPrice | {
+      id: string
+      provider: string
+      name: string
+      tier: string
+      releasedAt: string
+      inputPerMillionUsd: number
+      outputPerMillionUsd: number
+      cachedInputPerMillionUsd: number
+      supportsBatch50: boolean
+      priceEffectiveUntil?: string
+      sourceUrl: string
+      notes: string
+    }
+  > = [...LLM_MODELS]
+
   if (
     input.customModel &&
     input.customModel.name.trim() &&
@@ -154,6 +198,7 @@ export function calculateAllModelCosts(
       provider: 'Custom',
       name: input.customModel.name.trim(),
       tier: 'balanced',
+      releasedAt: 'Custom',
       inputPerMillionUsd: Math.max(0, input.customModel.inputPerMillionUsd),
       outputPerMillionUsd: Math.max(0, input.customModel.outputPerMillionUsd),
       cachedInputPerMillionUsd: Math.max(
@@ -161,6 +206,7 @@ export function calculateAllModelCosts(
         input.customModel.cachedInputPerMillionUsd
       ),
       supportsBatch50: true,
+      sourceUrl: '',
       notes: 'ユーザー指定のカスタム単価条件',
     })
   }
@@ -175,10 +221,15 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
     'Provider',
     'Model',
     'Tier',
+    'ReleasedAt',
+    'InputPer1M_USD',
+    'OutputPer1M_USD',
+    'CachedInputPer1M_USD',
     'PerRequestUSD',
     'MonthlyUSD',
     'MonthlyJPY',
     'Batch50Applied',
+    'PriceEffectiveUntil',
   ].join(',')
 
   const lines = rows.map((r) =>
@@ -186,10 +237,15 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
       `"${r.provider.replace(/"/g, '""')}"`,
       `"${r.name.replace(/"/g, '""')}"`,
       r.tier,
+      r.releasedAt,
+      r.inputPerMillionUsd.toFixed(4),
+      r.outputPerMillionUsd.toFixed(4),
+      r.cachedInputPerMillionUsd.toFixed(4),
       r.perRequestUsd.toFixed(6),
       r.monthlyUsd.toFixed(4),
       Math.round(r.monthlyJpy).toString(),
       r.batchApplied ? 'YES' : 'NO',
+      r.priceEffectiveUntil ?? '',
     ].join(',')
   )
   return [header, ...lines].join('\r\n')
