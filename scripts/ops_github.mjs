@@ -226,9 +226,41 @@ function sleep(ms) {
 
 const PASS_CONCLUSIONS = new Set(['success', 'skipped', 'neutral'])
 
+function getExpectedPushedHeadSha(headRef) {
+  try {
+    const branchRes = spawnSync('git', ['branch', '--show-current'], {
+      encoding: 'utf-8',
+    })
+    if (branchRes.status !== 0 || branchRes.stdout.trim() !== headRef) {
+      return null
+    }
+    const localRes = spawnSync('git', ['rev-parse', 'HEAD'], {
+      encoding: 'utf-8',
+    })
+    const remoteRes = spawnSync('git', ['rev-parse', `origin/${headRef}`], {
+      encoding: 'utf-8',
+    })
+    if (localRes.status !== 0 || remoteRes.status !== 0) return null
+    const localSha = localRes.stdout.trim()
+    const remoteSha = remoteRes.stdout.trim()
+    if (localSha && localSha === remoteSha) {
+      return localSha
+    }
+  } catch {
+    // git参照不可時はスキップ
+  }
+  return null
+}
+
 async function waitAndVerifyPrCi(prNumber, timeoutSec = 600) {
   if (!prNumber) throw new Error('PR番号を指定してください')
-  const pr = await githubRequest(`/pulls/${prNumber}`)
+  let pr = await githubRequest(`/pulls/${prNumber}`)
+  const expectedSha = pr.head?.ref ? getExpectedPushedHeadSha(pr.head.ref) : null
+  const syncDeadline = Date.now() + 30000
+  while (expectedSha && pr.head?.sha !== expectedSha && Date.now() < syncDeadline) {
+    await sleep(2000)
+    pr = await githubRequest(`/pulls/${prNumber}`)
+  }
   const headSha = pr.head?.sha
   if (!headSha) throw new Error(`PR #${prNumber} の head.sha が取得できません`)
 
