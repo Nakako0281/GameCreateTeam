@@ -52,6 +52,7 @@ npm run ops:status
 
 ## 4. 永続メモリ・組織ドキュメント
 
+- **人間（最終責任者）向け操作マニュアル**: [`docs/HUMAN_OPERATIONS_GUIDE.md`](docs/HUMAN_OPERATIONS_GUIDE.md)
 - 最上位憲法: [`AGENTS.md`](AGENTS.md) / [`.agents/rules/AGENTS.md`](.agents/rules/AGENTS.md)
 - 現在地ダッシュボード: [`docs/STATE.md`](docs/STATE.md)
 - 意思決定記録 (ADR): [`docs/ADR/`](docs/ADR)

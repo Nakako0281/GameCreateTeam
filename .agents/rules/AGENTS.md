@@ -39,9 +39,10 @@
   - 必ずタイトル先頭に `[Human]` を付け、手順・判断根拠・AI推奨案・完了条件チェックボックスを明記して起票する。
   - 定期実行時は `npm run ops:status` の `recently_closed_human_issues` を見て、人間が完了させた依頼を自動検知し、次の `owner:ai` タスクや `docs/STATE.md` 更新へ繋げる。
 - **AI自律タスク（`owner:ai`）**:
-  - 1回の作業で1つの完結したスライス（例：ツール1〜2本、またはSEO改善群）を実装し、`npm run check:all` を通してから **Draft PR** を作成する。
+  - **2層ブランチ運用**: 日常の開発・ドキュメント更新は必ず最新 `dev` から作業ブランチを切り、`dev` 宛てに **Draft PR** を作成する（`ops_github.mjs create-pr` のデフォルト base は `dev`）。テスト環境（`dev`）でまとまった成果が確認できたら `dev` ➔ `main` の本番リリース PR を作成する。
+  - **ドキュメント専用PRの軽量化**: `docs/**`・`.agents/**`・`README.md`・`AGENTS.md` のみの変更は GitHub Actions で軽量監査のみ実行し、不要なビルドを省略する。
   - 作成した PR は `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過が機械確認されるまでレビュー依頼状態（Ready）へ昇格させない。
-  - `main` ブランチへの直接Push・PRの自己マージは厳禁。
+  - `main` および `dev` ブランチへの直接Push・PRの自己マージは厳禁。
 
 ---
 

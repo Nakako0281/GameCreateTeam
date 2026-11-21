@@ -2,9 +2,9 @@ name: CI (Typecheck, Unit Test, Build, Audits & E2E)
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   verify:
@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -19,32 +21,78 @@ jobs:
           node-version-file: '.node-version'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Detect docs-only change
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+          else
+            CHANGED="FORCE_FULL_CI"
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          DOCS_ONLY="true"
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              docs/*|.agents/*|.github/ISSUE_TEMPLATE/*|README.md|AGENTS.md)
+                ;;
+              *)
+                DOCS_ONLY="false"
+                break
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          echo "docs_only=$DOCS_ONLY" >> "$GITHUB_OUTPUT"
+          echo "Detected docs_only=$DOCS_ONLY"
 
       - name: CI Parity & Lockfile Audit
         run: npm run audit:ci-parity
 
+      - name: Lightweight Docs & Memory Audit (docs-only PR)
+        if: steps.changes.outputs.docs_only == 'true'
+        run: node scripts/audit-org-memory.mjs --docs-only
+
+      - name: Install dependencies
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm ci
+
       - name: Type check (Astro & TypeScript)
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run typecheck
 
       - name: Run Unit Tests (Vitest)
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run test
 
       - name: Build static site
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run build
 
       - name: Security & License Audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run audit:security
 
       - name: SEO & AdSense Policy Audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run audit:seo
 
       - name: Org Memory & Freshness Audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run audit:memory
 
       - name: Install Playwright Chromium
+        if: steps.changes.outputs.docs_only != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E & Zero-Transmission Proof
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run test:e2e

@@ -17,7 +17,7 @@
 1. **課金・決済機能の禁止**: 月額サブスクリプション・買い切り販売・投げ銭決済など、直接課金が発生する機能は実装しない。収益手段は Google AdSense のみとする。
 2. **サーバーDB・ユーザー個人情報（PII）保持の禁止**: サイバー攻撃・情報漏洩リスクを極小化するため、サーバー側データベース・会員アカウント・入力データのサーバー送信を持たない。全ツールはブラウザローカル完結（JS / WASM / Canvas）とし、`localStorage` には任意の設定やプリセット程度のみ保存する。
 3. **無断ネットワーク送信の禁止**: 許可された測定・広告スクリプト（環境変数で明示設定された GA4 / Google AdSense）を除き、`fetch` / `XMLHttpRequest` / `sendBeacon` / `WebSocket` 等による外部通信を一切実装しない。
-4. **PRの自動マージ・`main` 直接Pushの禁止**: AIは必ず作業ブランチで実装し、Pull Request 作成までを行う。PRの最終マージは人間（最終責任者）が行う。
+4. **PRの自動マージ・`main` / `dev` 直接Pushの禁止**: AIは必ず `dev` から作業ブランチ（`feat/*`, `docs/*` 等）を切って実装し、`dev` 宛ての Draft PR 作成までを行う（本番リリースの区切りでは `dev` ➔ `main` のリリース PR を作成）。PRの最終マージは人間（最終責任者）が行う。
 5. **ローカル ＆ リモートCI未通過での完了報告・レビュー依頼禁止**: ローカルでの `npm run check:all` 100%通過、かつ Push / PR 作成後に **`node scripts/ops_github.mjs ready-pr <pr_number>`（内部で `wait-ci` により GitHub Actions 全ジョブ `success` を確認）** が通過するまで、人間へ「完了」「確認・マージ依頼」を出してはならない。AIが作成するPRはデフォルトで Draft とし、CI全緑前はレビュー依頼状態にしない。
 6. **UIへのUnicode絵文字混入禁止**: サイトUI（`src/`）には Unicode 絵文字を使わず、Lucide アイコンまたはカスタム SVG ベクターを使用する。
 
@@ -66,6 +66,7 @@
   - [`new-tool`](.agents/skills/new-tool/SKILL.md) — 新規ツール企画〜辛口監査〜実装〜全機械チェック〜PR
   - [`audit-and-evolve`](.agents/skills/audit-and-evolve/SKILL.md) — 週次振り返り・ポストモーテム・機械チェック進化
 - 永続メモリ:
+  - [`docs/HUMAN_OPERATIONS_GUIDE.md`](docs/HUMAN_OPERATIONS_GUIDE.md) — 人間（最終責任者）向け操作マニュアル（指示方法・コマンド・運用フロー）
   - [`docs/STATE.md`](docs/STATE.md) — 現在の単一真実（SSOT）
   - [`docs/ADR/`](docs/ADR) — 重要意思決定ログ
   - [`docs/POSTMORTEM_AND_LESSONS.md`](docs/POSTMORTEM_AND_LESSONS.md) — 失敗と機械化再発防止台帳
