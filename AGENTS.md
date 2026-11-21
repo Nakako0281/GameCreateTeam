@@ -66,6 +66,7 @@
   - [`new-tool`](.agents/skills/new-tool/SKILL.md) — 新規ツール企画〜辛口監査〜実装〜全機械チェック〜PR
   - [`audit-and-evolve`](.agents/skills/audit-and-evolve/SKILL.md) — 週次振り返り・ポストモーテム・機械チェック進化
 - 永続メモリ:
+  - [`docs/HUMAN_OPERATIONS_GUIDE.md`](docs/HUMAN_OPERATIONS_GUIDE.md) — 人間（最終責任者）向け操作マニュアル（指示方法・コマンド・運用フロー）
   - [`docs/STATE.md`](docs/STATE.md) — 現在の単一真実（SSOT）
   - [`docs/ADR/`](docs/ADR) — 重要意思決定ログ
   - [`docs/POSTMORTEM_AND_LESSONS.md`](docs/POSTMORTEM_AND_LESSONS.md) — 失敗と機械化再発防止台帳
