@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const ROOT = process.cwd()
+const DOCS_ONLY = process.argv.includes('--docs-only')
 const errors = []
 
 const REQUIRED_MEMORY_FILES = [
@@ -53,7 +54,7 @@ for (const slug of publishedSlugs) {
   if (!fs.existsSync(astroPage)) {
     errors.push(`[Registry] Missing Astro page for published tool: ${slug}`)
   }
-  if (!fs.existsSync(builtPage)) {
+  if (!DOCS_ONLY && !fs.existsSync(builtPage)) {
     errors.push(`[Registry] Missing built HTML for published tool: ${slug}`)
   }
 }

@@ -91,13 +91,19 @@ npm run ops:ready-pr -- <PR番号>
 
 ---
 
-## 5. PRレビュー・リリースフローの見方
+## 5. ブランチ運用・PRレビュー・リリースフローの見方
 
-AIがコード変更を行う際は、以下の安全ゲートを必ず通過します：
+本リポジトリは **`main`（本番）と `dev`（テスト統合）の2層ブランチ運用** を採用しています。
 
-1. **Draft PR で作成**: AI が `create-pr` を実行すると必ず **Draft（下書き）** 状態で作成されます。Draft の間は作業中または CI 実行中なのでレビュー不要です。
-2. **リモート CI 全通過 ➔ 自動 Ready 昇格**: AI が `npm run ops:ready-pr -- <PR番号>` を実行し、GitHub Actions 上の全ジョブが `success` になったときだけ **Ready for Review** へ昇格し、人間へ確認依頼が届きます（CI失敗時は昇格が物理的に拒否されます）。
-3. **人間によるマージ**: Ready になった PR を確認し、問題なければ GitHub 上で **Merge pull request** を押してください（マージ後、Cloudflare 連携済みブランチが自動デプロイされます）。
+```text
+作業ブランチ (feat/*, docs/*) ──PR──▶ dev (常設テスト環境) ──リリースPR──▶ main (本番)
+```
+
+1. **Draft PR で作成**: AI が `dev` から作業ブランチを切り、`create-pr` を実行すると必ず **`dev` 宛ての Draft（下書き）PR** として作成されます。Draft の間は作業中または CI 実行中なのでレビュー不要です。
+   - ※ `docs/**`・`.agents/**`・`README.md`・`AGENTS.md` のみのドキュメントPRは、GitHub Actions で軽量チェックのみ実行して高速に完了します。
+2. **リモート CI 全通過 ➔ 自動 Ready 昇格**: AI が `npm run ops:ready-pr -- <PR番号>` を実行し、リモートチェックが全件 `success` になったときだけ **Ready for Review** へ昇格して人間へ確認依頼が届きます（失敗時は昇格が物理的に拒否されます）。
+3. **人間による `dev` マージ（テスト反映）**: Ready になった PR を確認してマージすると、Cloudflare の `dev` テスト環境（`*.workers.dev`・検索非公開）へ自動反映されます。
+4. **本番リリース（`dev` ➔ `main`）**: テスト環境でまとまった成果を確認できたら、`dev` ➔ `main` のリリース PR をマージして本番公開します。
 
 ---
 

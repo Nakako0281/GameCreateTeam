@@ -26,5 +26,5 @@ description: AutoGrowth Studio の標準運用ワークフロー全体。セッ�
 1. `package.json` / 依存変更時はローカルで `npm ci` のクリーン再現確認を行う（ロックファイル不整合によるCI落ち防止）。
 2. `npm run check:all` を実行し、`audit:ci-parity` を含む全ゲートがエラー0件で通過することを確認する。
 3. `docs/STATE.md` を最新状態（完了内容・チェック結果・次の最優先タスク）へ更新する。
-4. 作業ブランチへコミット＆Pushし、`node scripts/ops_github.mjs create-pr` で **Draft PR** を作成（または既存PRを更新）する。**`main` 直接PushとPR自己マージは絶対に行わない。**
+4. 最新 `dev` から切った作業ブランチへコミット＆Pushし、`node scripts/ops_github.mjs create-pr` で `dev` 宛ての **Draft PR** を作成（または既存PRを更新）する（本番反映時は `dev` ➔ `main` のリリースPRを作成）。**`main` / `dev` 直接PushとPR自己マージは絶対に行わない。**
 5. **`node scripts/ops_github.mjs ready-pr <pr_number>` を実行して GitHub Actions CI の完了・全ジョブ `success` 確認と Ready 昇格を完了させる。** 1件でも失敗した場合は自動取得したログから修正・再Pushし、リモートCIが完全通過するまで人間への完了・確認依頼は絶対に行わない。

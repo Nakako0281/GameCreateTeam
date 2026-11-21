@@ -20,10 +20,10 @@ description: 毎日定例で実行する自律運用スキル。GitHub上の人�
    - **P3**: オープンなAIタスクも人間待ちブロックもない場合、`01_market_seo_strategist` と `06_growth_qa_analyst` の観点で次期改善（SEOメタ改善、英語 `/en/` 展開準備、機械チェック強化、集客記事作成）のIssueを起票して1スライス実行する。
 
 3. **安全実装と全機械検証**:
-   - `main` から最新化した専用作業ブランチ（既にオープンな同トピックブランチがあればそれを利用）で作業する。
+   - `dev` から最新化した専用作業ブランチ（既にオープンな同トピックブランチがあればそれを利用）で作業する。
    - 実装・ドキュメント更新後、必ず `npm run check:all` を実行し全項目グリーンにする。
 
 4. **記録とPR提出（リモートCIリリースゲート）**:
    - `docs/STATE.md` を更新する。
-   - コミット＆Pushし、Draft PR を作成（または既存PRを更新）する。
-   - `node scripts/ops_github.mjs ready-pr <pr_number>` を実行してリモートCI（GitHub Actions）の全通過を確認し、失敗時はログから修正・再Pushして再通過させてから、関連Issueへのコメント・ステータス更新と人間報告を行う。
+   - コミット＆Pushし、`dev` 宛ての Draft PR を作成（または既存PRを更新）する。
+   - `node scripts/ops_github.mjs ready-pr <pr_number>` を実行してリモートCI（GitHub Actions ＋ Cloudflare プレビュー）の全通過を確認し、失敗時はログから修正・再Pushして再通過させてから、関連Issueへのコメント・ステータス更新と人間報告を行う。

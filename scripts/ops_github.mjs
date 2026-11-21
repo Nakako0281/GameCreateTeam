@@ -682,7 +682,7 @@ async function main() {
     }
 
     case 'create-pr': {
-      const [head, title, bodyArg, base = 'main'] = positional
+      const [head, title, bodyArg, base = 'dev'] = positional
       if (!head || !title) {
         throw new Error('ブランチ名(head)とPRタイトルを指定してください')
       }
@@ -772,6 +772,7 @@ async function main() {
         payload.body = readContentOrText(flags.body)
       }
       if (flags.state) payload.state = flags.state
+      if (flags.base) payload.base = flags.base
 
       const pr = await githubRequest(`/pulls/${num}`, 'PATCH', payload)
       console.log(
