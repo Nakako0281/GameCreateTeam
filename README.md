@@ -1,76 +1,61 @@
-# AI Game Lab (GameCreateTeam)
+# LocalBox — AutoGrowth Studio
 
-**人間（最高責任者 / Executive Producer）** と **AIゲーム開発組織（GameCreateTeam）** が協働し、市場調査・企画書提出・マイルストーン分割開発・ボット検証・自動E2Eテストを経て **「何度も繰り返し遊べる、リトライ性の高いWebゲーム」** を継続的に開発・公開していくプラットフォームです。
+**「AIが自律的にマネタイズできるWebサイトを企画・構築・検証・改善し続け、組織自身も進化する」** 自律Webスタジオ（AutoGrowth Studio）と、完全ブラウザ完結・ゼロ送信 実務ツールサイト **LocalBox** のリポジトリです。
 
----
-
-## 🏛️ 組織構造と開発コンセプト
-
-1. **リトライ性（Replayability）最優先のゲームづくり**
-   - 一瞬で消費される出落ちゲームではなく、ランダム性×ビルド/戦略の多様性×実力介入によって「もう1回、次は別の戦略で遊びたい」と思わせるゲームを開発します。
-   - **プレイ時間は1分〜1時間以上まで自由**：ゲームのコアループが最も輝くプレイ時間を企画ごとに設計します（中〜長時間ゲームは `localStorage` オートセーブ対応）。
-2. **人間が最終Goサインを出し、AIが全実務を担う体制**
-   - AIチームが市場調査を行い、**ゲーム企画書（`docs/proposals/<game-id>.md`）** を作成して人間（最高責任者）に提出します。
-   - 人間からの **Goサイン** が出た後、AIチームがGitHubの **Milestone** と **Task Issues（M1〜M5）** を構築して開発を進めます。
-3. **Google One Pro 利用枠に合わせたマルチセッション（分割）開発**
-   - 1日やワンショットで無理に作らず、**5時間ごとの枠リセット** や **日次スケジュール** に合わせて1セッション1〜2 Issueずつ計画的に開発・コミット・引き継ぎ（`docs/projects/<game-id>/ROADMAP.md`）を行います。
+> 旧 GameCreateTeam (v1) の全コードおよび履歴はタグ `archive/game-create-team-v1` に保全されています。
 
 ---
 
-## 🤖 AIゲーム開発組織（`.agents/`）の構成
+## 1. ミッションと絶対方針
 
-詳細は [SKILL.md](.agents/skills/game-create-team/SKILL.md) および [docs/README.md](docs/README.md) を参照してください。
+- **第1目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（以降、週次PDCAと高RPM英語展開により拡大）
+- **収益モデル**: Google AdSense のみ（月額サブスク・買い切り決済は禁止）
+- **セキュリティ原則**: サーバーDB・会員登録・入力データのサーバー送信を一切持たない（ブラウザローカル完結＋任意設定のみの `localStorage`）
+- **役割分担**:
+  - **AI（トップリーダー）**: 市場調査・SEO/LLMO設計・UI/セキュリティ監査・実装・自動チェック・KPI分析・PR作成まで自律実行
+  - **人間（従業員兼最終責任者）**: PRマージ・独自ドメイン購入・外部管理画面操作・公開記事投稿・方針チェック（すべて GitHub Issue `owner:human` で管理）
 
-| 役割 | 定義ファイル | 担当業務 |
+---
+
+## 2. 収録ツール（Wave 1 公開中）
+
+| ツール | パス | 特徴 |
 | :--- | :--- | :--- |
-| **00 PM ＆ リードディレクター** | [00_director.md](.agents/members/00_director.md) | 企画統括・人間EPへの企画書提出・5時間枠/日次スケジュール＆Milestone管理 |
-| **01 市場調査リサーチャー** | [01_idea_scout.md](.agents/members/01_idea_scout.md) | Web市場調査・ベンチマーク分析・リトライ性の構造抽出 |
-| **02 リードゲームデザイナー** | [02_game_designer.md](.agents/members/02_game_designer.md) | コアループ・ビルド多様性・最適プレイ時間・多戦略ボット設計 |
-| **03 UI/UX・アート＆サウンド** | [03_art_sound.md](.agents/members/03_art_sound.md) | モバイル縦画面の情報設計・Canvas/SVG演出・Web Audio合成音 |
-| **04 辛口レビュアー＆監査役** | [04_critic.md](.agents/members/04_critic.md) | 単一最適解（死にビルド）の排除・企画書＆完成品の辛口監査 |
-| **05 アーキテクト＆エンジニア** | [05_engineer.md](.agents/members/05_engineer.md) | M1〜M4の段階的実装・純粋関数ロジック・オートセーブ機構 |
-| **06 テクニカルQA** | [06_qa.md](.agents/members/06_qa.md) | 単体/ボット/ビルド/Playwright E2E検証・プレイ動画撮影 |
-| **07 初見プレイテスター** | [07_blind_playtester.md](.agents/members/07_blind_playtester.md) | 録画映像からの直感理解度・リトライ意欲（5段階）の客観判定 |
+| **AI入力前・個人情報(PII)自動マスキング＆回答復元** | `/tools/ai-pii-masker/` | メール・電話・APIキー・社名・独自語をブラウザ内で仮名置換し、AI回答をワンクリック復元 |
+| **LLMトークン数＆API料金 リアルタイム比較シミュレーター** | `/tools/llm-cost-calculator/` | 日本語/英語のトークン近似計算＋Caching・Batch 50%割引・円換算比較＋CSV出力 |
+| **Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング** | `/tools/csv-encoding-fixer/` | 文字コード自動判定＋Excel最適UTF-8 BOM付変換＋列単位マスク/列削除 |
+| **画像 EXIF/GPS位置情報 完全削除＆WebP/JPG一括軽量化** | `/tools/image-exif-cleaner/` | 削除前バイナリ診断＋Canvas再描画による物理消去＋削除後0件再検査 |
 
 ---
 
-## 🔄 開発ライフサイクル（4 Stages）
-
-1. **Stage 1: 市場調査 ＆ 企画書MD提出（AI ➔ 人間）**
-   - 市場調査と社内レビューを経て、`docs/proposals/<game-id>.md` を作成し、GitHub企画Issue（`status:awaiting-approval`）とともに人間へ提出。
-2. **Stage 2: 最高責任者（人間）のGoサイン ➔ Milestone ＆ 分割Issue構築**
-   - Goサインが出たら、GitHub MilestoneとM1〜M5のTask Issues、および開発台帳 `docs/projects/<game-id>/ROADMAP.md` を自動生成。
-3. **Stage 3: マルチセッション・スプリント開発（M1〜M4）**
-   - **M1**: コアロジック＆多戦略ボットによるリプレイ性・バランス検証
-   - **M2**: プレイアブルUI骨格＆基本コアループ実装
-   - **M3**: コンテンツ・ビルド多様性拡張＆ `localStorage` オートセーブ/戦績実装
-   - **M4**: ビジュアル演出（Canvas/SVG）＆ Web Audio合成サウンド・UXポリッシュ
-4. **Stage 4: 総合QA・録画テスト・PR提出（M5） ➔ 人間承認で自動デプロイ**
-   - 全自動テストと初見プレイテストを通過後、Pull Requestを作成。人間がマージすると GitHub Pages へ自動デプロイされます。
-
----
-
-## 🛠️ プロジェクト管理・開発コマンド
+## 3. ローカル起動・機械的チェックコマンド
 
 ```bash
-# 📊 GitHub Milestone / Issue / PR 進捗ダッシュボード確認
-npm run gct:status
+# 依存インストール
+npm install
 
-# 🏷️ GitHub 標準ラベルの同期・整備
-npm run gct:labels
-
-# 🚀 開発サーバー起動
+# 開発サーバー起動（ローカル実機確認）
 npm run dev
 
-# 🔍 TypeScript型チェック
-npm run lint
-
-# 🧪 単体テスト ＆ リプレイ性ボットテスト実行 (Vitest)
-npm run test
-
-# 📦 本番ビルド検証
+# 本番ビルド＆プレビュー
 npm run build
+npm run preview
 
-# 📱 モバイル実ブラウザE2Eテスト (Playwright)
-npm run test:e2e
+# すべての機械チェックを一括実行（型・単体テスト・ビルド・セキュリティ・SEO・組織メモリ・Playwright E2E）
+npm run check:all
+
+# GitHub運用ダッシュボード確認
+npm run ops:status
 ```
+
+---
+
+## 4. 永続メモリ・組織ドキュメント
+
+- 最上位憲法: [`AGENTS.md`](AGENTS.md) / [`.agents/rules/AGENTS.md`](.agents/rules/AGENTS.md)
+- 現在地ダッシュボード: [`docs/STATE.md`](docs/STATE.md)
+- 意思決定記録 (ADR): [`docs/ADR/`](docs/ADR)
+- 失敗・教訓・機械化防止台帳: [`docs/POSTMORTEM_AND_LESSONS.md`](docs/POSTMORTEM_AND_LESSONS.md)
+- 週次KPIログ: [`docs/METRICS_LOG.md`](docs/METRICS_LOG.md)
+- 法務・コンプライアンス整理: [`docs/LEGAL_AND_COMPLIANCE_CHECKLIST.md`](docs/LEGAL_AND_COMPLIANCE_CHECKLIST.md)
+- ツールロードマップ: [`docs/TOOLS_ROADMAP.md`](docs/TOOLS_ROADMAP.md)

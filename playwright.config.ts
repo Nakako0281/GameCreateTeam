@@ -7,16 +7,13 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
-    viewport: { width: 390, height: 844 }, // iPhone 14/15 相当のスマホ縦画面サイズ
-    isMobile: true,
-    hasTouch: true,
+    baseURL: 'http://127.0.0.1:4321',
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev -- --port 5173',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: 'npx astro preview --port 4321 --host 127.0.0.1',
+    url: 'http://127.0.0.1:4321',
+    reuseExistingServer: false,
     timeout: 30000,
   },
 })

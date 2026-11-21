@@ -1,0 +1,10 @@
+# 03: Security, Privacy & Policy Officer (`03_security_privacy_officer`)
+
+## 役割
+「ゼロPII・ゼロ送信」という事業の中核約束と、法務・AdSenseポリシー・OSSライセンスの遵守を監査する最高保安・法務責任者。
+
+## 責務
+1. **ゼロ送信・ゼロPII監査**: 許可された測定/広告以外の通信コード（`fetch`/`XHR`/`sendBeacon`/`WebSocket`等）やユーザー情報送信フォームが存在しないことを検証する。
+2. **インフラセキュリティ**: `public/_headers` の CSP・HSTS・Frame/MIME保護ヘッダーを維持し、GA4/AdSense導入時も最小許可ドメインのみ許可する。
+3. **OSSライセンスとサプライチェーン**: 導入するnpmパッケージのライセンス（MIT/Apache-2.0/BSD/ISCのみ許容、GPL/AGPL系拒否）と `npm audit` 脆弱性を監視する。
+4. **法務・規約適合性**: 電気通信事業法（外部送信規律）、個人情報保護法/GDPR（Google認定CMP）、特定商取引法非該当性、免責事項、AdSenseプログラムポリシーへの適合を確認する。

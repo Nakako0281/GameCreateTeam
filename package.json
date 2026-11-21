@@ -1,35 +1,40 @@
 {
-  "name": "ai-game-lab",
+  "name": "localbox-studio",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "tsc --noEmit",
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check && tsc --noEmit",
     "test": "vitest run src",
     "test:e2e": "playwright test",
-    "preview": "vite preview",
-    "gct:status": "node .agents/skills/game-create-team/scripts/github_api.mjs status",
-    "gct:feedback": "node .agents/skills/game-create-team/scripts/github_api.mjs check-feedback",
-    "gct:labels": "node .agents/skills/game-create-team/scripts/github_api.mjs ensure-labels"
+    "audit:security": "node scripts/audit-security.mjs",
+    "audit:seo": "node scripts/audit-seo-adsense.mjs",
+    "audit:memory": "node scripts/audit-org-memory.mjs",
+    "check:all": "npm run typecheck && npm run test && npm run build && npm run audit:security && npm run audit:seo && npm run audit:memory && npm run test:e2e",
+    "ops:status": "node scripts/ops_github.mjs status",
+    "ops:labels": "node scripts/ops_github.mjs ensure-labels"
   },
   "dependencies": {
-    "lucide-react": "^0.468.0",
+    "@astrojs/react": "^7.1.9",
+    "@astrojs/sitemap": "^3.7.6",
+    "astro": "^7.4.13",
+    "encoding-japanese": "^2.5.0",
+    "lucide-react": "^1.77.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.12",
     "@playwright/test": "^1.49.0",
-    "@tailwindcss/vite": "^4.0.0",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "tailwindcss": "^4.0.0",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.1",
-    "vitest": "^2.1.8"
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.7.3",
+    "vitest": "^5.1.1"
   }
 }
