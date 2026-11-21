@@ -18,7 +18,7 @@
 2. **サーバーDB・ユーザー個人情報（PII）保持の禁止**: サイバー攻撃・情報漏洩リスクを極小化するため、サーバー側データベース・会員アカウント・入力データのサーバー送信を持たない。全ツールはブラウザローカル完結（JS / WASM / Canvas）とし、`localStorage` には任意の設定やプリセット程度のみ保存する。
 3. **無断ネットワーク送信の禁止**: 許可された測定・広告スクリプト（環境変数で明示設定された GA4 / Google AdSense）を除き、`fetch` / `XMLHttpRequest` / `sendBeacon` / `WebSocket` 等による外部通信を一切実装しない。
 4. **PRの自動マージ・`main` 直接Pushの禁止**: AIは必ず作業ブランチで実装し、Pull Request 作成までを行う。PRの最終マージは人間（最終責任者）が行う。
-5. **機械チェック未通過での完了報告禁止**: `npm run check:all` が100%通過するまで「完了」「PR準備完了」と報告してはならない。
+5. **ローカル ＆ リモートCI未通過での完了報告・レビュー依頼禁止**: ローカルでの `npm run check:all` 100%通過、かつ Push / PR 作成後に **`node scripts/ops_github.mjs ready-pr <pr_number>`（内部で `wait-ci` により GitHub Actions 全ジョブ `success` を確認）** が通過するまで、人間へ「完了」「確認・マージ依頼」を出してはならない。AIが作成するPRはデフォルトで Draft とし、CI全緑前はレビュー依頼状態にしない。
 6. **UIへのUnicode絵文字混入禁止**: サイトUI（`src/`）には Unicode 絵文字を使わず、Lucide アイコンまたはカスタム SVG ベクターを使用する。
 
 ---
@@ -48,9 +48,11 @@
 - **「次回から注意する」で終わらせてはならない**。同じ失敗を二度と人間にもAIにも起こさせないため、**必ず `scripts/audit-*.mjs`、Vitest単体テスト、または Playwright E2E に機械チェックを追加**し、自動で落ちる仕組みへ昇格させる。
 
 ### セッション終了時（Mandatory Handoff）
-1. `npm run check:all` を実行し、エラー0件を確認する。
-2. `docs/STATE.md`（および必要に応じ `docs/METRICS_LOG.md` / `docs/TOOLS_ROADMAP.md`）を最新状態に更新する。
-3. 変更を作業ブランチへコミット＆Pushし、PR作成（または既存PR更新）と関連Issueコメント更新を行う。
+1. `package.json` または依存関係を変更した場合は、クリーンな状態で `npm ci` がエラー0件で通ること（および `.node-version` と CI ワークフローの Node バージョン一致）を確認する。
+2. `npm run check:all` を実行し、ローカル全ゲート（`audit:ci-parity` 含む）でエラー0件を確認する。
+3. `docs/STATE.md`（および必要に応じ `docs/METRICS_LOG.md` / `docs/TOOLS_ROADMAP.md`）を最新状態に更新する。
+4. 変更を作業ブランチへコミット＆Pushし、Draft PR を作成（または既存PRを更新）する。
+5. **リモートCIリリースゲート（必須）**: `node scripts/ops_github.mjs ready-pr <pr_number>`（または `npm run ops:ready-pr -- <pr_number>`）を実行し、GitHub Actions CI が完了して全ジョブ `success` になるまで待機・実測確認する。1件でも失敗した場合は自動取得したログをもとに修正・再Pushし、全緑通過かつ Ready 昇格を確認してから初めて関連Issueと人間へ報告する。
 
 ---
 

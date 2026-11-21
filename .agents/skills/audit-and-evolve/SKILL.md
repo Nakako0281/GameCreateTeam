@@ -25,6 +25,6 @@ description: 週次振り返りと自己進化スキル。直近1週間のPR・I
    - 直近1週間で発生したバグ・テスト失敗・人間からの指摘・手戻り・CI警告を `docs/POSTMORTEM_AND_LESSONS.md` へ記録する。
    - **最低1つ以上、再発を機械的に防ぐコード改善（`scripts/audit-*.mjs` への新ルール追加、単体テスト追加、E2Eチェック追加、またはスキル/メモリ改善）を実際に実装してPRを出す**。
 
-4. **週次レポート記録**:
+4. **週次レポート記録（リモートCIリリースゲート）**:
    - `docs/METRICS_LOG.md` と `docs/STATE.md` に今週の総括・来週の最優先3アクションを記録する。
-   - 変更をブランチへコミットし、`npm run check:all` を通してから PR（または進捗Issueコメント）を作成する。
+   - 変更をブランチへコミットし、`npm run check:all` を通して Push・Draft PR 作成後、`node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCIの全通過を実測確認してから報告する。

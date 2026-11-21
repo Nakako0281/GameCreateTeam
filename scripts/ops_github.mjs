@@ -182,6 +182,156 @@ async function githubRequest(path, method = 'GET', body = undefined) {
   return res.json()
 }
 
+async function githubTextRequest(path) {
+  const token = getGitHubToken()
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'AutoGrowthStudio-Ops',
+    },
+  })
+  if (!res.ok) {
+    return ''
+  }
+  return res.text()
+}
+
+async function githubGraphql(query, variables = {}) {
+  const token = getGitHubToken()
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'AutoGrowthStudio-Ops',
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+  const payload = await res.json()
+  if (!res.ok || (payload.errors && payload.errors.length > 0)) {
+    throw new Error(
+      `GitHub GraphQL Error: ${JSON.stringify(payload.errors || payload)}`
+    )
+  }
+  return payload.data
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const PASS_CONCLUSIONS = new Set(['success', 'skipped', 'neutral'])
+
+async function waitAndVerifyPrCi(prNumber, timeoutSec = 600) {
+  if (!prNumber) throw new Error('PR番号を指定してください')
+  const pr = await githubRequest(`/pulls/${prNumber}`)
+  const headSha = pr.head?.sha
+  if (!headSha) throw new Error(`PR #${prNumber} の head.sha が取得できません`)
+
+  const deadline = Date.now() + timeoutSec * 1000
+  const appearDeadline = Date.now() + Math.min(60, timeoutSec) * 1000
+
+  let latestRuns = []
+  let latestCheckRuns = []
+
+  while (true) {
+    const [runsRes, checksRes] = await Promise.all([
+      githubRequest(`/actions/runs?head_sha=${encodeURIComponent(headSha)}&per_page=30`),
+      githubRequest(`/commits/${encodeURIComponent(headSha)}/check-runs?per_page=50`),
+    ])
+
+    latestRuns = runsRes.workflow_runs || []
+    latestCheckRuns = checksRes.check_runs || []
+
+    const hasAny = latestRuns.length > 0 || latestCheckRuns.length > 0
+    const allRunsCompleted =
+      latestRuns.length > 0 && latestRuns.every((r) => r.status === 'completed')
+    const allChecksCompleted =
+      latestCheckRuns.length === 0 ||
+      latestCheckRuns.every((c) => c.status === 'completed')
+
+    if (hasAny && allRunsCompleted && allChecksCompleted) {
+      break
+    }
+
+    if (!hasAny && Date.now() >= appearDeadline) {
+      throw new Error(
+        `CIワークフローが60秒以内に開始されませんでした (PR #${prNumber}, sha=${headSha})`
+      )
+    }
+
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `CI完了待機がタイムアウトしました (${timeoutSec}秒, PR #${prNumber}, sha=${headSha})`
+      )
+    }
+
+    await sleep(10000)
+  }
+
+  const failedRuns = latestRuns.filter(
+    (r) => !PASS_CONCLUSIONS.has(r.conclusion || '')
+  )
+  const failedChecks = latestCheckRuns.filter(
+    (c) => !PASS_CONCLUSIONS.has(c.conclusion || '')
+  )
+
+  const failureDetails = []
+  for (const run of failedRuns) {
+    const jobsRes = await githubRequest(
+      `/actions/runs/${run.id}/jobs?per_page=50`
+    )
+    const badJobs = (jobsRes.jobs || []).filter(
+      (j) => !PASS_CONCLUSIONS.has(j.conclusion || '')
+    )
+    for (const job of badJobs) {
+      const failedSteps = (job.steps || [])
+        .filter((s) => !PASS_CONCLUSIONS.has(s.conclusion || ''))
+        .map((s) => `${s.number}:${s.name}(${s.conclusion})`)
+      const rawLog = await githubTextRequest(`/actions/jobs/${job.id}/logs`)
+      failureDetails.push({
+        run_id: run.id,
+        workflow: run.name,
+        run_url: run.html_url,
+        job: job.name,
+        conclusion: job.conclusion,
+        failed_steps: failedSteps,
+        log_tail: rawLog ? rawLog.slice(-2500) : '',
+      })
+    }
+  }
+
+  const result = {
+    pr_number: pr.number,
+    pr_url: pr.html_url,
+    draft: pr.draft,
+    head_ref: pr.head?.ref,
+    head_sha: headSha,
+    all_passed: failedRuns.length === 0 && failedChecks.length === 0,
+    workflow_runs: latestRuns.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      conclusion: r.conclusion,
+      html_url: r.html_url,
+    })),
+    check_runs: latestCheckRuns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      conclusion: c.conclusion,
+      html_url: c.html_url,
+    })),
+    failure_details: failureDetails,
+  }
+
+  return { pr, result }
+}
+
 function formatMilestone(m) {
   const total = (m.open_issues || 0) + (m.closed_issues || 0)
   const progress =
@@ -505,7 +655,8 @@ async function main() {
         throw new Error('ブランチ名(head)とPRタイトルを指定してください')
       }
       const body = readContentOrText(bodyArg || flags.body || '')
-      const draft = Boolean(flags.draft)
+      // 安全強制：CIゲート未通過でのレビュー依頼を防ぐため常にDraftで作成し、ready-pr経由のみ昇格させる
+      const draft = true
       const pr = await githubRequest('/pulls', 'POST', {
         title,
         head,
@@ -515,7 +666,64 @@ async function main() {
       })
       console.log(
         JSON.stringify(
-          { number: pr.number, draft: pr.draft, html_url: pr.html_url },
+          {
+            number: pr.number,
+            draft: pr.draft,
+            html_url: pr.html_url,
+            next_required_gate: `node scripts/ops_github.mjs ready-pr ${pr.number}`,
+          },
+          null,
+          2
+        )
+      )
+      break
+    }
+
+    case 'wait-ci': {
+      const num = positional[0]
+      const timeoutSec = flags.timeout ? Number(flags.timeout) : 600
+      const { result } = await waitAndVerifyPrCi(num, timeoutSec)
+      console.log(JSON.stringify(result, null, 2))
+      if (!result.all_passed) {
+        process.exit(1)
+      }
+      break
+    }
+
+    case 'ready-pr': {
+      const num = positional[0]
+      const timeoutSec = flags.timeout ? Number(flags.timeout) : 600
+      const { pr, result } = await waitAndVerifyPrCi(num, timeoutSec)
+      if (!result.all_passed) {
+        console.log(JSON.stringify({ ...result, ready_promoted: false }, null, 2))
+        throw new Error(
+          `PR #${pr.number} のリモートCIが失敗しているため Ready for Review への昇格を拒否しました。`
+        )
+      }
+      let readyPromoted = false
+      let currentDraft = pr.draft
+      if (pr.draft) {
+        const gqlData = await githubGraphql(
+          `mutation($id: ID!) {
+            markPullRequestReadyForReview(input: { pullRequestId: $id }) {
+              pullRequest { number isDraft url }
+            }
+          }`,
+          { id: pr.node_id }
+        )
+        currentDraft = Boolean(
+          gqlData?.markPullRequestReadyForReview?.pullRequest?.isDraft
+        )
+        readyPromoted = !currentDraft
+      }
+      console.log(
+        JSON.stringify(
+          {
+            ...result,
+            draft: currentDraft,
+            ready_promoted: readyPromoted,
+            ci_verified: true,
+          },
           null,
           2
         )
@@ -566,7 +774,9 @@ async function main() {
           '  update-issue <issue_number> [--title "..."] [--body <file_or_text>] [--state open|closed] [--labels "a,b"] [--add-labels "c"] [--remove-labels "d"] [--milestone <number|null>]',
           '  comment-issue <issue_number> <body_file_or_text>',
           '  list-prs [open|closed|all]',
-          '  create-pr <head_branch> "<title>" <body_file_or_text> [base_branch] [--draft]',
+          '  create-pr <head_branch> "<title>" <body_file_or_text> [base_branch]  (always Draft until ready-pr)',
+          '  wait-ci <pr_number> [--timeout <seconds>]',
+          '  ready-pr <pr_number> [--timeout <seconds>]',
           '  update-pr <pr_number> [--title "..."] [--body <file_or_text>] [--state open|closed]',
         ].join('\n')
       )

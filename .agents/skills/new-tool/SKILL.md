@@ -24,7 +24,8 @@ description: LocalBoxへ新しいブラウザ完結・ゼロ送信ツールを�
    - 1,500字以上の独自解説テキスト（`audit:seo` の類似度閾値 `< 0.55` と最小1,200字をクリアすること）
 5. `src/data/tools.ts`: 該当ツールの `status` を `'published'` にしてメタ情報を登録する。
 
-## 3. E2E実機証明と機械チェック
+## 3. E2E実機証明と機械チェック・リモートCI確認
 1. `tests/e2e/site.spec.ts` に新規ツールの実操作＆外部ネットワークリクエスト0件証明テストを追加する。
-2. `npm run check:all` を実行し、`typecheck`, `test`, `build`, `audit:security`, `audit:seo`, `audit:memory`, `test:e2e` のすべてをエラー0件で通過させる。
-3. `docs/STATE.md` と `docs/TOOLS_ROADMAP.md` を更新してPRを作成する。
+2. 新規パッケージを追加した場合はローカルで `npm ci` クリーン再現確認を行う。
+3. `npm run check:all` を実行し、`typecheck`, `test`, `build`, `audit:security`, `audit:seo`, `audit:memory`, `audit:ci-parity`, `test:e2e` のすべてをエラー0件で通過させる。
+4. `docs/STATE.md` と `docs/TOOLS_ROADMAP.md` を更新してコミット＆Pushし、Draft PR 作成後に `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過を確認してから報告する。

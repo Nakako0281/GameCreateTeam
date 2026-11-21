@@ -39,21 +39,25 @@
   - 必ずタイトル先頭に `[Human]` を付け、手順・判断根拠・AI推奨案・完了条件チェックボックスを明記して起票する。
   - 定期実行時は `npm run ops:status` の `recently_closed_human_issues` を見て、人間が完了させた依頼を自動検知し、次の `owner:ai` タスクや `docs/STATE.md` 更新へ繋げる。
 - **AI自律タスク（`owner:ai`）**:
-  - 1回の作業で1つの完結したスライス（例：ツール1〜2本、またはSEO改善群）を実装し、`npm run check:all` を通してから PR を作成する。
+  - 1回の作業で1つの完結したスライス（例：ツール1〜2本、またはSEO改善群）を実装し、`npm run check:all` を通してから **Draft PR** を作成する。
+  - 作成した PR は `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過が機械確認されるまでレビュー依頼状態（Ready）へ昇格させない。
   - `main` ブランチへの直接Push・PRの自己マージは厳禁。
 
 ---
 
-## 4. 機械的品質ゲート（`npm run check:all`）
+## 4. 機械的品質ゲート（`npm run check:all` ＆ リモートCIゲート）
 
-以下すべてがエラー0件で通過することを完了条件とする：
+以下すべて（ローカルゲート 1〜8 ＋ リモートCIゲート 9〜10）がエラー0件で通過することを完了条件とする：
 1. `npm run typecheck`: `astro check && tsc --noEmit`（型エラー0件）
 2. `npm run test`: Vitest 単体テスト全通過（ロジック精度・境界値）
 3. `npm run build`: Astro 静的ビルド成功（`dist/` 生成）
 4. `npm run audit:security`: 不正通信API・危険構文・絵文字混入・`_headers`・OSSライセンス違反（GPL系等）0件
 5. `npm run audit:seo`: 初期HTML文字数・`<title>`/`<meta description>` 重複・JSON-LD・法務ページ・リンク切れ・ページ間類似度全クリア
 6. `npm run audit:memory`: 永続メモリファイル整合性・公開ツール台帳とビルド成果物の一致・料金テーブル鮮度（45日以内）確認
-7. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**
+7. `npm run audit:ci-parity`: `.node-version` とローカル/CI Node バージョン統一、`package.json` と `package-lock.json` 整合、ネスト依存バージョン乖離ゼロ確認
+8. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**
+9. **依存変更時の `npm ci` クリーン再現確認**: `package.json` 変更時は `npm ci` がエラーなく完了することをローカルで事前検証する。
+10. **リモートCI全通過証明（`wait-ci` / `ready-pr`）**: Push / PR 作成後、`node scripts/ops_github.mjs ready-pr <pr_number>` で GitHub Actions 上の全ジョブ `success` を実測確認してから Ready 昇格＆人間報告を行う。
 
 ---
 

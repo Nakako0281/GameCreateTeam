@@ -31,8 +31,8 @@
 
 ## 2. 最新の機械チェック結果 ＆ オープンIssue状況
 
-- `npm run check:all`: 全7ゲート通過確認後に本ブランチからPR提出予定（`typecheck`, `test`, `build`, `audit:security`, `audit:seo`, `audit:memory`, `test:e2e`）。
-- `npm audit --audit-level=high`: 2026-11-21 実行で `found 0 vulnerabilities`（exit 0）。
+- `npm run check:all`: `.node-version` / ロックファイル整合監査（`audit:ci-parity`）を含む全8ゲート + リモート GitHub Actions CI（`wait-ci` / `ready-pr` ゲート）を通過した上でPR提出・レビュー依頼を行う体制へ強化済み（`L-06`）。
+- `npm audit --audit-level=high`: クリーン再生成した `package-lock.json` で確認。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
   - Issue #32 `[Human] LocalBox MVP（第1弾4ツール）のローカル実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`)
   - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`)

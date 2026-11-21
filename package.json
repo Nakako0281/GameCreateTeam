@@ -13,9 +13,12 @@
     "audit:security": "node scripts/audit-security.mjs",
     "audit:seo": "node scripts/audit-seo-adsense.mjs",
     "audit:memory": "node scripts/audit-org-memory.mjs",
-    "check:all": "npm run typecheck && npm run test && npm run build && npm run audit:security && npm run audit:seo && npm run audit:memory && npm run test:e2e",
+    "audit:ci-parity": "node scripts/audit-ci-parity.mjs",
+    "check:all": "npm run audit:ci-parity && npm run typecheck && npm run test && npm run build && npm run audit:security && npm run audit:seo && npm run audit:memory && npm run test:e2e",
     "ops:status": "node scripts/ops_github.mjs status",
-    "ops:labels": "node scripts/ops_github.mjs ensure-labels"
+    "ops:labels": "node scripts/ops_github.mjs ensure-labels",
+    "ops:wait-ci": "node scripts/ops_github.mjs wait-ci",
+    "ops:ready-pr": "node scripts/ops_github.mjs ready-pr"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.9",
