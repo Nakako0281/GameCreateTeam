@@ -1,0 +1,126 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'プライバシーポリシー・外部送信規律 | LocalBox'
+const description =
+  'LocalBoxにおける入力データの完全ブラウザ完結処理、localStorageの利用範囲、電気通信事業法に基づく外部送信規律およびGoogleアナリティクス・AdSenseに関する公表事項です。'
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
+      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
+        プライバシーポリシー・外部送信規律に関する公表
+      </h1>
+      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月21日</p>
+
+      <div class="mt-6 space-y-8 text-sm leading-relaxed text-slate-700">
+        <section>
+          <h2 class="text-lg font-bold text-slate-900">1. 入力データおよびファイルの取り扱い（ゼロ送信原則）</h2>
+          <p class="mt-2">
+            LocalBox（以下「当サイト」）が提供する各種ツール（個人情報マスキング、LLM料金試算、CSV文字化け修復、画像EXIF削除など）は、すべてお客様のWebブラウザ内（クライアントサイドのJavaScript・HTML5 Canvas等）で完結して動作します。
+          </p>
+          <p class="mt-2">
+            入力された文章、CSVファイル、画像ファイル、ならびに変換・削除・マスキングの処理結果は、当サイトのサーバーや外部APIへ一切送信・保存されません。また、会員登録・氏名・メールアドレス等の個人情報を当サイトのデータベースで保持することもありません。
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-bold text-slate-900">2. ブラウザ内保存領域（localStorage）の利用について</h2>
+          <p class="mt-2">
+            一部のツールでは、お客様が任意にオンにした設定（例：AI PIIマスカーにおける独自カスタム辞書の単語リスト）をお使いの端末のブラウザ内（localStorage）にのみ記憶する機能を備えています。このデータは端末外へ自動送信されず、ブラウザの設定やツール画面の操作からいつでも消去できます。
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-bold text-slate-900">3. 電気通信事業法「外部送信規律」に基づく公表事項</h2>
+          <p class="mt-2">
+            当サイトでは、サイトの利用状況の把握による改善および無料のサービス運営維持（広告配信）のため、本番環境において以下の外部事業者の計測・広告サービスを導入する場合があります（※ローカル検証環境および設定未適用時は読み込まれません）。これらによりツールへの入力内容が送信されることはありません。
+          </p>
+
+          <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-xs sm:text-sm">
+              <thead class="bg-slate-50 font-bold text-slate-900">
+                <tr>
+                  <th class="px-4 py-3">サービス名 / 送信先事業者</th>
+                  <th class="px-4 py-3">送信される利用者情報</th>
+                  <th class="px-4 py-3">利用目的</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">
+                    Google Analytics 4 (GA4)<br />
+                    <span class="text-xs font-normal text-slate-500">Google LLC</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    閲覧ページのURL、リファラー、ブラウザ・OS種別、おおまかな地域、Cookie等の識別子（個人を直接特定する氏名やツール入力内容を含みません）
+                  </td>
+                  <td class="px-4 py-3">
+                    ページ閲覧数・利用傾向の統計的な把握およびツール品質・ユーザビリティの改善のため
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold text-slate-900">
+                    Google AdSense<br />
+                    <span class="text-xs font-normal text-slate-500">Google LLC</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    Cookie・広告識別子、閲覧ページURL、IPアドレス等に基づく広告配信・不正クリック防止情報
+                  </td>
+                  <td class="px-4 py-3">
+                    ユーザーの興味や閲覧ページに応じた広告の配信、広告表示効果の計測、および無料サービス維持のため
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-bold text-slate-900">4. Cookieの無効化・パーソナライズ広告のオプトアウトおよびGDPR対応</h2>
+          <p class="mt-2">
+            Googleなどの第三者配信事業者は、Cookieを使用して、ユーザーが当サイトや他のウェブサイトに過去にアクセスした情報に基づいて広告を配信します。ユーザーは Google の
+            <a
+              href="https://adssettings.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-semibold text-sky-700 underline"
+            >
+              広告設定ページ
+            </a>
+            からパーソナライズ広告を無効にできるほか、
+            <a
+              href="https://www.aboutads.info/choices/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-semibold text-sky-700 underline"
+            >
+              aboutads.info
+            </a>
+            にアクセスすることで第三者配信事業者によるパーソナライズ広告用Cookieの使用を無効化できます。
+          </p>
+          <p class="mt-2">
+            また、欧州経済領域（EEA）・英国・スイス等からのアクセスに対しては、Google認定CMP（同意管理プラットフォーム）を通じた同意確認および選択管理に対応する方針です。Google Analytics によるデータ収集・処理の仕組みについては、
+            <a
+              href="https://policies.google.com/technologies/partner-sites"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-semibold text-sky-700 underline"
+            >
+              Googleのサービスを使用するサイトやアプリから収集した情報のGoogleによる使用
+            </a>
+            をご参照ください。
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-bold text-slate-900">5. お問い合わせにおける情報の扱い</h2>
+          <p class="mt-2">
+            当サイトへのご要望や不具合報告は外部プラットフォーム（GitHub Issues 等）にて受け付けており、サイト独自の問い合わせデータベースに個人情報を蓄積いたしません。詳細は<a href="/contact/" class="font-semibold text-sky-700 underline">お問い合わせページ</a>をご確認ください。
+          </p>
+        </section>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

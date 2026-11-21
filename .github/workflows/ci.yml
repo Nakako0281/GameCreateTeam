@@ -1,7 +1,9 @@
-name: CI (Lint, Unit Test, Build & Mobile E2E)
+name: CI (Typecheck, Unit Test, Build, Audits & E2E)
 
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
 
 jobs:
@@ -14,23 +16,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: '.node-version'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check (Lint)
-        run: npm run lint
+      - name: CI Parity & Lockfile Audit
+        run: npm run audit:ci-parity
+
+      - name: Type check (Astro & TypeScript)
+        run: npm run typecheck
 
       - name: Run Unit Tests (Vitest)
         run: npm run test
 
-      - name: Build production bundle
+      - name: Build static site
         run: npm run build
+
+      - name: Security & License Audit
+        run: npm run audit:security
+
+      - name: SEO & AdSense Policy Audit
+        run: npm run audit:seo
+
+      - name: Org Memory & Freshness Audit
+        run: npm run audit:memory
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Mobile E2E Tests (Playwright)
+      - name: Run Playwright E2E & Zero-Transmission Proof
         run: npm run test:e2e

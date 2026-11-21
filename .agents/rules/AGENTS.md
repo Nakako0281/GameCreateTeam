@@ -1,80 +1,66 @@
-# GameCreateTeam プロジェクト共通ルール (`.agents/rules/AGENTS.md`)
+# AutoGrowth Studio 運用細則 (`.agents/rules/AGENTS.md`)
 
-このリポジトリは、**人間（最高責任者 / Executive Producer）** と **AIゲーム開発組織（GameCreateTeam）** が、モバイルファーストで何度も繰り返し遊べるWebゲームを企画・計画開発・テスト・リリースするプラットフォーム **「AI Game Lab」** です。
-
----
-
-## 0. 組織構造と基本方針
-
-### 組織の役割分担
-- **人間（ユーザー / 最高責任者）**:
-  1. AIが提出した **ゲーム企画書（`docs/proposals/<game-id>.md`）** の審査・修正指示・**最終Goサイン**。
-  2. 完成後に提出された **Pull Request の最終確認・マージ**。
-- **AIチーム（GameCreateTeam / 00〜07）**:
-  - 市場調査、企画立案、企画書MD作成、GitHub Milestone & Issue による開発計画策定、Google One Pro利用枠（5時間枠リセット／日次スケジュール）に合わせた分割開発・進捗管理、ボットによるリトライ性・バランス検証、UI/UX・Web Audio実装、E2Eテスト、PR作成まで **その他すべての業務を自律遂行する**。
-
-### ゲームデザインの核：「何度も繰り返し遊べる（高リトライ性）ゲーム」と「商業・Flash名作水準の直感体験」
-1. **リトライ性（Replayability）最優先**:
-   - 瞬間的にバズって1回で飽きられる出落ち・一発ネタは作らない。
-   - 毎プレイ変化する状況（シード乱数）、複数の戦略・ビルド・シナジー（最低3系統以上の勝ち筋）、実力・判断の介入、納得感のある敗北と発見を備えること。
-2. **Unicode絵文字の完全禁止（`R-09`）**:
-   - ゲーム内・プラットフォーム内のいかなる箇所にも Unicode 絵文字（`/\p{Extended_Pictographic}/u`）を使用してはならない。
-   - キャラクター、モンスター、サイコロ（1〜6のピップドット）、武器・防具、エフェクトはすべて **Canvas 2D/物理描画** または **カスタムSVGベクターグラフィックス** で描画すること。
-3. **説明ゼロで遊べる直感性・ダイレクトな手触り（`R-10`）**:
-   - 「ほとんどのユーザーはゲームをするために何百文字も説明を読まない」。文字だけで表現しようとするスプレッドシート型の画面や、「枠に置いてから別ボタンを押すまで何も起きない」間接的な事務操作を禁止する。
-   - ダイスやカード、オブジェクトを操作した瞬間に、画面上のキャラクターや物理世界が即座にアニメーション・ヒットストップ・効果音とともに反応するダイレクトな手触りを必須とする。
-4. **AIチームによる自律的セルフリジェクト（自己ダメ出し＆再設計）ループ（`R-11`）**:
-   - 最高責任者（人間）から「つまらない」「文字が多い」と指摘される前に、AIチーム自身が実機スクリーンショット・録画映像を世の中のヒット作（『スイカゲーム』『Dicey Dungeons』『80億分の1』、Flash時代の名作ゲーム等）と比較し、Web管理画面のようになっていれば自ら棄却（Self-Reject）して再設計・再実装する。
-5. **柔軟なプレイ時間設計（1分〜1時間以上）**:
-   - プレイ時間は固定しない。1時間かかる本格ローグライト/ストラテジーでも、1分で終わる高速スコアアタックでも、市場調査と相談の結果「そのゲームが最も面白くなる時間」を企画書で定義する。
-   - 5分以上のゲームには `localStorage` による **途中中断オートセーブ＆再開機能** を必ず実装する。
-6. **ボットによるリプレイ性・バランス数値検証**:
-   - M1（コアロジック段階）にて、ランダム／単調／熟練／複数戦略ボットを数百回走らせ、「スキル差」「戦略の多様性（単一最適解の排除）」「上達の階段」「ニアミス率」を数値で証明する（`.agents/skills/game-create-team/references/fun_metrics.md`）。
+本ファイルは [`AGENTS.md`](../../AGENTS.md) を技術・運用レベルへ落とし込んだ実務規範である。
 
 ---
 
-## 1. マルチセッション開発 ＆ GitHub プロジェクト管理ルール
+## 1. サイト・技術アーキテクチャ規約
 
-- **ワンショット開発の廃止と分割スプリント運用**:
-  - ゲームを1日や1回のセッションで無理に完成させる必要はない。
-  - **Google One Proの利用枠（5時間ごとのリセット枠、または日次スケジュール）** に収まるよう、Goサイン後にGitHubの **Milestone** と **Task Issues（M1〜M5）** を作成し、1セッションあたり1〜2 Issueを目安に計画的に開発する。
-- **ドキュメント・企画書・引き継ぎ台帳の管理（`docs/`）**:
-  - **企画書**: `docs/proposals/<game-id>.md`（および必要に応じ `docs/proposals/<game-id>-research.md`）としてリポジトリ内に作成し、GitHub企画Issue（`status:awaiting-approval`）と連携して人間に提出する。
-  - **開発ロードマップ＆引き継ぎ台帳**: Goサイン後は `docs/projects/<game-id>/ROADMAP.md` を作成し、毎セッション終了時に進捗と **「次回セッションの目標（Next Action）」** を更新・コミットする。
-- **GitHub CLI ツール（`github_api.mjs`）の活用**:
-  - セッション開始・終了時は必ず `npm run gct:status`（`node .agents/skills/game-create-team/scripts/github_api.mjs status`）を実行し、Milestone・Issue・Label・PRの状態を最新に保つ。
-- **毎日 9:00 JST の日次定例プロトコル（トリアージ優先順位）**:
-  1. **集合 ＆ Issue確認**: `npm run gct:status` と `npm run gct:feedback` で未消化 Issue・人間コメント・承認済み企画を確認し、対応可能なものがあれば最優先で消化する。
-  2. **組織体制・ドキュメント整合性精査**: 着手可能な Issue がない場合、`AGENTS.md`・`.agents/rules/AGENTS.md`・`.agents/members/00〜07`・`.agents/skills/*/SKILL.md`・`docs/` 間で方針・体制・仕様の食い違いがないかをチームで横断精査し、差異があれば修正PR（または整理Issue）を作成する。
-  3. **新規ゲーム企画の推進**: Issue も組織の食い違いもなければ（かつ決裁待ち企画提案が滞留していなければ）、`.agents/skills/new-game/SKILL.md` に従って次のゲーム企画（市場調査〜企画書MD提出）を進める。
+- **プラットフォーム名**: `LocalBox`（完全ブラウザ完結・ゼロ送信 実務ツールスタジオ）
+- **技術スタック**: Astro（`output: 'static'` SSG）＋ React 18 Islands（`client:load` / `client:idle`）＋ TypeScript（strict）＋ Tailwind CSS v4
+- **ホスティング**: Cloudflare Pages（無料枠・商用利用可）＋ 独自ドメイン（Cloudflare Registrar 原価運用）
+- **禁止ホスティング・設計**:
+  - `*.github.io`, `*.pages.dev`, `*.vercel.app` 等の無料サブドメインでの AdSense 申請（ルートドメイン所有権要件違反）。
+  - Vercel Hobby プランでの広告収益運用（商用利用禁止条項リスク）。
+  - 初期HTMLが空になる純粋SPA構成（`audit:seo` で機械的に拒否）。
 
 ---
 
-## 2. プラットフォーム技術仕様・制約
+## 2. コンテンツ品質・SEO・AdSense規約
 
-- **フレームワーク**: Vite + React 18 + TypeScript + Tailwind CSS v4 + Canvas API / SVG + Web Audio API + `localStorage`
-- **モバイルファースト画面枠**:
-  - ゲームプレイ画面（`src/pages/GamePlayPage.tsx`）は、スマホではフル画面（`100dvh`）、PCでは中央固定のスマホ縦画面フレーム（最大幅 `430px`）内で動作する。
-  - 各ゲームコンポーネント（`src/games/<game-id>/index.tsx`）は共通スリムヘッダーを除いた残り領域（`h-full w-full`）に収め、`375px〜430px` 幅で横スクロールのはみ出しを絶対に出さないこと。最小フォントサイズは `12px` 以上。
-- **サウンド・画像アセット・ライブラリ（無料原則）**:
-  - 開発に使用する素材・ツール・ライブラリは、**すべて無料で使えるもの（無料フリー素材・OSSライブラリ・AI生成）** に限定する。
-  - 無理にプログラム合成音（Web Audio合成のみ）に縛られる必要はない。短い効果音（SE）や音楽（BGM）、画像などで無料フリー素材を使った方が良い場合は、企画書（MD）にて人間へ必要素材リストを提示して用意してもらう（AIによる画像生成や、音声ファイル再生時のピッチ演出・フォールバック合成音の併用も可）。
-- **レビュー指摘台帳（`docs/REVIEW_GUIDELINES_AND_LOG.md`）の遵守**:
-  - 人間から受けたレビュー指摘は必ず `docs/REVIEW_GUIDELINES_AND_LOG.md` に記録し、企画書・PRの提出時に毎回チェックして同じ指摘の再発を防ぐ。過去の指摘と矛盾がある場合は人間へ確認する。
-- **コード分割（遅延読み込み）と新体制ゲームのプラットフォーム管理**:
-  - 新規ゲームは `src/games/<game-id>/index.tsx` に `export default` で実装し、`src/games/registry.ts` の `GAME_REGISTRY` に `React.lazy(() => import('./<game-id>'))` で登録する。
-  - 旧体制の過去6作品は完全削除済みであり、新体制の高リトライ性ゲーム（『ダイス・フォージ・ダンジョン』以降）のみをプラットフォームに収録する。
+- **1ツール1検索意図・充実テキスト**: 各ツールページには最低1,200文字以上の一次情報（仕組み・外部通信ゼロ検証方法・実務例・落とし穴・FAQ 4問以上）を静的HTMLとして含める。
+- **プログラム量産スパム防止**: ツールページ間のテキスト 3-gram Jaccard 類似度を `0.55` 未満に保つ（`scripts/audit-seo-adsense.mjs` で強制）。
+- **必須法務4ページ**:
+  - `/privacy/`（外部送信規律公表・GA4/AdSense明記・Cookie無効化・Google認定CMP記載・`localStorage` 説明）
+  - `/terms/`（免責・利用条件・知的財産）
+  - `/about/`（運営方針・DevToolsでの通信ゼロ検証方法）
+  - `/contact/`（ゼロPII方針に沿った連絡導線）
+- **AdSense審査前ルール**:
+  - 審査通過前は日本語（`/`）単一言語で品質を完成させ、複数言語混在を避ける。
+  - AdSense審査コード・広告スロットは環境変数 `PUBLIC_ADSENSE_CLIENT` 設定時のみ描画し、審査前のダミー広告枠は絶対に出さない。
+  - 審査通過後に高RPMな英語圏（`/en/`）展開と `hreflang` / 言語別サイトマップ対応を実施する。
 
 ---
 
-## 3. 品質・エラーゼロの絶対原則 ＆ PR承認ルール
+## 3. GitHub Issue・ラベル・PR運用規約
 
-- **Pull Request の勝手なマージ厳禁（人間承認必須）**:
-  - AIエージェントが行ってよいのは **Pull Request の作成（`create-pr`）まで**。マージは必ず人間が行う。`main` ブランチへ直接ゲーム追加を push することも禁止。
-- **最終検収ゲート（M5）**:
-  1. `npm run lint`（TypeScript型エラー0件）
-  2. `npm run test`（Vitestによる単体テスト＋多戦略リプレイ性ボットテスト＋レジストリ整合性テスト全通過）
-  3. `npm run build`（Vite本番ビルド成功）
-  4. `npm run test:e2e`（Playwrightによるモバイル実ブラウザ起動・エラー0件・画面はみ出しなし・最小フォント12px・Web Audio発音確認・プレイ動画とスクショ取得）
-  5. 初見プレイテスター（`07_blind_playtester.md`）のリトライ意欲評価4以上 ＆ 専門検収（02/03/04）の全員 `✅ LGTM`
-- ゲーム企画・開発・進捗管理を行う際は、必ず `.agents/skills/game-create-team/SKILL.md` スキルに従って進めること。
+- プロジェクト操作は必ず `node scripts/ops_github.mjs`（または `npm run ops:*`）経由で行う。
+- **人間へのタスク依頼（`owner:human`）**:
+  - 必ずタイトル先頭に `[Human]` を付け、手順・判断根拠・AI推奨案・完了条件チェックボックスを明記して起票する。
+  - 定期実行時は `npm run ops:status` の `recently_closed_human_issues` を見て、人間が完了させた依頼を自動検知し、次の `owner:ai` タスクや `docs/STATE.md` 更新へ繋げる。
+- **AI自律タスク（`owner:ai`）**:
+  - 1回の作業で1つの完結したスライス（例：ツール1〜2本、またはSEO改善群）を実装し、`npm run check:all` を通してから **Draft PR** を作成する。
+  - 作成した PR は `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過が機械確認されるまでレビュー依頼状態（Ready）へ昇格させない。
+  - `main` ブランチへの直接Push・PRの自己マージは厳禁。
+
+---
+
+## 4. 機械的品質ゲート（`npm run check:all` ＆ リモートCIゲート）
+
+以下すべて（ローカルゲート 1〜8 ＋ リモートCIゲート 9〜10）がエラー0件で通過することを完了条件とする：
+1. `npm run typecheck`: `astro check && tsc --noEmit`（型エラー0件）
+2. `npm run test`: Vitest 単体テスト全通過（ロジック精度・境界値）
+3. `npm run build`: Astro 静的ビルド成功（`dist/` 生成）
+4. `npm run audit:security`: 不正通信API・危険構文・絵文字混入・`_headers`・OSSライセンス違反（GPL系等）0件
+5. `npm run audit:seo`: 初期HTML文字数・`<title>`/`<meta description>` 重複・JSON-LD・法務ページ・リンク切れ・ページ間類似度全クリア
+6. `npm run audit:memory`: 永続メモリファイル整合性・公開ツール台帳とビルド成果物の一致・料金テーブル鮮度（45日以内）確認
+7. `npm run audit:ci-parity`: `.node-version` とローカル/CI Node バージョン統一、`package.json` と `package-lock.json` 整合、ネスト依存バージョン乖離ゼロ確認
+8. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**
+9. **依存変更時の `npm ci` クリーン再現確認**: `package.json` 変更時は `npm ci` がエラーなく完了することをローカルで事前検証する。
+10. **リモートCI全通過証明（`wait-ci` / `ready-pr`）**: Push / PR 作成後、`node scripts/ops_github.mjs ready-pr <pr_number>` で GitHub Actions 上の全ジョブ `success` を実測確認してから Ready 昇格＆人間報告を行う。
+
+---
+
+## 5. サブエージェント協働ルール
+
+- 単独AIの思い込みを防ぐため、重要設計・新規ツール企画・週次振り返り・AdSense/SEO監査では `define_subagent` / `invoke_subagent` を用いて `.agents/members/01`〜`06` の専門ロール（特に `05_devils_advocate_critic` と `03_security_privacy_officer`）を招集して検証を行うこと。

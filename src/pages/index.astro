@@ -1,0 +1,155 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { SITE_CONFIG } from '../config/site'
+import { PLANNED_TOOLS, PUBLISHED_TOOLS } from '../data/tools'
+
+const pageTitle = 'LocalBox | 完全ブラウザ完結・ゼロ送信 実務Webツール集'
+const pageDescription =
+  '入力データやファイルを1バイトもサーバーへ送らずブラウザ内だけで安全に処理できる無料Webツール集。AI入力前の個人情報マスキング、LLM料金試算、CSV文字化け修復、画像EXIF削除を提供。'
+
+const siteOrigin = Astro.site?.href || SITE_CONFIG.defaultUrl
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_CONFIG.brandName,
+  url: siteOrigin,
+  description: pageDescription,
+  inLanguage: 'ja',
+}
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
+  <!-- Hero -->
+  <section class="border-b border-slate-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+      <div class="max-w-3xl">
+        <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
+          ブラウザローカル処理 / サーバー送信 0 bytes / 登録不要
+        </span>
+        <h1 class="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+          社外秘や個人情報をサーバーへ送らず、ブラウザの中だけで完結する実務ツール集
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
+          LocalBoxは、生成AIへの入力前マスキング・APIコスト試算・Excel向けCSV文字化け修復・画像EXIF位置情報削除といった日々の実務を、通信ゼロで安全・高速に処理できる完全無料ツールスタジオです。
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href="#tools"
+            class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+          >
+            公開中のツールを使う
+          </a>
+          <a
+            href="/about/"
+            class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+          >
+            外部送信ゼロの確認方法
+          </a>
+        </div>
+      </div>
+
+      <!-- 3つの保証 -->
+      <div class="mt-10 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p class="text-xs font-bold text-sky-800">GUARANTEE 01</p>
+          <h2 class="mt-1 text-base font-bold text-slate-900">
+            入力データのサーバー送信はゼロ
+          </h2>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            テキスト・CSV・画像はすべてブラウザメモリとHTML5 Canvas上で処理されます。処理APIもサーバーデータベースも一切存在しません。
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p class="text-xs font-bold text-sky-800">GUARANTEE 02</p>
+          <h2 class="mt-1 text-base font-bold text-slate-900">
+            会員登録・個人情報保持なし
+          </h2>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            ログインやアカウント登録は不要です。サイバー攻撃による顧客情報漏洩リスクを設計レベルで排除しています。
+          </p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p class="text-xs font-bold text-sky-800">GUARANTEE 03</p>
+          <h2 class="mt-1 text-base font-bold text-slate-900">
+            Chrome拡張のインストール不要
+          </h2>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">
+            ブラウザの拡張権限を求めることなく、単一タブ内で完結して動作します。厳格なセキュリティポリシー環境でもそのまま検証可能です。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 公開中ツール -->
+  <section id="tools" class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">公開中のローカル実務ツール</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          すべてのツールにサンプル投入ボタンがあり、手元にファイルがなくてもすぐ試せます。
+        </p>
+      </div>
+      <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
+        {PUBLISHED_TOOLS.length} ツール稼働中
+      </span>
+    </div>
+
+    <div class="mt-6 grid gap-5 md:grid-cols-2">
+      {
+        PUBLISHED_TOOLS.map((tool) => (
+          <a
+            href={`/tools/${tool.slug}/`}
+            class="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-sky-400 hover:shadow-md"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
+                  {tool.categoryLabel}
+                </span>
+                <span class="text-xs font-semibold text-emerald-700">
+                  利用可能
+                </span>
+              </div>
+              <h3 class="mt-3 text-lg font-bold text-slate-900 group-hover:text-sky-700">
+                {tool.name}
+              </h3>
+              <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                {tool.summary}
+              </p>
+            </div>
+            <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-bold text-sky-700">
+              <span>ブラウザで今すぐ使う</span>
+              <span aria-hidden="true">&rarr;</span>
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- 開発ロードマップ -->
+  <section class="border-t border-slate-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <h2 class="text-xl font-bold text-slate-900">今後の追加予定ツール（順次拡充中）</h2>
+      <p class="mt-1 text-sm text-slate-600">
+        以下のツールも同じく「サーバー送信0バイト」方針で順次公開予定です。
+      </p>
+      <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          PLANNED_TOOLS.map((tool) => (
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <span class="inline-block rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                Wave {tool.wave} 予定
+              </span>
+              <h3 class="mt-2 text-sm font-bold text-slate-900">{tool.shortTitle}</h3>
+              <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                {tool.summary}
+              </p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>

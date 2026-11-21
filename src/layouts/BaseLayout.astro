@@ -1,0 +1,196 @@
+---
+import '../styles/global.css'
+import { LEGAL_LINKS, SITE_CONFIG } from '../config/site'
+import { PUBLISHED_TOOLS } from '../data/tools'
+
+interface Props {
+  title: string
+  description: string
+  canonicalPath?: string
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[]
+  noindex?: boolean
+}
+
+const {
+  title,
+  description,
+  canonicalPath,
+  jsonLd,
+  noindex = false,
+} = Astro.props
+
+const siteOrigin = Astro.site?.href || SITE_CONFIG.defaultUrl
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteOrigin).href
+const ldList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : []
+const gaId = SITE_CONFIG.gaMeasurementId
+const adsenseClient = SITE_CONFIG.adsenseClientId
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_CONFIG.brandName} />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    {
+      ldList.map((entry) => (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(entry)} />
+      ))
+    }
+
+    {
+      gaId && (
+        <>
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+          <script is:inline define:vars={{ gaId }}>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+              window.dataLayer.push(arguments);
+            }
+            gtag('js', new Date());
+            gtag('config', gaId);
+          </script>
+        </>
+      )
+    }
+
+    {
+      adsenseClient && (
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+          crossorigin="anonymous"
+        />
+      )
+    }
+  </head>
+  <body class="flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased">
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <a
+          href="/"
+          class="flex items-center gap-2.5 text-slate-900 no-underline transition-opacity hover:opacity-85"
+        >
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 64 64"
+            fill="none"
+            aria-hidden="true"
+            class="shrink-0"
+          >
+            <rect width="64" height="64" rx="16" fill="#0F172A" />
+            <rect
+              x="12"
+              y="14"
+              width="40"
+              height="36"
+              rx="8"
+              stroke="#38BDF8"
+              stroke-width="3.5"
+            />
+            <path
+              d="M22 29L29 36L42 23"
+              stroke="#34D399"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="48" cy="18" r="4" fill="#38BDF8" />
+          </svg>
+          <div>
+            <span class="block text-base font-bold tracking-tight text-slate-900">
+              {SITE_CONFIG.brandName}
+            </span>
+            <span class="block text-xs font-medium text-slate-600">
+              ゼロ送信・ブラウザ完結ツール
+            </span>
+          </div>
+        </a>
+
+        <nav aria-label="メインナビゲーション" class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-slate-700">
+          <a href="/#tools" class="hover:text-sky-700">ツール一覧</a>
+          <a href="/about/" class="hover:text-sky-700">ゼロ送信の仕組み</a>
+          <a href="/privacy/" class="hover:text-sky-700">プライバシー</a>
+          <a href="/contact/" class="hover:text-sky-700">お問い合わせ</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <div class="grid gap-8 md:grid-cols-3">
+          <div>
+            <p class="text-base font-bold text-slate-900">{SITE_CONFIG.brandName}</p>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+              すべての入力データ・ファイル処理をお使いのブラウザ内だけで完結させ、サーバーへのデータ送信を行わない実務向け無料Webツール集です。
+            </p>
+            <p class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+              外部送信 0 bytes / アカウント登録不要
+            </p>
+          </div>
+
+          <div>
+            <p class="text-sm font-bold text-slate-900">公開中のローカルツール</p>
+            <ul class="mt-3 space-y-2 text-sm text-slate-600">
+              {
+                PUBLISHED_TOOLS.map((tool) => (
+                  <li>
+                    <a
+                      href={`/tools/${tool.slug}/`}
+                      class="hover:text-sky-700 hover:underline"
+                    >
+                      {tool.shortTitle}
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-sm font-bold text-slate-900">ポリシー・運営情報</p>
+            <ul class="mt-3 space-y-2 text-sm text-slate-600">
+              {
+                LEGAL_LINKS.map((link) => (
+                  <li>
+                    <a href={link.href} class="hover:text-sky-700 hover:underline">
+                      {link.label}
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-8 border-t border-slate-200 pt-6 text-xs text-slate-500 sm:flex sm:items-center sm:justify-between">
+          <p>&copy; 2026 {SITE_CONFIG.brandName}. All rights reserved.</p>
+          <p class="mt-2 sm:mt-0">
+            処理はすべてローカルブラウザ上で実行されます。重要な業務判断の前に必ず出力結果をご確認ください。
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

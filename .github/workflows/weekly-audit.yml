@@ -1,0 +1,63 @@
+name: Weekly Security, Freshness & Site Health Audit
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Every Monday 09:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  weekly-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vulnerability, Build, and Automated Audits
+        id: audit
+        continue-on-error: true
+        run: |
+          npm run audit:ci-parity
+          npm audit --audit-level=high
+          npm run typecheck
+          npm run test
+          npm run build
+          npm run audit:security
+          npm run audit:seo
+          npm run audit:memory
+
+      - name: Open Issue if weekly audit fails
+        if: steps.audit.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[AI] Weekly Audit Failure (${new Date().toISOString().slice(0, 10)})`
+            const body = [
+              '週次の自動健全性監査（依存脆弱性 / ビルド / セキュリティ / SEO / 料金データ鮮度）が失敗しました。',
+              '',
+              `- Run URL: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '- 対応方法: 原因を調査して修正し、再発防止策を `docs/POSTMORTEM_AND_LESSONS.md` と機械チェックへ追記してください。'
+            ].join('\n')
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['owner:ai', 'type:security', 'status:ready', 'priority:p0'],
+            })
+
+      - name: Fail job if audit failed
+        if: steps.audit.outcome == 'failure'
+        run: exit 1

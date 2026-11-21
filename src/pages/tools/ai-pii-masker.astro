@@ -1,0 +1,94 @@
+---
+import ToolLayout, { type FaqItem } from '../../layouts/ToolLayout.astro'
+import AiPiiMasker from '../../components/tools/AiPiiMasker'
+import { getToolBySlug } from '../../data/tools'
+
+const tool = getToolBySlug('ai-pii-masker')
+const seoTitle = 'AI入力前・個人情報(PII)自動マスキング＆復元 | LocalBox'
+const seoDescription =
+  'ChatGPTやClaudeへ貼り付ける前にメールアドレス・電話番号・APIキー・社名をブラウザ内だけで仮名トークンへ置換。回答のワンクリック復元にも対応し外部送信ゼロで安全です。'
+
+const faqs: FaqItem[] = [
+  {
+    question: '貼り付けた個人情報や機密コードはどこかのサーバーに保存されますか？',
+    answer:
+      'いいえ。マスキングのパターン解析・置換辞書生成・復元処理はすべてJavaScriptによってお使いのブラウザのメモリ上だけで実行されます。通信が発生しないため、社内ネットワークやオフライン状態でも利用できます。',
+  },
+  {
+    question: 'Chrome拡張機能版のマスキングツールと比べて何が安全ですか？',
+    answer:
+      'ブラウザ拡張機能はWebページ全体や他サイトの入力欄を読み取れる強い権限を要求するものが多く、悪意ある更新による情報窃取リスクが指摘されています。本ツールは単一タブ内のみで動作するため、他のサイトへ権限が及ぶことはありません。',
+  },
+  {
+    question: '「回答復元機能」はどのような場面で役立ちますか？',
+    answer:
+      'たとえば顧客への謝罪メールや障害報告をAIに下書きしてもらう際、社名や担当者を [ORG_1] や [PERSON_1] に置換してAIへ渡し、返ってきた文章をそのままステップ3の欄へ貼ることで、元の固有名詞が入った実務用ドラフトを一瞬で復元できます。',
+  },
+  {
+    question: '独自のプロジェクト名や未検出の製品コードも隠せますか？',
+    answer:
+      'はい。「独自にマスクしたい固有名詞」欄にカンマや改行区切りで登録すると、[CUSTOM_1] などのトークンへ最優先で置換されます。繰り返し使うプロジェクト名がある場合のみ、チェックボックスで自分のブラウザの localStorage へ保存できます。',
+  },
+]
+---
+
+<ToolLayout
+  tool={tool}
+  seoTitle={seoTitle}
+  seoDescription={seoDescription}
+  featureList={[
+    'メールアドレス・電話番号・郵便番号・IPv4のローカル自動検出',
+    'APIキー・JWT・Bearerトークン・秘密鍵のマスク',
+    'Luhnチェック付きカード番号候補検出とカスタム辞書',
+    'AI出力内のプレースホルダートークンをワンクリック復元',
+  ]}
+  faqs={faqs}
+>
+  <AiPiiMasker slot="tool" client:load />
+
+  <div slot="guide" class="space-y-6 text-sm leading-relaxed text-slate-700">
+    <section>
+      <h2 class="text-xl font-bold text-slate-900">
+        生成AIへ機密データをそのまま貼るリスクと「往復マスク」の考え方
+      </h2>
+      <p class="mt-3">
+        日々の業務でメール文面の作成、顧客問い合わせの要約、エラーログの原因調査などをChatGPT、Claude、Geminiといったクラウド型の生成AIへ依頼する場面が急速に増えています。しかし、契約プランや利用設定によっては入力内容がサーバー側のログ保全やモデル改善の審査対象になるケースがあり、顧客の氏名、連絡先、社内IPアドレス、設定ファイルに紛れたAPIキーをそのまま送信してしまう事故が後を絶ちません。
+      </p>
+      <p class="mt-3">
+        かといって、長文の中から手作業で「株式会社〇〇」や「090-xxxx-xxxx」を一つずつ探し出して書き換え、さらにAIが返してくれた回答に元の社名を貼り戻す作業は想像以上に時間がかかり、見落としも起きやすいのが現実です。このツールは<strong>「1. 決定論的なトークン置換」</strong>と<strong>「2. 同じタブ内での自動復元」</strong>を組み合わせ、安全確認にかかる手間を数秒へ短縮するために設計されています。
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold text-slate-900">
+        自動検出の仕組みと、誤爆を減らすアルゴリズム上の工夫
+      </h2>
+      <p class="mt-3">
+        単純な正規表現を上から順に当てていくだけのスクリプトでは、「電話番号が12桁IDに部分一致する」「年号や製品型番をクレジットカード番号と誤認する」「『お客様』のような一般語を人名として隠してしまい文脈が壊れる」といった不具合が頻発します。本ツールでは以下の優先順位と検証ルールをブラウザ内のエンジンに組み込んでいます。
+      </p>
+      <ul class="mt-3 list-disc space-y-2 pl-5">
+        <li>
+          <strong>APIキー・秘密鍵・JWTの最優先マスク:</strong> OpenAI系の <code>sk-</code>、Google APIキーの <code>AIza</code>、GitHubトークンの <code>ghp_</code>、AWSアクセスキー、<code>Bearer</code> ヘッダ、PEM形式の秘密鍵ブロックを最優先で検出し、<code>[SECRET_1]</code> へ隔離します。
+        </li>
+        <li>
+          <strong>Luhnアルゴリズム検証によるカード番号判定:</strong> 13〜19桁の数値列が見つかっても、クレジットカード番号のチェックディジット規格であるLuhn検算を通過したものだけを <code>[CARD_1]</code> として扱い、単なる注文番号の誤マスクを防ぎます。
+        </li>
+        <li>
+          <strong>文脈を保つ番号付きトークン:</strong> 同じメールアドレスが文章内に3回登場した場合、3回とも同じ <code>[EMAIL_1]</code> に変換されます。AI側でも「同じ送信者からの連続メッセージである」という関係性を保ったまま要約や返信文を作れるため、回答精度が落ちません。
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-bold text-slate-900">
+        実務での安全な運用フローと最終目視確認のお願い
+      </h2>
+      <p class="mt-3">
+        おすすめの使い方は、まず社内独自の案件名や商品名を「独自マスク語」に入力しておき、元の文章を貼り付けてコピーボタンを押す手順です。この際、AIへのプロンプト末尾に「角括弧の <code>[PERSON_1]</code> や <code>[EMAIL_1]</code> などの記号は書き換えずにそのまま出力に含めてください」と一文添えると、ステップ3の回答復元がより確実に機能します。
+      </p>
+      <p class="mt-3">
+        なお、日本の氏名（敬称が付かない呼び捨ての個人名）や特殊な住所表記など、機械的なルールだけでは100%検出しきれない表現も存在します。秘密保持契約（NDA）に関わる文書を扱う場合は、コピー後の右側のテキスト欄を一度目で追ってからAIへ貼り付ける運用を徹底してください。
+      </p>
+    </section>
+  </div>
+</ToolLayout>
