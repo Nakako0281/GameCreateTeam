@@ -255,11 +255,21 @@ function getExpectedPushedHeadSha(headRef) {
 async function waitAndVerifyPrCi(prNumber, timeoutSec = 600) {
   if (!prNumber) throw new Error('PR番号を指定してください')
   let pr = await githubRequest(`/pulls/${prNumber}`)
+  if (pr.state !== 'open') {
+    throw new Error(
+      `PR #${pr.number} は既に ${pr.state}（merged=${Boolean(pr.merged)}）のためCI検証対象外です。最新mainから新ブランチ・新PRを作成してください。`
+    )
+  }
   const expectedSha = pr.head?.ref ? getExpectedPushedHeadSha(pr.head.ref) : null
   const syncDeadline = Date.now() + 30000
   while (expectedSha && pr.head?.sha !== expectedSha && Date.now() < syncDeadline) {
     await sleep(2000)
     pr = await githubRequest(`/pulls/${prNumber}`)
+  }
+  if (expectedSha && pr.head?.sha !== expectedSha) {
+    throw new Error(
+      `PR #${pr.number} の head.sha (${pr.head?.sha}) が最新Push済みコミット (${expectedSha}) と一致しません。CI誤判定を防ぐため停止しました。`
+    )
   }
   const headSha = pr.head?.sha
   if (!headSha) throw new Error(`PR #${prNumber} の head.sha が取得できません`)

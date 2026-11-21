@@ -3,11 +3,12 @@
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
 - **最終更新日**: 2026-11-21
-- **運用フェーズ**: `Phase 0 / Phase 1: 組織基盤刷新 ＆ LocalBox MVP（Wave 1）構築完了 → 人間によるローカル確認待ち`
+- **運用フェーズ**: `Phase 0 / Phase 1: 組織基盤刷新 ＆ LocalBox MVP（Wave 1）構築完了 → Cloudflare Pages テスト環境（*.pages.dev）実機確認・ドメイン判断待ち`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **LocalBox**（完全ブラウザ完結・ゼロ送信 実務ツールスタジオ）
-- **本番URL**: 未公開（独自ドメイン未購入。人間のローカル確認後、Cloudflare Pages + 独自ドメインへ公開予定）
+- **テスト環境URL**: Cloudflare Pages（`*.pages.dev` ＋ PR自動プレビュー・`X-Robots-Tag: noindex, nofollow` 保護済み、人間によるGitHub連携待ち）
+- **本番URL**: 未公開（テスト環境確認後に独自ドメインを取得し、同一 Cloudflare Pages プロジェクトへ紐づけ予定）
 - **AdSense状態**: 未申請（Phase 2 で12ツール整備＆公開後に初回申請予定）
 - **GA4 / GSC接続**: 未接続（独自ドメイン購入＆本番デプロイ時に設定）
 
@@ -34,7 +35,7 @@
 - `npm run check:all`: `.node-version` / ロックファイル整合監査（`audit:ci-parity`）を含む全8ゲート + リモート GitHub Actions CI（`wait-ci` / `ready-pr` ゲート）を通過した上でPR提出・レビュー依頼を行う体制へ強化済み（`L-06`）。
 - `npm audit --audit-level=high`: クリーン再生成後の確認で `found 0 vulnerabilities`（exit 0）。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
-  - Issue #32 `[Human] LocalBox MVP（第1弾4ツール）のローカル実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`)
+  - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`)
   - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`)
   - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`)
 - **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25)**:
