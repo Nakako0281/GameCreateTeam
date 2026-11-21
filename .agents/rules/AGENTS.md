@@ -39,6 +39,8 @@
   - 必ずタイトル先頭に `[Human]` を付け、手順・判断根拠・AI推奨案・完了条件チェックボックスを明記して起票する。
   - 定期実行時は `npm run ops:status` の `recently_closed_human_issues` を見て、人間が完了させた依頼を自動検知し、次の `owner:ai` タスクや `docs/STATE.md` 更新へ繋げる。
 - **AI自律タスク（`owner:ai`）**:
+  - **未ラベル人間指摘の優先トリアージ**: `npm run ops:status` で `all_open_issues` にラベル未付与の人間起票Issueがあれば、最優先で内容を精査し `owner:ai` / `priority:p0`（または適切な優先度）と方針コメントを付与してバックログに統合する。
+  - **最新事実の一次ソース検証義務（No Stale Knowledge）**: AIモデル名・料金・外部API・祝日・法改正など鮮度が重要な情報を新規追加・更新する際は、過去の記憶に頼らず必ず `search_web` 等で当日の公式一次ソースを検証した上で実装する。
   - **2層ブランチ運用**: 日常の開発・ドキュメント更新は必ず最新 `dev` から作業ブランチを切り、`dev` 宛てに **Draft PR** を作成する（`ops_github.mjs create-pr` のデフォルト base は `dev`）。テスト環境（`dev`）でまとまった成果が確認できたら `dev` ➔ `main` の本番リリース PR を作成する。
   - **ドキュメント専用PRの軽量化**: `docs/**`・`.agents/**`・`README.md`・`AGENTS.md` のみの変更は GitHub Actions で軽量監査のみ実行し、不要なビルドを省略する。
   - 作成した PR は `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過が機械確認されるまでレビュー依頼状態（Ready）へ昇格させない。
@@ -54,7 +56,7 @@
 3. `npm run build`: Astro 静的ビルド成功（`dist/` 生成）
 4. `npm run audit:security`: 不正通信API・危険構文・絵文字混入・`_headers`・OSSライセンス違反（GPL系等）0件
 5. `npm run audit:seo`: 初期HTML文字数・`<title>`/`<meta description>` 重複・JSON-LD・法務ページ・リンク切れ・ページ間類似度全クリア
-6. `npm run audit:memory`: 永続メモリファイル整合性・公開ツール台帳とビルド成果物の一致・料金テーブル鮮度（45日以内）確認
+6. `npm run audit:memory`: 永続メモリファイル整合性・公開ツール台帳とビルド成果物の一致・LLM料金テーブル鮮度（14日以内＆`priceEffectiveUntil`改定日自動検知＆退役モデル非混入＆主要4社公式URL確認）確認
 7. `npm run audit:ci-parity`: `.node-version` とローカル/CI Node バージョン統一、`package.json` と `package-lock.json` 整合、ネスト依存バージョン乖離ゼロ確認
 8. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**
 9. **依存変更時の `npm ci` クリーン再現確認**: `package.json` 変更時は `npm ci` がエラーなく完了することをローカルで事前検証する。

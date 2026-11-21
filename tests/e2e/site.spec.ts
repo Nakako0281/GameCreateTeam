@@ -91,6 +91,19 @@ test('proves zero external transmission across interactive execution of all 4 Wa
     .getByLabel('Batch API（非同期50%割引・対応モデルのみ）を適用')
     .check()
   await expect(page.getByText('Batch 50%OFF').first()).toBeVisible()
+  const costTable = page.locator('table')
+  await expect(costTable.getByText('GPT-6.2 Sol', { exact: true })).toBeVisible()
+  await expect(costTable.getByText('Claude Sonnet 5.5', { exact: true })).toBeVisible()
+  await expect(costTable.getByText('Gemini 4 Argon', { exact: true })).toBeVisible()
+  await expect(costTable.getByText('DeepSeek-V4.1-Flash', { exact: true })).toBeVisible()
+
+  const filterGroup = page.getByRole('group', { name: 'プロバイダ絞り込み' })
+  await filterGroup.getByRole('button', { name: 'Google' }).click()
+  await expect(costTable.getByText('Gemini 4 Argon', { exact: true })).toBeVisible()
+  await expect(costTable.getByText('GPT-6.2 Sol', { exact: true })).toHaveCount(0)
+  await filterGroup.getByRole('button', { name: 'すべて' }).click()
+  await expect(costTable.getByText('GPT-6.2 Sol', { exact: true })).toBeVisible()
+
   const tokensText = await page.getByTestId('effective-input-tokens').textContent()
   expect(Number((tokensText || '0').replace(/,/g, ''))).toBeGreaterThan(20)
 

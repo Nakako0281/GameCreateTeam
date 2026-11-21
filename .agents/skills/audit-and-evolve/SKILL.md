@@ -14,7 +14,7 @@ description: 週次振り返りと自己進化スキル。直近1週間のPR・I
    - `git log --since="7 days ago" --oneline` で変更履歴を確認。
    - `npm run ops:status` および `node scripts/ops_github.mjs list-issues --state all` / `list-prs --state all` で完了・滞留状況を把握。
    - `docs/STATE.md`、`docs/METRICS_LOG.md`、`docs/POSTMORTEM_AND_LESSONS.md` を読む。
-   - もし `npm audit --audit-level=high` やリンク/料金鮮度（`llm-pricing.ts` の `PRICING_LAST_VERIFIED`）で警告があれば即座に課題化する。
+   - もし `npm audit --audit-level=high` やリンク/料金鮮度（`llm-pricing.ts` の `PRICING_LAST_VERIFIED` 14日以内上限・`priceEffectiveUntil` 7日以内改定予定・退役モデル非混入）で警告があれば即座に課題化する。
 
 2. **KPI・収益・AdSense進捗の分析**:
    - 目標（2027-02-20までに AdSense 月100円以上）に対する現在地を評価する。

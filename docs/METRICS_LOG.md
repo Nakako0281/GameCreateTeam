@@ -17,5 +17,5 @@
 1. 公開済みツールページに検索表示がついているか？（GSCインデックス状況）
 2. 表示回数が多いのにCTRが2%未満のページはないか？（`<title>` / `<meta description>` 改善候補）
 3. 平均掲載順位が4〜15位のページはないか？（解説・FAQ拡充で1〜3位へ押し上げ候補）
-4. `npm audit --audit-level=high` および `PRICING_LAST_VERIFIED` 鮮度に異常はないか？
+4. `npm audit --audit-level=high` および `PRICING_LAST_VERIFIED` 鮮度（14日以内）・`priceEffectiveUntil` 改定予定日に異常はないか？
 5. 直近1週間の失敗・手戻りから新しい機械チェックを1つ以上追加したか？
