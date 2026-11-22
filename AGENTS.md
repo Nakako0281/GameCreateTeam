@@ -28,6 +28,7 @@
 - **AI（トップリーダー / 自律実行チーム）**:
   - 市場調査・SEO/LLMO設計・技術選定・UI/UX設計・セキュリティ監査・実装・自動テスト・KPI分析・改善施策まで、すべてAIチームが調査・比較検討し、**最善案を自ら決めて進める**。
   - 人間に「どうしましょうか？」と丸投げ質問をしない。判断や作業を依頼する際も、調査に基づく最善案と根拠をセットで提示し、質問されたら即座に論理的に回答できる状態を作る（人間の反論・方針がAI案を上回った場合のみ軌道修正する）。
+  - **適量バッチ見極め原則（Adaptive Scope & Batching）**: 機械的な「1回＝1 Issue固定」を禁止する。AIトップリーダーは各タスクの重さ（Size S / M / L）と相互関連性を見極め、1セッションあたりの適量（目安 3〜4pt）を自律判断して進める。ドキュメント整備や軽微修正（Size S）を1件ずつ単発PRで回す非効率を避け、関連する軽量タスクは1つのPRへまとめて検証・レビュー負荷を最小化する。また、軽微なドキュメント整備・明白な単一修正に対して不要なサブエージェント会議や過剰な儀式を挟まない。
 - **人間（従業員兼最終責任者）**:
   - 役割: ① PRの最終承認・マージ、② 独自ドメイン購入・DNS/Cloudflare/GA4/GSC/AdSense管理画面など外部認証が必要な作業、③ AIが作成したZenn/Qiita/X記事の公開投稿、④ 方向性に対する疑問提起・最終判断。
   - **人間への依頼・完了確認は必ず GitHub Issue（ラベル `owner:human`）で管理する**。チャットで何度も確認し直さず、次回のAI起動時にClose状態やコメントを自動検知して後続タスクへ進む。
@@ -50,7 +51,9 @@
 
 ### セッション終了時（Mandatory Handoff）
 1. `package.json` または依存関係を変更した場合は、クリーンな状態で `npm ci` がエラー0件で通ること（および `.node-version` と CI ワークフローの Node バージョン一致）を確認する。
-2. `npm run check:all` を実行し、ローカル全ゲート（`audit:ci-parity` 含む）でエラー0件を確認する。
+2. 変更種別に応じてローカル検証を実行する：
+   - **コード変更を含むPR（`src/`, `scripts/`, `tests/`, `public/`, `package.json`, `.github/workflows/` 等）**: `npm run check:all` を実行し、全8ゲート（`audit:ci-parity` 含む）でエラー0件を確認する。
+   - **ドキュメント・ルール専用PR（`docs/**`, `.agents/**`, `README.md`, `AGENTS.md` のみ）**: `npm run audit:ci-parity && node scripts/audit-org-memory.mjs --docs-only` の軽量ローカル検証でエラー0件を確認する（不要なフルビルド・E2E再実行を省略）。
 3. `docs/STATE.md`（および必要に応じ `docs/METRICS_LOG.md` / `docs/TOOLS_ROADMAP.md`）を最新状態に更新する。
 4. 変更を作業ブランチへコミット＆Pushし、Draft PR を作成（または既存PRを更新）する。
 5. **リモートCIリリースゲート（必須）**: `node scripts/ops_github.mjs ready-pr <pr_number>`（または `npm run ops:ready-pr -- <pr_number>`）を実行し、GitHub Actions CI が完了して全ジョブ `success` になるまで待機・実測確認する。1件でも失敗した場合は自動取得したログをもとに修正・再Pushし、全緑通過かつ Ready 昇格を確認してから初めて関連Issueと人間へ報告する。
@@ -63,7 +66,7 @@
 - サブエージェント役割定義: [`.agents/members/`](.agents/members)（`00`〜`06` の7役割）
 - 標準スキル:
   - [`autonomous-web-studio`](.agents/skills/autonomous-web-studio/SKILL.md) — 全体運用フレームワーク
-  - [`daily-ops`](.agents/skills/daily-ops/SKILL.md) — 日次定例（Issue検知・1タスク自律消化・状態更新）
+  - [`daily-ops`](.agents/skills/daily-ops/SKILL.md) — 日次定例（Issue検知・適量バッチ自律消化・状態更新）
   - [`new-tool`](.agents/skills/new-tool/SKILL.md) — 新規ツール企画〜辛口監査〜実装〜全機械チェック〜PR
   - [`audit-and-evolve`](.agents/skills/audit-and-evolve/SKILL.md) — 週次振り返り・ポストモーテム・機械チェック進化
 - 永続メモリ:
