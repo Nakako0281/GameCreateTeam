@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
-  Calculator,
   CalendarClock,
   Download,
   ExternalLink,
-  Info,
   RotateCcw,
   Sparkles,
 } from 'lucide-react'
@@ -125,132 +123,106 @@ export default function LlmCostCalculator() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2.5 rounded-xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-xs text-sky-900">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-semibold">
-            <Info className="h-4 w-4 shrink-0 text-sky-700" />
-            <span>
-              料金データ確認日: {PRICING_LAST_VERIFIED}（主要4社・最新{rows.length}モデル比較。日次自動監査対象）
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPromptText(SAMPLE_JP_PROMPT)
-                setOverrideInputTokens('')
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-white px-2.5 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-50"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              日本語業務プロンプト
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPromptText(SAMPLE_CODE_PROMPT)
-                setOverrideInputTokens('')
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              英語コードレビュー
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPromptText('')
-                setOverrideInputTokens('')
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              クリア
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-sky-200/70 pt-2 text-[11px] text-sky-800">
-          <span className="font-semibold">公式料金表:</span>
-          {Object.entries(OFFICIAL_PRICING_SOURCES).map(([provider, url]) => (
-            <a
-              key={provider}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium underline decoration-sky-400 underline-offset-2 hover:text-sky-950"
-            >
-              <span>{provider}</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          ))}
+    <div className="space-y-5">
+      {/* スリム1行ツールバー */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 text-xs">
+        <span className="font-medium text-slate-600 tabular-nums">
+          料金確認: {PRICING_LAST_VERIFIED}（{rows.length}モデル）
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setPromptText(SAMPLE_JP_PROMPT)
+              setOverrideInputTokens('')
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/70 px-2.5 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-100"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            日本語プロンプト
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPromptText(SAMPLE_CODE_PROMPT)
+              setOverrideInputTokens('')
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            英語コードレビュー
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPromptText('')
+              setOverrideInputTokens('')
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            クリア
+          </button>
         </div>
       </div>
 
       {/* プロンプト入力 & トークン内訳 */}
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <div>
           <label
             htmlFor="llm-prompt-input"
-            className="block text-sm font-bold text-slate-900"
+            className="block text-xs font-bold text-slate-800"
           >
-            入力プロンプト（日本語・英語・ソースコード）
+            入力プロンプト
           </label>
           <textarea
             id="llm-prompt-input"
-            rows={5}
+            rows={4}
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
-            placeholder="ここにシステムプロンプトや想定入力テキストを貼り付けてください..."
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3.5 text-sm leading-relaxed text-slate-900 focus:border-sky-500 focus:outline-none"
+            placeholder="システムプロンプトや想定入力テキストを貼り付けてください..."
+            className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm leading-relaxed text-slate-900 focus:border-sky-500 focus:outline-none"
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-            <Calculator className="h-4 w-4 text-sky-700" />
-            <span>ローカル推定トークン内訳</span>
+        <dl className="grid grid-cols-2 gap-2.5 self-start rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+          <div className="rounded-lg bg-white p-2.5 ring-1 ring-slate-200/80">
+            <dt className="text-slate-500">推定トークン数</dt>
+            <dd
+              data-testid="effective-input-tokens"
+              className="mt-0.5 text-lg font-bold tabular-nums text-sky-800"
+            >
+              {effectiveInputTokens.toLocaleString()}
+            </dd>
           </div>
-          <dl className="mt-3 grid grid-cols-2 gap-2.5 text-xs">
-            <div className="rounded-lg bg-white p-2.5 ring-1 ring-slate-200">
-              <dt className="text-slate-500">計算に使う入力トークン</dt>
-              <dd
-                data-testid="effective-input-tokens"
-                className="mt-0.5 text-lg font-bold text-sky-800"
-              >
-                {effectiveInputTokens.toLocaleString()}
-              </dd>
-            </div>
-            <div className="rounded-lg bg-white p-2.5 ring-1 ring-slate-200">
-              <dt className="text-slate-500">総文字数</dt>
-              <dd className="mt-0.5 text-lg font-bold text-slate-900">
-                {tokenEstimate.totalChars.toLocaleString()}
-              </dd>
-            </div>
-            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200">
-              <dt className="text-slate-500">漢字 / かな</dt>
-              <dd className="mt-0.5 font-semibold text-slate-800">
-                {tokenEstimate.kanjiChars} / {tokenEstimate.kanaChars}
-              </dd>
-            </div>
-            <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200">
-              <dt className="text-slate-500">半角英数・記号</dt>
-              <dd className="mt-0.5 font-semibold text-slate-800">
-                {tokenEstimate.asciiChars}
-              </dd>
-            </div>
-          </dl>
-        </div>
+          <div className="rounded-lg bg-white p-2.5 ring-1 ring-slate-200/80">
+            <dt className="text-slate-500">総文字数</dt>
+            <dd className="mt-0.5 text-lg font-bold tabular-nums text-slate-900">
+              {tokenEstimate.totalChars.toLocaleString()}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/80">
+            <dt className="text-slate-500">漢字 / かな</dt>
+            <dd className="mt-0.5 font-semibold tabular-nums text-slate-800">
+              {tokenEstimate.kanjiChars} / {tokenEstimate.kanaChars}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/80">
+            <dt className="text-slate-500">半角英数</dt>
+            <dd className="mt-0.5 font-semibold tabular-nums text-slate-800">
+              {tokenEstimate.asciiChars}
+            </dd>
+          </div>
+        </dl>
       </div>
 
       {/* 条件パラメータ */}
-      <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <label
             htmlFor="override-tokens"
             className="block text-xs font-semibold text-slate-700"
           >
-            入力トークン直接指定（任意）
+            入力トークン指定
           </label>
           <input
             id="override-tokens"
@@ -259,7 +231,7 @@ export default function LlmCostCalculator() {
             value={overrideInputTokens}
             onChange={(e) => setOverrideInputTokens(e.target.value)}
             placeholder={`自動: ${tokenEstimate.estimatedTokens}`}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums text-slate-900 focus:border-sky-500 focus:outline-none"
           />
         </div>
         <div>
@@ -267,7 +239,7 @@ export default function LlmCostCalculator() {
             htmlFor="output-tokens"
             className="block text-xs font-semibold text-slate-700"
           >
-            1回の出力トークン数
+            出力トークン
           </label>
           <input
             id="output-tokens"
@@ -275,7 +247,7 @@ export default function LlmCostCalculator() {
             min={0}
             value={outputTokens}
             onChange={(e) => setOutputTokens(Math.max(0, Number(e.target.value) || 0))}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums text-slate-900 focus:border-sky-500 focus:outline-none"
           />
         </div>
         <div>
@@ -283,7 +255,7 @@ export default function LlmCostCalculator() {
             htmlFor="monthly-requests"
             className="block text-xs font-semibold text-slate-700"
           >
-            月間リクエスト回数
+            月間回数
           </label>
           <input
             id="monthly-requests"
@@ -291,15 +263,15 @@ export default function LlmCostCalculator() {
             min={1}
             value={monthlyRequests}
             onChange={(e) => setMonthlyRequests(Math.max(1, Number(e.target.value) || 1))}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums text-slate-900 focus:border-sky-500 focus:outline-none"
           />
         </div>
         <div>
           <label
             htmlFor="cache-hit-rate"
-            className="block text-xs font-semibold text-slate-700"
+            className="block text-xs font-semibold tabular-nums text-slate-700"
           >
-            キャッシュヒット率: {cacheHitRate}%
+            キャッシュ率: {cacheHitRate}%
           </label>
           <input
             id="cache-hit-rate"
@@ -309,7 +281,7 @@ export default function LlmCostCalculator() {
             step={10}
             value={cacheHitRate}
             onChange={(e) => setCacheHitRate(Number(e.target.value))}
-            className="mt-3 w-full accent-sky-700"
+            className="mt-2.5 w-full accent-sky-700"
           />
         </div>
         <div>
@@ -317,60 +289,83 @@ export default function LlmCostCalculator() {
             htmlFor="usd-jpy"
             className="block text-xs font-semibold text-slate-700"
           >
-            想定為替レート (円/USD)
+            為替 (円/$)
           </label>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              id="usd-jpy"
-              type="number"
-              min={50}
-              max={400}
-              value={usdToJpy}
-              onChange={(e) =>
-                setUsdToJpy(Math.max(50, Number(e.target.value) || DEFAULT_USD_TO_JPY))
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
-            />
-          </div>
+          <input
+            id="usd-jpy"
+            type="number"
+            min={50}
+            max={400}
+            value={usdToJpy}
+            onChange={(e) =>
+              setUsdToJpy(Math.max(50, Number(e.target.value) || DEFAULT_USD_TO_JPY))
+            }
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm tabular-nums text-slate-900 focus:border-sky-500 focus:outline-none"
+          />
         </div>
       </div>
 
-      {/* 追加オプション行 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-800">
-          <label className="inline-flex cursor-pointer items-center gap-2">
+      {/* オプション & プロバイダ絞り込み */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="group"
+          aria-label="プロバイダ絞り込み"
+          className="flex flex-wrap items-center gap-1.5"
+        >
+          {PROVIDER_FILTERS.map((item) => {
+            const active = providerFilter === item.value
+            return (
+              <button
+                key={item.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setProviderFilter(item.value)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700">
+          <label className="inline-flex cursor-pointer items-center gap-1.5">
             <input
               type="checkbox"
               checked={useBatchApi}
               onChange={(e) => setUseBatchApi(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-sky-700"
             />
-            Batch API（非同期50%割引・対応モデルのみ）を適用
+            Batch API（50%割引・対応モデル）
           </label>
 
-          <label className="inline-flex cursor-pointer items-center gap-2">
+          <label className="inline-flex cursor-pointer items-center gap-1.5">
             <input
               type="checkbox"
               checked={useCustomModel}
               onChange={(e) => setUseCustomModel(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-sky-700"
             />
-            カスタム単価モデルを比較表に追加
+            カスタム比較
           </label>
-        </div>
 
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
-        >
-          <Download className="h-3.5 w-3.5" />
-          試算結果をCSVダウンロード
-        </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+          >
+            <Download className="h-3.5 w-3.5" />
+            CSV出力
+          </button>
+        </div>
       </div>
 
       {useCustomModel && (
-        <div className="grid gap-3 rounded-xl border border-sky-200 bg-sky-50/40 p-4 sm:grid-cols-4">
+        <div className="grid gap-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3.5 sm:grid-cols-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700">モデル名</label>
             <input
@@ -388,7 +383,7 @@ export default function LlmCostCalculator() {
               min={0}
               value={customInputPrice}
               onChange={(e) => setCustomInputPrice(Math.max(0, Number(e.target.value) || 0))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs tabular-nums"
             />
           </div>
           <div>
@@ -399,7 +394,7 @@ export default function LlmCostCalculator() {
               min={0}
               value={customOutputPrice}
               onChange={(e) => setCustomOutputPrice(Math.max(0, Number(e.target.value) || 0))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs tabular-nums"
             />
           </div>
           <div>
@@ -410,60 +405,29 @@ export default function LlmCostCalculator() {
               min={0}
               value={customCachePrice}
               onChange={(e) => setCustomCachePrice(Math.max(0, Number(e.target.value) || 0))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs tabular-nums"
             />
           </div>
         </div>
       )}
-
-      {/* プロバイダ絞り込み */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div
-          role="group"
-          aria-label="プロバイダ絞り込み"
-          className="flex flex-wrap items-center gap-1.5"
-        >
-          {PROVIDER_FILTERS.map((item) => {
-            const active = providerFilter === item.value
-            return (
-              <button
-                key={item.value}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setProviderFilter(item.value)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  active
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </div>
-        <span className="text-xs font-medium text-slate-500">
-          表示中: {filteredRows.length} モデル（月額安い順）
-        </span>
-      </div>
 
       {/* 比較表 */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
           <thead className="bg-slate-50 text-xs font-bold text-slate-700">
             <tr>
-              <th className="px-4 py-3">モデル</th>
-              <th className="px-4 py-3">単価 (入/出 $/1M)</th>
-              <th className="px-4 py-3">1回あたり (USD)</th>
-              <th className="px-4 py-3">月額 (USD)</th>
-              <th className="px-4 py-3">月額目安 (円)</th>
-              <th className="px-4 py-3">特徴・注記</th>
+              <th className="px-4 py-2.5">モデル</th>
+              <th className="px-4 py-2.5">単価 (入/出 $/1M)</th>
+              <th className="px-4 py-2.5">1回 (USD)</th>
+              <th className="px-4 py-2.5">月額 (USD)</th>
+              <th className="px-4 py-2.5">月額目安 (円)</th>
+              <th className="px-4 py-2.5">注記</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
             {filteredRows.map((row, idx) => (
               <tr key={row.id} className={idx === 0 ? 'bg-emerald-50/40' : ''}>
-                <td className="px-4 py-3 font-semibold text-slate-900">
+                <td className="px-4 py-2.5 font-semibold text-slate-900">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs font-medium text-slate-500">{row.provider}</span>
                     <span>{row.name}</span>
@@ -488,23 +452,43 @@ export default function LlmCostCalculator() {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs tabular-nums text-slate-600">
                   ${formatUsdRate(row.inputPerMillionUsd)} / ${formatUsdRate(row.outputPerMillionUsd)}
                 </td>
-                <td className="px-4 py-3 font-mono text-slate-700 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono tabular-nums text-slate-700">
                   ${row.perRequestUsd.toFixed(5)}
                 </td>
-                <td className="px-4 py-3 font-mono font-semibold text-slate-900 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono font-semibold tabular-nums text-slate-900">
                   ${row.monthlyUsd.toFixed(2)}
                 </td>
-                <td className="px-4 py-3 font-mono font-bold text-sky-900 whitespace-nowrap">
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono font-bold tabular-nums text-sky-900">
                   {Math.round(row.monthlyJpy).toLocaleString()} 円
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-600">{row.notes}</td>
+                <td className="px-4 py-2.5 text-xs text-slate-600">{row.notes}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* 公式料金表リンク（控えめなフッター行） */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+        <span>表示中: {filteredRows.length} モデル（月額安い順）</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>公式料金表:</span>
+          {Object.entries(OFFICIAL_PRICING_SOURCES).map(([provider, url]) => (
+            <a
+              key={provider}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-sky-700"
+            >
+              <span>{provider}</span>
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   )
