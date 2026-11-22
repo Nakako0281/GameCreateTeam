@@ -21,14 +21,14 @@ jobs:
           node-version-file: '.node-version'
           cache: 'npm'
 
-      - name: Detect docs-only change
+      - name: Detect changed file scopes
         id: changes
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-            CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+            CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
           elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
             CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
           else
@@ -39,20 +39,29 @@ jobs:
           echo "$CHANGED"
 
           DOCS_ONLY="true"
+          PRICING_CHANGED="false"
           while IFS= read -r file; do
             [ -z "$file" ] && continue
+            if [ "$file" = "FORCE_FULL_CI" ]; then
+              DOCS_ONLY="false"
+              PRICING_CHANGED="false"
+              continue
+            fi
+            if [ "$file" = "src/data/llm-pricing.ts" ]; then
+              PRICING_CHANGED="true"
+            fi
             case "$file" in
               docs/*|.agents/*|.github/ISSUE_TEMPLATE/*|README.md|AGENTS.md)
                 ;;
               *)
                 DOCS_ONLY="false"
-                break
                 ;;
             esac
           done <<< "$CHANGED"
 
           echo "docs_only=$DOCS_ONLY" >> "$GITHUB_OUTPUT"
-          echo "Detected docs_only=$DOCS_ONLY"
+          echo "pricing_changed=$PRICING_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Detected docs_only=$DOCS_ONLY, pricing_changed=$PRICING_CHANGED"
 
       - name: CI Parity & Lockfile Audit
         run: npm run audit:ci-parity
@@ -87,7 +96,13 @@ jobs:
 
       - name: Org Memory & Freshness Audit
         if: steps.changes.outputs.docs_only != 'true'
-        run: npm run audit:memory
+        shell: bash
+        run: |
+          if [ "${{ steps.changes.outputs.pricing_changed }}" = "true" ]; then
+            npm run audit:memory:freshness
+          else
+            npm run audit:memory
+          fi
 
       - name: Install Playwright Chromium
         if: steps.changes.outputs.docs_only != 'true'

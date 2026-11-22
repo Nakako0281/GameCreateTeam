@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CalendarClock,
   Download,
@@ -56,6 +56,14 @@ export default function LlmCostCalculator() {
   const [customInputPrice, setCustomInputPrice] = useState(1.0)
   const [customOutputPrice, setCustomOutputPrice] = useState(4.0)
   const [customCachePrice, setCustomCachePrice] = useState(0.25)
+  const [asOfDate, setAsOfDate] = useState(PRICING_LAST_VERIFIED)
+
+  useEffect(() => {
+    const utcToday = new Date().toISOString().slice(0, 10)
+    if (utcToday > PRICING_LAST_VERIFIED) {
+      setAsOfDate(utcToday)
+    }
+  }, [])
 
   const tokenEstimate = useMemo(() => estimateTokens(promptText), [promptText])
 
@@ -75,6 +83,7 @@ export default function LlmCostCalculator() {
       cacheHitRatePercent: cacheHitRate,
       useBatchApi,
       usdToJpy,
+      asOfDate,
       customModel: useCustomModel
         ? {
             name: customName,
@@ -91,6 +100,7 @@ export default function LlmCostCalculator() {
     cacheHitRate,
     useBatchApi,
     usdToJpy,
+    asOfDate,
     useCustomModel,
     customName,
     customInputPrice,

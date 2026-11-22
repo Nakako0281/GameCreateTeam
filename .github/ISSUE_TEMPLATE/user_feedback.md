@@ -2,7 +2,7 @@
 name: 不具合報告・機能リクエスト
 about: LocalBox ツールの不具合報告や改善・新ツールのご要望
 title: '[Feedback] '
-labels: ['owner:ai', 'type:tool', 'status:ready']
+labels: ['type:feedback', 'status:needs-triage']
 ---
 
 > **ご注意（機密情報の入力禁止）**:  
