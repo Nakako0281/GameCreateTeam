@@ -11,6 +11,7 @@ const ALL_ROUTES = [
   '/tools/csv-encoding-fixer/',
   '/tools/image-exif-cleaner/',
   '/tools/ai-markdown-formatter/',
+  '/tools/config-sanitizer/',
 ]
 
 function trackRuntimeAndNetwork(page: Page) {
@@ -139,7 +140,7 @@ for (const vp of [
   })
 }
 
-test('proves zero external transmission across interactive execution of all 5 published tools', async ({
+test('proves zero external transmission across interactive execution of all 6 published tools', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -247,6 +248,51 @@ test('proves zero external transmission across interactive execution of all 5 pu
   expect(plainVal).toContain('■ 四半期業務改善レポート案')
   expect(plainVal).toContain('status=**ok**')
   expect(plainVal).not.toContain('**高い効果**')
+
+  // 6. Config Sanitizer
+  await page.goto('/tools/config-sanitizer/', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'サンプルを試す' }).click()
+  const sanitizerOut = page.locator('#config-sanitized-output')
+  const envSanitized = await sanitizerOut.inputValue()
+  expect(envSanitized).toContain('NODE_ENV=production')
+  expect(envSanitized).toContain(
+    'TEMPLATE_DSN=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/app'
+  )
+  expect(envSanitized).toContain('export API_KEY="<REDACTED>"')
+  expect(envSanitized).not.toContain('demo_api_key_sample_99112233')
+  expect(envSanitized).not.toContain('p@ss#word123')
+  expect(envSanitized).not.toContain('MIIEvQIBADANBgkqhkiG9w0')
+
+  const auditSummary = page.getByTestId('config-audit-summary')
+  await expect(auditSummary).toBeVisible()
+  await expect(auditSummary).toContainText('マスク合計')
+  await auditSummary.click()
+  const findingsTable = page.getByTestId('config-findings-table')
+  await expect(findingsTable).toBeVisible()
+  const findingsText = (await findingsTable.textContent()) || ''
+  expect(findingsText).not.toContain('demo_api_key_sample_99112233')
+  expect(findingsText).not.toContain('p@ss#word123')
+
+  const styleGroup = page.getByRole('group', { name: '置換スタイル' })
+  await styleGroup.getByRole('button', { name: '.env.example' }).click()
+  expect(await sanitizerOut.inputValue()).toContain('JWT_SECRET=YOUR_JWT_SECRET')
+
+  const outputFormatGroup = page.getByRole('group', { name: '出力形式' })
+  await outputFormatGroup.getByRole('button', { name: 'YAML' }).click()
+  expect(await sanitizerOut.inputValue()).toContain('JWT_SECRET: YOUR_JWT_SECRET')
+
+  await outputFormatGroup.getByRole('button', { name: 'JSON' }).click()
+  const convertedJson = JSON.parse(await sanitizerOut.inputValue()) as Record<string, string>
+  expect(convertedJson.NODE_ENV).toBe('production')
+  expect(convertedJson.JWT_SECRET).toBe('YOUR_JWT_SECRET')
+
+  await styleGroup.getByRole('button', { name: '<REDACTED>' }).click()
+  await page.getByLabel('サンプル種別').selectOption('yaml')
+  const yamlSanitized = await sanitizerOut.inputValue()
+  expect(yamlSanitized).toContain('app.conf: <REDACTED>')
+  expect(yamlSanitized).not.toContain('---\n---')
+  expect(yamlSanitized).not.toContain('YXBpX2tleT1kZW1vX3NlY3JldF92YWx1ZV8yMDI2Cg==')
+  expect(yamlSanitized).not.toContain('c2FtcGxlX2s4c190b2tlbl8yMDI2')
 
   // 全ツール実操作中、外部送信が0件であることを確認
   expect(tracker.consoleErrors).toEqual([])
