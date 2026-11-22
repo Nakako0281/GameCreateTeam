@@ -15,7 +15,7 @@ const description =
         segments={['利用規約と', '免責事項']}
         class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
       />
-      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月21日</p>
+      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月22日</p>
 
       <div class="mt-6 space-y-7 text-sm leading-relaxed text-slate-700">
         <section>
@@ -30,6 +30,9 @@ const description =
           <ul class="mt-2 list-disc space-y-2 pl-5">
             <li>
               <strong>個人情報（PII）マスキングツール:</strong> 正規表現や辞書パターンによる自動検出を行いますが、すべての固有名詞や機密表現を100%漏れなく検知することを保証するものではありません。社外AI等へ貼り付ける前に、必ず人間による最終目視確認を行ってください。
+            </li>
+            <li>
+              <strong>設定ファイル・ログ秘匿化＆変換ツール:</strong> .env・JSON・YAML・サーバーログ内の秘匿値検出についても100%の完全検出やあらゆる構文の再現性を保証するものではありません。Issueやチャット等へ共有する前に必ず目視確認を行ってください。また、すでに外部へ露出した本番APIキーや秘密鍵は、本ツールでのマスクではなく直ちに無効化・ローテーションを実施してください。
             </li>
             <li>
               <strong>LLM料金シミュレーター:</strong> トークン数は日本語・英語の文字種別に基づくローカル近似値であり、各AIベンダーの厳密なトークナイザーとは数％の誤差が生じる場合があります。また、モデルのAPI単価および為替レートは変動するため、実際の請求額の保証はいたしかねます。
