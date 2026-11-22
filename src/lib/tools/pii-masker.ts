@@ -37,6 +37,12 @@ export interface MaskResult {
   countsByCategory: Record<PiiCategory, number>
 }
 
+export interface RestoreResult {
+  restoredText: string
+  restoredCount: number
+  unresolvedTokens: string[]
+}
+
 export const DEFAULT_MASK_OPTIONS: MaskOptions = {
   apiKey: true,
   email: true,
@@ -66,14 +72,22 @@ const TOKEN_PREFIX: Record<PiiCategory, string> = {
 const PERSON_STOPWORDS = new Set([
   'お客',
   'お客様',
-  '皆様',
+  '客',
   '皆',
+  '皆様',
   '担当',
+  '担当者',
   'ご担当',
+  'ご担当者',
   '関係',
+  '関係者',
   '先方',
   '相手',
   '本人',
+  '取引先',
+  '顧客',
+  '会員',
+  '各位',
   'ユーザー',
   'クライアント',
   'スタッフ',
@@ -82,7 +96,111 @@ const PERSON_STOPWORDS = new Set([
   '開発者',
   '誰',
   'どなた',
+  '同',
+  '仕',
+  '模',
+  '有',
+  '態',
+  '多',
+  '一',
+  '異',
+  '左',
+  '右',
+  '文',
+  '図',
+  '貴',
+  '神',
+  '仏',
+  '王',
+  '殿',
+  '姫',
+  '何',
+  '奥',
+  '旦那',
+  '主人',
+  '子',
+  '陰',
+  '兄',
+  '姉',
+  '父',
+  '母',
+  '嬢',
+  '坊',
+  '苦労',
+  '馳走',
+  '愁傷',
+  '世話',
+  '家族',
+  '弊社',
+  '貴社',
+  '御社',
+  '当社',
+  '自社',
+  '他社',
+  '各社',
+  '営業',
+  '開発',
+  '人事',
+  '総務',
+  '経理',
+  '企画',
+  '広報',
+  '法務',
+  '財務',
+  '管理',
+  '制作',
+  '技術',
+  '販売',
+  '事業',
+  '統括',
+  '副',
+  '前',
+  '現',
+  '新',
+  '元',
+  '次期',
+  '部長',
+  '課長',
+  '社長',
+  '専務',
+  '両',
+  '諸',
+  '彼',
+  '源',
+  '平',
+  '本',
 ])
+
+const ORG_PREFIX_RE =
+  /(?:株式会社|有限会社|合同会社|合資会社|一般社団法人|公益社団法人|一般財団法人|公益財団法人|特定非営利活動法人|NPO法人)/gu
+const ORG_HIRA_STOP_PREFIX_RE =
+  /^(?:から|より|まで|にて|では|には|とは|への|での|との|など|について|に関して|です|ます|でした|ません|または|および|ならびに|もしくは|あるいは|という|といった|宛て?)/
+const ORG_HIRA_STOP_PARTICLE_RE =
+  /(?:から|より|まで|にて|では|には|とは|への|での|との|など|について|に関して|です|ます|でした|ません|または|および|ならびに|もしくは|あるいは|という|といった|宛て?)/
+const ORG_NON_HIRA_BODY_RE =
+  /^[A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&._-]{1,24}/u
+const ORG_HIRA_RUN_RE = /^[\p{Script=Hiragana}ー]{1,10}/u
+const ORG_TRAILING_SINGLE_PARTICLE_RE = /[のはがをにへとでやも]$/
+const ORG_SUFFIX_HIRA_RE =
+  /(?<=^|[\s、。,.「『（(\[:：/／・のはがをにへとでやも])([\p{Script=Hiragana}ー]{2,8})([A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&_-]{0,16})[ \u3000]?(?:株式会社|有限会社|合同会社|合資会社)/gu
+const ORG_SUFFIX_NON_HIRA_RE =
+  /[A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&_-]{1,24}[ \u3000]?(?:株式会社|有限会社|合同会社|合資会社)/gu
+const ORG_GENERIC_BODY_RE =
+  /^(?:新規|既存|該当|対象|上記|下記|以下|弊社|貴社|御社|当社|自社|他社|各社|取引先|関連|子会社|親会社|グループ)$/
+const ORG_HIRA_NON_ORG_PREFIX_RE =
+  /(?:[のはがをにへとでやも]|から|より|まで|にて|など|これ|それ|あれ|この|その|あの|また|およ|なら)$/
+
+const PERSON_PATTERN_RE =
+  /(?<![A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー々ヶおご])(?:[\p{Script=Han}々ヶ]{1,5}(?:[ \t\u3000]?[\p{Script=Han}々ヶ]{1,5})?|[\p{Script=Katakana}ー]{2,10}(?:[ \t\u3000・][\p{Script=Katakana}ー]{2,10})?)(?:様(?![式子々相態変替])|さん|氏(?![名族神])|殿(?![堂下様])|部長|課長|社長|専務)/gu
+const PERSON_HONORIFIC_RE = /(?:様|さん|氏|殿|部長|課長|社長|専務)$/
+const PERSON_CORE_SUFFIX_STOP_RE =
+  /(?:者|取引先|顧客|会員|各位|皆様|先方|相手|本人|担当|関係|家族|お客)$/
+const PERSON_ROLE_PREFIX_STOP_RE =
+  /(?:営業|開発|人事|総務|経理|企画|広報|法務|財務|管理|制作|技術|販売|事業|統括|本部|支店|支社|工場|店舗|弊社|貴社|御社|当社|自社|他社|各社|開発本|営業本|事業本|管理本|統括本)$/
+
+const TOKEN_EXACT_RE = /^\[([A-Z0-9]+)_(\d+)\]$/
+const UNRESOLVED_TOKEN_RE =
+  /(?:\\?\[|［)(?:SECRET|EMAIL|TEL|ZIP|IP|CARD|ID12|ORG|PERSON|CUSTOM)\\?_\d+(?:\\?\]|］)/g
 
 export function passesLuhnCheck(digitsOnly: string): boolean {
   if (!/^\d{13,19}$/.test(digitsOnly)) return false
@@ -140,6 +258,170 @@ function collectPatternMatches(
     }
   }
   return matches
+}
+
+function trimOrgSuffixDecorations(value: string): string {
+  return value.replace(/(?:御中|様|殿)+$/, '').replace(/[._・-]+$/, '')
+}
+
+function collectOrganizationMatches(text: string): CandidateMatch[] {
+  const matches: CandidateMatch[] = []
+  let m: RegExpExecArray | null
+
+  // 接頭型（例: 株式会社サンプル商事 / 株式会社はてな / 株式会社みずほ銀行）
+  const prefixRe = new RegExp(ORG_PREFIX_RE.source, ORG_PREFIX_RE.flags)
+  while ((m = prefixRe.exec(text)) !== null) {
+    const pos = m.index + m[0].length
+    const afterPrefix = text.slice(pos)
+    const spaceMatch = afterPrefix.match(/^[ \u3000]/)
+    const bodyStart = pos + (spaceMatch ? 1 : 0)
+    const rest = text.slice(bodyStart)
+    if (!rest) continue
+
+    let body = ''
+    const nonHira = rest.match(ORG_NON_HIRA_BODY_RE)
+    if (nonHira) {
+      body = trimOrgSuffixDecorations(nonHira[0])
+    } else if (/^[\p{Script=Hiragana}]/u.test(rest)) {
+      if (ORG_HIRA_STOP_PREFIX_RE.test(rest)) continue
+      if (/^[のはがをにへとでやも](?=$|[^\p{Script=Hiragana}])/u.test(rest)) {
+        continue
+      }
+      const hiraMatch = rest.match(ORG_HIRA_RUN_RE)
+      if (hiraMatch) {
+        let hira = hiraMatch[0]
+        let hitBoundary = false
+        const stopIdx = hira.search(ORG_HIRA_STOP_PARTICLE_RE)
+        if (stopIdx >= 0) {
+          hira = hira.slice(0, stopIdx)
+          hitBoundary = true
+        }
+        if (hira.length >= 2 && ORG_TRAILING_SINGLE_PARTICLE_RE.test(hira)) {
+          hira = hira.slice(0, -1)
+          hitBoundary = true
+        }
+        if (!hitBoundary && hira.length > 0) {
+          const afterHira = rest.slice(hira.length)
+          const cont = afterHira.match(
+            /^[A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&._-]{1,16}/u
+          )
+          body = cont ? trimOrgSuffixDecorations(hira + cont[0]) : hira
+        } else {
+          body = hira
+        }
+        if (/^[\p{Script=Hiragana}ー]+$/u.test(body) && body.length < 2) {
+          body = ''
+        }
+      }
+    }
+
+    if (body.length >= 1) {
+      const end = bodyStart + body.length
+      matches.push({
+        start: m.index,
+        end,
+        original: text.slice(m.index, end),
+        category: 'organization',
+        priority: 69,
+      })
+    }
+  }
+
+  // 接尾型（ひらがな始まり: みずほ銀行株式会社 / はてな株式会社）
+  const suffixHiraRe = new RegExp(
+    ORG_SUFFIX_HIRA_RE.source,
+    ORG_SUFFIX_HIRA_RE.flags
+  )
+  while ((m = suffixHiraRe.exec(text)) !== null) {
+    const matched = m[0]
+    if (!matched) {
+      suffixHiraRe.lastIndex += 1
+      continue
+    }
+    const hiraLead = m[1] || ''
+    if (
+      ORG_HIRA_NON_ORG_PREFIX_RE.test(hiraLead) ||
+      ORG_HIRA_STOP_PREFIX_RE.test(hiraLead)
+    ) {
+      continue
+    }
+    const body = matched
+      .replace(/[ \u3000]?(?:株式会社|有限会社|合同会社|合資会社)$/, '')
+      .trim()
+    if (!body || ORG_GENERIC_BODY_RE.test(body)) continue
+    matches.push({
+      start: m.index,
+      end: m.index + matched.length,
+      original: matched,
+      category: 'organization',
+      priority: 68,
+    })
+  }
+
+  // 接尾型（漢字・英数字・カタカナ始まり: サンプル商事株式会社）
+  const suffixNonHiraRe = new RegExp(
+    ORG_SUFFIX_NON_HIRA_RE.source,
+    ORG_SUFFIX_NON_HIRA_RE.flags
+  )
+  while ((m = suffixNonHiraRe.exec(text)) !== null) {
+    const matched = m[0]
+    if (!matched) {
+      suffixNonHiraRe.lastIndex += 1
+      continue
+    }
+    const body = matched
+      .replace(/[ \u3000]?(?:株式会社|有限会社|合同会社|合資会社)$/, '')
+      .trim()
+    if (!body || ORG_GENERIC_BODY_RE.test(body)) continue
+    matches.push({
+      start: m.index,
+      end: m.index + matched.length,
+      original: matched,
+      category: 'organization',
+      priority: 67,
+    })
+  }
+
+  return matches
+}
+
+function isLikelyPersonNameMatch(matched: string): boolean {
+  const honorific = matched.match(PERSON_HONORIFIC_RE)?.[0] || ''
+  const core = matched.slice(0, matched.length - honorific.length).trim()
+  if (!core || PERSON_STOPWORDS.has(core)) return false
+  if (PERSON_CORE_SUFFIX_STOP_RE.test(core)) return false
+  if (
+    honorific === '様' &&
+    (/(?:前回|従来|上記|下記|今回|毎年|例年|普段|通常|他)同$/.test(core) ||
+      /(?:基本|詳細|外部|内部|設計|製品|要件|機能|標準|現行|新規|旧|新|別|特|本|各)仕$/.test(
+        core
+      ) ||
+      /(?:花|縞|水玉|空|雨|雪|星|格子|迷彩|唐草)模$/.test(core))
+  ) {
+    return false
+  }
+  if (
+    /^(?:部長|課長|社長|専務)$/.test(honorific) &&
+    PERSON_ROLE_PREFIX_STOP_RE.test(core)
+  ) {
+    return false
+  }
+  return true
+}
+
+function normalizeToken(raw: string): string {
+  return raw.replace(/［/g, '[').replace(/］/g, ']').replace(/\\/g, '')
+}
+
+function findUnresolvedTokens(text: string): string[] {
+  if (!text) return []
+  const found = new Set<string>()
+  const re = new RegExp(UNRESOLVED_TOKEN_RE.source, UNRESOLVED_TOKEN_RE.flags)
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    found.add(normalizeToken(m[0]))
+  }
+  return Array.from(found)
 }
 
 export function maskPiiText(
@@ -288,30 +570,20 @@ export function maskPiiText(
     )
   }
 
-  // 9. 法人名パターン
+  // 9. 法人名パターン（日本語助詞境界・接頭/接尾対応）
   if (options.organization) {
-    candidates.push(
-      ...collectPatternMatches(
-        text,
-        /(?:株式会社|有限会社|合同会社|合資会社|一般社団法人|特定非営利活動法人)[A-Za-z0-9\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー・]{1,24}|[A-Za-z0-9\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー・]{1,24}(?:株式会社|有限会社|合同会社)/gu,
-        'organization',
-        68
-      )
-    )
+    candidates.push(...collectOrganizationMatches(text))
   }
 
-  // 10. 日本語氏名＋敬称パターン（ストップワード除外）
+  // 10. 日本語氏名＋敬称パターン（助詞直後対応・誤爆ストップワード除外）
   if (options.personName) {
     candidates.push(
       ...collectPatternMatches(
         text,
-        /(?<![A-Za-z0-9\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])([\p{Script=Han}\p{Script=Katakana}]{1,6}(?:\s?[\p{Script=Han}\p{Script=Katakana}]{1,6})?)(?:様|さん|氏|殿|部長|課長|社長|専務)/gu,
+        PERSON_PATTERN_RE,
         'personName',
         60,
-        (matched) => {
-          const core = matched.replace(/(?:様|さん|氏|殿|部長|課長|社長|専務)$/, '').trim()
-          return core.length >= 1 && !PERSON_STOPWORDS.has(core)
-        }
+        isLikelyPersonNameMatch
       )
     )
   }
@@ -398,9 +670,20 @@ export function maskPiiText(
 export function restoreMaskedText(
   aiResponseText: string,
   entries: MaskEntry[]
-): { restoredText: string; restoredCount: number } {
-  if (!aiResponseText || entries.length === 0) {
-    return { restoredText: aiResponseText, restoredCount: 0 }
+): RestoreResult {
+  if (!aiResponseText) {
+    return {
+      restoredText: aiResponseText,
+      restoredCount: 0,
+      unresolvedTokens: [],
+    }
+  }
+  if (entries.length === 0) {
+    return {
+      restoredText: aiResponseText,
+      restoredCount: 0,
+      unresolvedTokens: findUnresolvedTokens(aiResponseText),
+    }
   }
 
   const tokenToOriginal = new Map<string, string>()
@@ -412,13 +695,28 @@ export function restoreMaskedText(
     (a, b) => b.length - a.length
   )
   if (tokens.length === 0) {
-    return { restoredText: aiResponseText, restoredCount: 0 }
+    return {
+      restoredText: aiResponseText,
+      restoredCount: 0,
+      unresolvedTokens: findUnresolvedTokens(aiResponseText),
+    }
   }
 
-  const pattern = new RegExp(tokens.map(escapeRegExp).join('|'), 'g')
+  // 全角括弧やMarkdownエスケープ（\[PERSON\_1\]）がAI出力に含まれても復元できるようにする
+  const tokenPatterns = tokens.map((token) => {
+    const exact = token.match(TOKEN_EXACT_RE)
+    if (exact) {
+      const [, prefix, num] = exact
+      return `(?:\\\\?\\[|［)${escapeRegExp(prefix)}\\\\?_${num}(?:\\\\?\\]|］)`
+    }
+    return escapeRegExp(token)
+  })
+
+  const pattern = new RegExp(tokenPatterns.join('|'), 'g')
   let restoredCount = 0
   const restoredText = aiResponseText.replace(pattern, (matched) => {
-    const original = tokenToOriginal.get(matched)
+    const normalized = normalizeToken(matched)
+    const original = tokenToOriginal.get(matched) ?? tokenToOriginal.get(normalized)
     if (original !== undefined) {
       restoredCount += 1
       return original
@@ -426,5 +724,9 @@ export function restoreMaskedText(
     return matched
   })
 
-  return { restoredText, restoredCount }
+  return {
+    restoredText,
+    restoredCount,
+    unresolvedTokens: findUnresolvedTokens(restoredText),
+  }
 }
