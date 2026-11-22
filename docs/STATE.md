@@ -2,8 +2,8 @@
 
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
-- **最終更新日**: 2026-11-21
-- **運用フェーズ**: `Phase 0 / Phase 1: LocalBox MVP（Wave 1）構築完了 ＆ 人間テスト環境フィードバック（#38, #39, #41）の P0 対応中`
+- **最終更新日**: 2026-11-22
+- **運用フェーズ**: `Phase 0 / Phase 1: LocalBox MVP（Wave 1）構築完了 ＆ 人間テスト環境フィードバック（#44, #41, #39, #43）の順次対応中`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **LocalBox**（完全ブラウザ完結・ゼロ送信 実務ツールスタジオ）
@@ -18,7 +18,7 @@
 | 種別 | URLパス | 状態 | 概要 |
 | :--- | :--- | :---: | :--- |
 | トップページ | `/` | 実装済み | LocalBox 価値提案・技術保証・ツール一覧・予定ロードマップ |
-| Tool 1 | `/tools/ai-pii-masker/` | 実装済み | AI入力前・個人情報（PII）自動マスキング＆回答復元 |
+| Tool 1 | `/tools/ai-pii-masker/` | 修正済み (2026-11-22) | AI入力前・個人情報（PII）自動マスキング＆回答復元（日本語助詞境界・`[PERSON_1]` 復元・未復元検知を刷新／L-08） |
 | Tool 2 | `/tools/llm-cost-calculator/` | 刷新済み (2026-11-21) | 最新15モデル（GPT-6/Claude 5.5・5.2/Gemini 4・3.8/DeepSeek V4）対応・為替159円・プロバイダ絞り込み・14日鮮度＆改定日自動監視 |
 | Tool 3 | `/tools/csv-encoding-fixer/` | 実装済み | Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング |
 | Tool 4 | `/tools/image-exif-cleaner/` | 実装済み | 画像 EXIF/GPS位置情報 完全削除＆WebP/JPG/PNG一括軽量化 |
@@ -33,11 +33,14 @@
 
 - `npm run check:all`: `.node-version` / ロックファイル整合監査（`audit:ci-parity`）、14日鮮度・`priceEffectiveUntil`改定日・退役モデルIDブロック（`audit:memory`）を含む全8ゲート + リモート GitHub Actions CI（`wait-ci` / `ready-pr` ゲート）を標準装備。
 - 日次自動監視（`.github/workflows/daily-freshness-check.yml`）: 毎日 08:30 JST に `audit:memory --docs-only` を実行し、14日超過・改定期限切れ（P0）および7日以内の改定予告（P1）を自動Issue化（`L-07`）。
+- **ブランチ同期メモ**: PR #37（`*.pages.dev` 自動 `noindex` 防護）が `main` へ先行マージされているため、次回の `dev` ➔ `main` 本番リリース PR 作成時に差分を統合する。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
   - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — 人間コメント「もう少し私の方で実際に触ってみたり、他の友人エンジニアに触ってもらってから発行します」を受領済み
-  - Issue #38 `LLMトークン数＆API料金 リアルタイム比較シミュレーターについて。` (`owner:ai`, `priority:p0`, `status:in-progress`) — 2026年11月最新15モデル刷新 ＆ `L-07` 機械監視を本スライスで実装・PR提出
+  - Issue #38 `LLMトークン数＆API料金 リアルタイム比較シミュレーターについて。` (`status:done`, **クローズ済み**) — PR #42 の `dev` マージ確認後に完了クローズ（2026-11-22）
+  - Issue #44 `[PERSON_1]が復元されない` (`owner:ai`, `priority:p0`, `status:review` 予定) — 法人名貪欲一致・氏名助詞境界・テスト抜け穴を根本修正し `L-08` 機械化・`dev` 宛て PR 提出
   - Issue #41 `README記載内容について。` (`owner:ai`, `priority:p0`, `status:ready`) — ツール利用者に内部マネタイズ記載が見えないよう `README.md` と問い合わせ導線を再設計予定
   - Issue #39 `Webのデザインについて。` (`owner:ai`, `priority:p0`, `status:ready`) — 情報過多の解消・ファーストビュー即操作性向上・解説階層化の抜本改善を予定
+  - Issue #43 `バージョン表示について検討する` (`owner:ai`, `priority:p1`, `status:ready`) — トリアージ済み・ビルド時自動注入によるフッター端＆`<meta name="app-version">` 案を提示済み
   - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`)
   - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`)
 - **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25)**:
@@ -50,4 +53,4 @@
 
 1. **P0（最優先）Issue #41 対応**: 公開 `README.md` から内部マネタイズ戦略を分離・エンドユーザー向け製品案内に刷新し、`/contact/` から飛んだ際の見え方・問い合わせ導線を再設計する。
 2. **P0（最優先）Issue #39 対応**: サイト全体・ツールUIの情報密度を見直し、文字過多の削減と「ぱっと見で即操作できる」洗練されたUI/デザインへ抜本改善する（SEO静的HTMLテキスト量との両立を含む）。
-3. **Wave 2 ツール着工 ＆ 人間完了待ち検知**: `npm run ops:status` で Issue #32 のドメイン・GA4進捗を確認しつつ、P0解消後に Issue #33（PDF真の墨消し、PDFローカル結合分割、AI Markdown整形、`.env`/JSONサニタイズ）へ着手する。
+3. **P1 Issue #43 対応 ＆ Wave 2 着工**: P0解消後、運用負荷ゼロの自動バージョン表示（Issue #43）および Wave 2（Issue #33: PDF真の墨消し、PDFローカル結合分割、AI Markdown整形、`.env`/JSONサニタイズ）へ着手する。また、PR #37（`main` 先行分）との統合を含めた `dev ➔ main` リリース PR 準備を適宜行う。

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
   Check,
   Copy,
   KeyRound,
@@ -19,7 +20,7 @@ import {
 
 const STORAGE_KEY_CUSTOM_TERMS = 'localbox.ai-pii-masker.custom-terms.v1'
 
-const SAMPLE_BUSINESS_TEXT = `お疲れ様です。株式会社サンプル商事の佐藤太郎様（tanaka.taro@example.co.jp / 090-1234-5678 / 〒100-0001）から、新サーバー 192.168.10.25 への接続エラーについて問い合わせがありました。
+const SAMPLE_BUSINESS_TEXT = `お疲れ様です。株式会社サンプル商事の佐藤太郎様（sato.taro@example.co.jp / 090-1234-5678 / 〒100-0001）から、新サーバー 192.168.10.25 への接続エラーについて問い合わせがありました。
 顧客番号 1234-5678-9012 のログを確認したところ、以下のテスト用キーが出力されていたため原因を整理して回答文を作成してください。
 Authorization: Bearer test_bearer_token_sample_1234567890
 API_KEY=sk-proj-example1234567890abcdef`
@@ -325,6 +326,19 @@ export default function AiPiiMasker() {
             復元箇所: {restoreResult.restoredCount} 件
           </span>
         </div>
+
+        {restoreResult.unresolvedTokens.length > 0 && (
+          <div
+            data-testid="pii-unresolved-warning"
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              未復元トークンがあります: {restoreResult.unresolvedTokens.join(', ')}（元の文章の置換辞書に一致する項目がないか、該当カテゴリがオフになっています）
+            </span>
+          </div>
+        )}
 
         <div className="mt-3 grid gap-4 lg:grid-cols-2">
           <div>
