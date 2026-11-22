@@ -10,6 +10,7 @@ const ALL_ROUTES = [
   '/tools/llm-cost-calculator/',
   '/tools/csv-encoding-fixer/',
   '/tools/image-exif-cleaner/',
+  '/tools/ai-markdown-formatter/',
 ]
 
 function trackRuntimeAndNetwork(page: Page) {
@@ -138,7 +139,7 @@ for (const vp of [
   })
 }
 
-test('proves zero external transmission across interactive execution of all 4 Wave 1 tools', async ({
+test('proves zero external transmission across interactive execution of all 5 published tools', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -208,6 +209,44 @@ test('proves zero external transmission across interactive execution of all 4 Wa
   await expect(card).toBeVisible()
   await expect(card).toContainText('GPS位置情報IFD (0x8825)')
   await expect(card).toContainText('削除後再検査: 検出 0 件 (安全)')
+
+  // 5. AI Markdown Formatter
+  await page.goto('/tools/ai-markdown-formatter/', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'サンプルを試す' }).click()
+  const wordPreview = page.getByTestId('md-word-preview')
+  await expect(wordPreview).toContainText('四半期業務改善レポート案')
+  await expect(wordPreview).toContainText('営業企画')
+  await expect(wordPreview).toContainText('# このコードブロック内の # や ** や | は変換されません')
+
+  const mdInput = page.locator('#md-source-input')
+  const sampleVal = await mdInput.inputValue()
+  await mdInput.fill(
+    `${sampleVal}\n\n![tracker](https://example.invalid/pixel.png)\n[xss](javascript:alert(1))`
+  )
+  const securityNotice = page.getByTestId('md-security-notice')
+  await expect(securityNotice).toBeVisible()
+  await expect(securityNotice).toContainText('外部画像の自動読み込み（1件）')
+  await expect(securityNotice).toContainText('安全でないリンクスキーム（1件）')
+  await expect(wordPreview.locator('img')).toHaveCount(0)
+
+  const targetGroup = page.getByRole('group', { name: '出力先の選択' })
+  await targetGroup.getByRole('button', { name: /Excel表抽出/ }).click()
+  const tableCard = page.getByTestId('extracted-table-card').first()
+  await expect(tableCard).toBeVisible()
+  await expect(tableCard).toContainText('営業企画')
+  await expect(tableCard).toContainText('00124')
+
+  await targetGroup.getByRole('button', { name: 'Slack' }).click()
+  const slackVal = await page.locator('#md-slack-output').inputValue()
+  expect(slackVal).toContain('*高い効果*')
+  expect(slackVal).toContain('<https://example.com/docs/guide?section=2|公式ガイドライン>')
+  expect(slackVal).not.toContain('utm_source')
+
+  await targetGroup.getByRole('button', { name: 'メール・平文' }).click()
+  const plainVal = await page.locator('#md-plain-output').inputValue()
+  expect(plainVal).toContain('■ 四半期業務改善レポート案')
+  expect(plainVal).toContain('status=**ok**')
+  expect(plainVal).not.toContain('**高い効果**')
 
   // 全ツール実操作中、外部送信が0件であることを確認
   expect(tracker.consoleErrors).toEqual([])

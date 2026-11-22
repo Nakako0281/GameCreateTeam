@@ -21,6 +21,7 @@
 | **LLMトークン数＆API料金 リアルタイム比較シミュレーター** | `/tools/llm-cost-calculator/` | 日本語/英語のトークン近似計算、Prompt Caching・Batch 50%割引・円換算比較とCSV出力 |
 | **Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング** | `/tools/csv-encoding-fixer/` | 文字コード自動判定、Excel対応UTF-8（BOM付）への変換、列単位のマスク・削除 |
 | **画像 EXIF/GPS位置情報 完全削除＆WebP/JPG一括軽量化** | `/tools/image-exif-cleaner/` | 削除前メタデータ診断、HTML5 Canvas再描画による物理消去、削除後0件再検査と軽量化 |
+| **AI出力（Markdown・表）➔ Word / Excel / Slack 整形** | `/tools/ai-markdown-formatter/` | 書式付きHTMLコピー、複数Markdown表のExcel用TSV/BOM付CSV抽出、Slack mrkdwn・平文整形 |
 
 ---
 

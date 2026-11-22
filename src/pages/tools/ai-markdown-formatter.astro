@@ -1,0 +1,110 @@
+---
+import ToolLayout, { type FaqItem } from '../../layouts/ToolLayout.astro'
+import AiMarkdownFormatter from '../../components/tools/AiMarkdownFormatter'
+import { getToolBySlug } from '../../data/tools'
+
+const tool = getToolBySlug('ai-markdown-formatter')
+const seoTitle = 'AI出力Markdown整形｜Word・Excel・Slack変換 | LocalBox'
+const seoDescription =
+  'ChatGPTやClaudeのMarkdown記号・表・数式をブラウザ内だけで即整形。Word/Googleドキュメント向け書式付きコピー、Excel用TSV/CSV抽出、Slack mrkdwn、メール平文へ外部送信ゼロで変換できます。'
+
+const faqs: FaqItem[] = [
+  {
+    question: 'ChatGPTの回答をWordやGoogleドキュメントに貼ると ** や # が残るのはなぜですか？',
+    answer:
+      '多くのチャット画面やテキストエディタからの通常コピーは、書式のないプレーンテキスト（text/plain）としてクリップボードへ書き込まれるためです。本ツールの「書式付きコピー」は、クリップボードAPI（ClipboardItem）を用いて構造化HTML（text/html）とフォールバック平文を同時に格納するため、貼り付けた瞬間に見出し・太字・箇条書き・罫線付きテーブルとして認識されます。',
+  },
+  {
+    question: 'Markdownの表をExcelやGoogleスプレッドシートのセルに正しく分けるにはどうすればよいですか？',
+    answer:
+      '上部タブで「Excel表抽出」を選ぶと、回答の中に含まれるすべてのMarkdown表を自動抽出し、列区切りの区切り線（| :--- |）を取り除いたTSV形式やUTF-8（BOM付）CSVとして出力します。TSVコピー後にExcelやスプレッドシートへ貼り付ければ、セル内の改行（brタグ）も1つのセル内改行として崩れずに展開されます。',
+  },
+  {
+    question: 'Slackや社内メールへ貼り付ける場合はどのモードを使えば崩れませんか？',
+    answer:
+      'SlackにはMarkdownとは異なる独自の mrkdwn 方言（太字が *1つ*、リンクが <URL|表示名>、標準Markdown表に非対応など）があるため、「Slack」タブでの変換が最適です。表は等幅フォントのコードブロック整列と箇条書き展開の2方式から選べます。また、Outlookやテキストメールには「メール・平文」タブを使うと記号ノイズを取り除いた体裁で送れます。',
+  },
+  {
+    question: '入力した会議メモやコードブロックがサーバーへ送信されたり、内部のコード記号が消えたりしませんか？',
+    answer:
+      '構文解析・HTML生成・TSV抽出はすべてブラウザ内のJavaScriptメモリ上で完結しており、入力内容が外部サーバーへ送られることはありません。また、フェンス付きコードブロックやインラインコード内の # や ** や | は保護されるため、ソースコードや設定例が意図せず書き換わる心配もありません。',
+  },
+]
+---
+
+<ToolLayout
+  tool={tool}
+  seoTitle={seoTitle}
+  seoDescription={seoDescription}
+  featureList={[
+    'ClipboardItemによるWord・Googleドキュメント向け書式付きHTMLリッチコピー',
+    '複数Markdown表の自動抽出とExcel用TSVコピー・UTF-8 BOM付CSV書き出し',
+    'Slack mrkdwn方言変換（全角文字幅を揃えたコードブロック表・箇条書き展開）',
+    'コードブロック構文保護・LaTeX数式可読化・AI引用番号と追跡UTMパラメータ除去',
+  ]}
+  faqs={faqs}
+>
+  <AiMarkdownFormatter slot="tool" client:load />
+
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
+    <section>
+      <h2 class="text-lg font-bold text-slate-900">
+        なぜAIの回答をそのまま貼るとWordで「**」が残り、Excelで表が1列に潰れるのか
+      </h2>
+      <p class="mt-2.5">
+        ChatGPT、Claude、Geminiといった対話型AIは、回答の構造をわかりやすく見せるために見出しの <code>#</code>、強調の <code>**</code>、箇条書きの <code>-</code>、そしてパイプ記号 <code>|</code> を並べたGFM（GitHub Flavored Markdown）テーブルを標準的に出力します。画面上では綺麗に整形されて見えても、生のMarkdown文字列をそのままMicrosoft Word、Excel、Slack、あるいは社内メールの作成画面へ貼り付けると、記号がむき出しになったり表のレイアウトが1列に潰れたりして、手作業での修正に数分から数十分を奪われてしまいます。
+      </p>
+      <p class="mt-2.5">
+        この現象が起きる根本的な理由は、<strong>「コピーされるクリップボードのMIME形式」と「貼り付け先アプリが解釈できる方言」の食い違い</strong>にあります。本ツールは入力されたMarkdownをブラウザ内で抽象構文木（AST）へ分解したうえで、WordやGoogleドキュメントが求める <code>text/html</code> 形式、表計算ソフトが列分割できるタブ区切りTSVおよびBOM付きCSV、Slack専用の <code>mrkdwn</code> 記法、そして記号を排したメール向けプレーン文面の4通りへ瞬時に再構築します。
+      </p>
+    </section>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>貼り付け先別（Word・Excel・Slack・メール）の仕様差と変換の勘所</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          業務で使われる代表的な4つの貼り付け先は、それぞれ受け取れる書式フォーマットがまったく異なります。用途に応じてタブを切り替えることで、貼った後の手直しをゼロに近づけられます。
+        </p>
+        <ul class="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Word・Googleドキュメント・Outlook（「書式付きコピー」）:</strong> ブラウザの <code>ClipboardItem</code> API を使用し、インラインCSSで枠線とセル余白を指定したHTMLテーブルおよび見出し・段落要素を <code>text/html</code> として書き込みます。同時にフォールバック用の <code>text/plain</code> も格納するため、貼り付け先の受け取り仕様に合わせて最適な表現が選ばれます。
+          </li>
+          <li>
+            <strong>Excel・Googleスプレッドシート（「Excel表抽出」）:</strong> 回答文に散らばった複数のテーブルを個別に抽出し、エスケープされたパイプ（<code>\|</code>）やセル内の <code>&lt;br&gt;</code> 改行、先頭末尾のパイプ省略記法も正確に解釈します。さらに、<code>=SUM(...)</code> や <code>+</code>・<code>@</code> で始まるセルがExcel上で意図せず数式として実行されるリスク（数式インジェクション）を防ぐため、危険な先頭記号へ自動でシングルクォートを付与する安全ガードを備えています。
+          </li>
+          <li>
+            <strong>Slack（「Slack mrkdwn」）:</strong> Slackのメッセージ入力欄は太字が <code>*1個*</code>、打消しが <code>~1個~</code>、リンクが <code>&lt;URL|表示名&gt;</code> という独自仕様であり、Markdownのパイプ表には対応していません。本ツールでは、全角文字を幅2・半角文字を幅1として桁を揃えた「等幅コードブロック表」またはスマホでも読みやすい「箇条書き展開」の2スタイルへ変換します。
+          </li>
+          <li>
+            <strong>社内メール・チャット（「メール・平文」）:</strong> 太字や見出しの記号ノイズをすべて取り払いつつ、大見出しを <code>■</code>、中見出しを <code>【】</code>、階層箇条書きをインデント付き中黒に置き換えて読みやすさを保ちます。
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>コードブロック保護・数式可読化・外部画像トラッカー遮断の仕組み</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          単純に文字列全体へ正規表現の置換をかけるだけのツールでは、プログラムのコメント行に書かれた <code>#</code> を見出しと誤認して消してしまったり、変数名のアンダースコアが斜体に変換されてコードが壊れたりする問題が起きます。本ツールのパーサーはフェンス付きコードブロックおよびバッククォートのインラインコードを先に隔離して保護するため、技術文書の整形にも安心して利用できます。
+        </p>
+        <p>
+          また、AIの検索回答に混ざる <code>[1]</code> や <code>【2】</code> の参照番号、URL末尾に付与される <code>?utm_source=chatgpt.com</code> などの追跡クエリパラメータは業務上必要なパラメーターを残したまま自動除去します。LaTeX形式の数式（分数や平方根、ギリシャ文字、上付き指数）は、金額表記のドル記号を誤変換しないよう境界判定を行った上で可読文字へ整えます。
+        </p>
+        <p>
+          さらに安全設計として、Markdown内に外部サーバーを指す画像記法や <code>javascript:</code> などの危険なリンクスキームが含まれていても、プレビュー画面で画像を自動読み込み（外部通信）したりスクリプトを実行したりせず、安全なテキスト表記へ無害化します。処理結果の正確性や前ゼロ数値（<code>00123</code> など）のセル書式は、送信や提出の前にご自身の目でも最終確認してください。
+        </p>
+      </div>
+    </details>
+  </div>
+</ToolLayout>

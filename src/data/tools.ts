@@ -134,9 +134,14 @@ export const TOOLS: ToolDefinition[] = [
       '生成AI特有の太字記号や表崩れを、メール・Slack・社内ドキュメントへそのまま貼れる綺麗な書式へワンクリック変換します。',
     category: 'ai-security',
     categoryLabel: 'AI実務整形',
-    status: 'planned',
+    status: 'published',
     wave: 2,
-    keywords: ['ChatGPT コピペ 崩れ 直す', 'Markdown 表 Excel 変換'],
+    keywords: [
+      'ChatGPT コピペ 崩れ 直す',
+      'Markdown 表 Excel 変換',
+      'Markdown Word 貼り付け',
+      'Markdown Slack mrkdwn 変換',
+    ],
     iconKey: 'sparkles',
   },
   {
