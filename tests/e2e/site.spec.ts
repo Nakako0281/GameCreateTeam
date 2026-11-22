@@ -41,7 +41,7 @@ for (const vp of [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobile', width: 390, height: 844 },
 ]) {
-  test(`renders all pages cleanly without errors or horizontal overflow (${vp.name})`, async ({
+  test(`renders all pages cleanly without errors, horizontal overflow, or mid-word heading splits (${vp.name})`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height })
@@ -59,7 +59,78 @@ for (const vp of [
         )
       })
       expect(overflow, `Horizontal overflow on ${route} (${vp.name})`).toBeLessThanOrEqual(1)
+
+      // Issue #43: ビルド時自動バージョン表示とメタ情報の検証
+      const metaVersion = await page
+        .locator('meta[name="app-version"]')
+        .getAttribute('content')
+      expect(metaVersion, `Missing/invalid app-version meta on ${route}`).toMatch(
+        /^v\d+\.\d+\.\d+\+[0-9a-z]+$/i
+      )
+      const footerVersion = page.getByTestId('app-version')
+      await expect(footerVersion).toBeVisible()
+      await expect(footerVersion).toHaveText(/^v\d+\.\d+\.\d+ \([0-9a-z]+\)$/i)
+
+      // Issue #46: h1 内フレーズおよびカタカナ/英数字単語が途中で折り返されないことを物理座標で検証
+      const typographyResult = await page.evaluate(() => {
+        const h1 = document.querySelector('h1')
+        if (!h1) return { phraseCount: 0, violations: ['h1 missing'] }
+
+        const countLines = (range: Range) => {
+          const rects = Array.from(range.getClientRects()).filter(
+            (r) => r.width > 0.5 && r.height > 0.5
+          )
+          const lineBuckets = new Set(rects.map((r) => Math.round(r.top / 6)))
+          return lineBuckets.size
+        }
+
+        const violations: string[] = []
+        const phrases = Array.from(h1.querySelectorAll('.heading-phrase'))
+        for (const el of phrases) {
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const lines = countLines(range)
+          if (lines !== 1) {
+            violations.push(`Phrase wrapped across ${lines} lines: "${el.textContent}"`)
+          }
+        }
+
+        const walker = document.createTreeWalker(h1, NodeFilter.SHOW_TEXT)
+        let node: Node | null
+        while ((node = walker.nextNode())) {
+          const text = node.textContent || ''
+          const wordRegex = /[ァ-ヶー]{2,}|[A-Za-z0-9]{2,}/g
+          for (const match of text.matchAll(wordRegex)) {
+            if (match.index === undefined) continue
+            const range = document.createRange()
+            range.setStart(node, match.index)
+            range.setEnd(node, match.index + match[0].length)
+            const lines = countLines(range)
+            if (lines !== 1) {
+              violations.push(`Word split across ${lines} lines: "${match[0]}"`)
+            }
+          }
+        }
+
+        return { phraseCount: phrases.length, violations }
+      })
+
+      expect(
+        typographyResult.phraseCount,
+        `Expected h1 .heading-phrase elements on ${route} (${vp.name})`
+      ).toBeGreaterThan(0)
+      expect(
+        typographyResult.violations,
+        `Heading word/phrase wrap violations on ${route} (${vp.name})`
+      ).toEqual([])
     }
+
+    // Issue #41: /contact/ の主要導線がユーザー用フィードバックテンプレート専用であることを検証
+    await page.goto('/contact/', { waitUntil: 'networkidle' })
+    const feedbackCta = page.getByRole('link', { name: /不具合報告フォームを開く/ })
+    await expect(feedbackCta).toBeVisible()
+    const feedbackHref = await feedbackCta.getAttribute('href')
+    expect(feedbackHref).toContain('template=user_feedback.md')
 
     expect(tracker.consoleErrors).toEqual([])
     expect(tracker.pageErrors).toEqual([])
@@ -104,9 +175,7 @@ test('proves zero external transmission across interactive execution of all 4 Wa
   await page.goto('/tools/llm-cost-calculator/', { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: '英語コードレビュー' }).click()
   await page.locator('#monthly-requests').fill('5000')
-  await page
-    .getByLabel('Batch API（非同期50%割引・対応モデルのみ）を適用')
-    .check()
+  await page.getByLabel('Batch API（50%割引・対応モデル）').check()
   await expect(page.getByText('Batch 50%OFF').first()).toBeVisible()
   const costTable = page.locator('table')
   await expect(costTable.getByText('GPT-6.2 Sol', { exact: true })).toBeVisible()

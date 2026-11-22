@@ -6,6 +6,8 @@ export interface ToolDefinition {
   slug: string
   name: string
   shortTitle: string
+  titleSegments: string[]
+  shortSummary: string
   summary: string
   category: ToolCategory
   categoryLabel: string
@@ -32,6 +34,9 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'ai-pii-masker',
     name: 'AI入力前・個人情報（PII）自動マスキング＆回答復元',
     shortTitle: 'AI PII マスカー',
+    titleSegments: ['AI入力前・', '個人情報(PII)', '自動マスキング', '＆回答復元'],
+    shortSummary:
+      'メール・社名・APIキーを仮名置換し、AIの回答をワンクリックで復元します。',
     summary:
       'メール・電話番号・住所・APIキー・独自固有名詞をブラウザ内だけで仮名トークンへ置換し、AIの回答を貼り戻すとワンクリックで自動復元します。',
     category: 'ai-security',
@@ -45,6 +50,9 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'llm-cost-calculator',
     name: 'LLMトークン数＆API料金 リアルタイム比較シミュレーター',
     shortTitle: 'LLM料金シミュレーター',
+    titleSegments: ['LLMトークン＆', 'API料金', '比較シミュレーター'],
+    shortSummary:
+      'プロンプトのトークン数を推定し、主要15モデルの月額API料金を円換算で比較します。',
     summary:
       '日本語テキストやコードを即時トークン推定し、主要モデルのAPI月額費用・Prompt Caching・Batch割引を円換算で一括比較します。',
     category: 'ai-security',
@@ -58,6 +66,9 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'csv-encoding-fixer',
     name: 'Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング',
     shortTitle: 'CSV文字化け修復',
+    titleSegments: ['Excel CSV', '文字化け修復', '＆列マスキング'],
+    shortSummary:
+      '文字化けCSVをExcel対応UTF-8へ変換。不要列の削除やマスクも同時に行えます。',
     summary:
       'サーバーへ一切アップロードせず、文字化けしたCSVの文字コードを自動判定してExcel対応UTF-8（BOM付）等へ変換。列ごとのマスク・削除も可能です。',
     category: 'file-utility',
@@ -71,6 +82,9 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'image-exif-cleaner',
     name: '画像 EXIF/GPS位置情報 完全削除＆WebP/JPG一括軽量化',
     shortTitle: '画像EXIF削除＆圧縮',
+    titleSegments: ['画像EXIF・GPS', '位置情報削除', '＆一括軽量化'],
+    shortSummary:
+      '写真のGPS位置情報やEXIFをCanvas再描画で完全削除し、WebP等へ一括圧縮します。',
     summary:
       'JPEG/PNG内の撮影日時やGPS位置情報・メタデータチャンクをローカル解析し、Canvas再描画で物理消去しつつWebP/JPEG/PNGへ一括軽量化します。',
     category: 'file-utility',
@@ -84,6 +98,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'pdf-redactor',
     name: 'PDF「真の墨消し（黒塗り）」＆メタデータ完全削除',
     shortTitle: 'PDF真の墨消し',
+    titleSegments: ['PDF真の墨消し', '＆メタデータ削除'],
+    shortSummary: 'PDFを画像化して黒塗りを焼き付け、下層のテキスト抽出を不能にします。',
     summary:
       '黒塗りの下にテキストデータが残る事故を防ぐため、ブラウザ上でラスタライズ焼付けを行い文字抽出を不可能にします。',
     category: 'file-utility',
@@ -97,6 +113,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'pdf-organizer',
     name: 'PDF 完全ローカル結合・分割・ページ並べ替え',
     shortTitle: 'PDFローカル結合・分割',
+    titleSegments: ['PDFローカル', '結合・分割', '・並べ替え'],
+    shortSummary: '社外秘PDFを外部へ送らず、ページの結合・分割・回転をブラウザ内で完結します。',
     summary:
       '社外秘資料を外部クラウドへ上げずに、ページ単位の分割・結合・回転・抽出をブラウザ内だけで完結します。',
     category: 'file-utility',
@@ -110,6 +128,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'ai-markdown-formatter',
     name: 'AI出力（Markdown・表）➔ Word / Excel / Slack 整形',
     shortTitle: 'AI Markdown整形',
+    titleSegments: ['AI Markdown', '表・書式整形'],
+    shortSummary: '生成AIの太字記号や表崩れを、チャットや社内文書向けの綺麗な書式へ変換します。',
     summary:
       '生成AI特有の太字記号や表崩れを、メール・Slack・社内ドキュメントへそのまま貼れる綺麗な書式へワンクリック変換します。',
     category: 'ai-security',
@@ -123,6 +143,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'config-sanitizer',
     name: '.env / JSON / YAML / ログ 秘匿値サニタイズ＆変換',
     shortTitle: '設定ファイル秘匿化',
+    titleSegments: ['設定ファイル', '・ログ秘匿化'],
+    shortSummary: 'エラーログや設定ファイル内のトークン・パスワードを自動マスクして整形します。',
     summary:
       'エラーログや設定ファイル内のトークン・パスワード・接続文字列を自動マスクしてから安全に共有・AI相談できます。',
     category: 'ai-security',
@@ -136,6 +158,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'jp-business-days',
     name: '日本の営業日・祝日・納期逆算シミュレーター',
     shortTitle: '営業日・納期計算',
+    titleSegments: ['日本の営業日', '・納期逆算'],
+    shortSummary: '日本の祝日・土日・独自休業日を考慮し、営業日や締切逆算を即時計算します。',
     summary:
       '日本の祝日・土日・独自休業日を考慮し、「N営業日後」「締切からN営業日前」を即時算出します。',
     category: 'daily-dev',
@@ -149,6 +173,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'regex-tester-jp',
     name: '日本語実務向け 正規表現ビジュアルテスター',
     shortTitle: '日本語正規表現テスター',
+    titleSegments: ['日本語実務', '正規表現テスター'],
+    shortSummary: 'インボイス番号・法人番号・郵便番号等のプリセット付きで正規表現を検証します。',
     summary:
       'インボイス番号・法人番号・郵便番号・全角半角などの実用プリセット付きで、安全にパターン一致を検証できます。',
     category: 'daily-dev',
@@ -162,6 +188,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'text-cleaner',
     name: '文字数カウント・全角半角・機種依存文字クレンザー',
     shortTitle: '文字クレンザー',
+    titleSegments: ['全角半角・', '機種依存文字', 'クレンザー'],
+    shortSummary: 'ゼロ幅スペースや丸数字などシステム取込でエラーになりやすい文字を整形します。',
     summary:
       'ゼロ幅スペースや丸数字・旧字体など、システム取込でエラーになりやすい文字を一括検出・自動整形します。',
     category: 'daily-dev',
@@ -175,6 +203,8 @@ export const TOOLS: ToolDefinition[] = [
     slug: 'offline-qr-password',
     name: 'オフラインQRコード生成＆パスワード強度診断',
     shortTitle: 'オフラインQR・強度診断',
+    titleSegments: ['オフラインQR', '＆強度診断'],
+    shortSummary: '社内Wi-Fi情報やURLを外部送信せずQR生成し、パスワード強度を診断します。',
     summary:
       '社内Wi-Fi情報や限定URLを外部APIへ送らずSVG/PNG形式のQRコードを生成し、パスワードのエントロピーもローカル診断します。',
     category: 'daily-dev',

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 
 const title = 'LocalBoxについて・外部送信ゼロの技術検証方法'
@@ -8,11 +9,13 @@ const description =
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
-        LocalBoxについて・ゼロ送信アーキテクチャの検証手順
-      </h1>
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
+      <PhraseHeading
+        as="h1"
+        segments={['LocalBoxの', 'ゼロ送信設計と', '検証手順']}
+        class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+      />
 
       <div class="mt-6 space-y-8 text-sm leading-relaxed text-slate-700">
         <section>
@@ -35,7 +38,7 @@ const description =
               使いたいツールページ（例：<a href="/tools/ai-pii-masker/" class="font-semibold text-sky-700 underline">AI PII マスカー</a>）を開いた状態で、キーボードの <code>F12</code> キー（Macは <code>Cmd + Option + I</code>）を押して開発者ツールを開きます。
             </li>
             <li>
-              上部の <strong>Network（ネットワーク）</strong> タブを選択し、クリアボタン（斜線付き丸アイコン）を押して初期読み込みログを空にします。さらに <strong>Fetch/XHR</strong> で絞り込むとAPI通信の有無だけが見やすくなります。
+              上部の <strong>Network（ネットワーク）</strong> タブを選択し、クリアボタン（斜線付き丸アイコン）を押して初期読み込みログを空にします。さらに <strong>Fetch/XHR</strong> で絞り込むとAPI通信の有無が見やすくなります。
             </li>
             <li>
               その状態で「サンプル文を試す」や文字の入力、CSVファイルの変換、画像のEXIF削除を実行してください。処理を実行している間、<strong>ツール由来の通信（POST送信等）が1件も発生しないこと</strong>をリアルタイムで確認できます。
@@ -47,19 +50,19 @@ const description =
         </section>
 
         <section>
-          <h2 class="text-lg font-bold text-slate-900">3. 運営体制と品質保証（自動化チェック）</h2>
+          <h2 class="text-lg font-bold text-slate-900">3. 品質保証とソースコードの透明性</h2>
           <p class="mt-2">
-            当サイトは個人開発およびAI自律運用チーム（AutoGrowth Studio）の協働により保守・改善されています。公開前のすべての変更は、外部通信API混入検査・XSS対策・Playwright実ブラウザ通信ゼロ証明テストを自動実行するパイプラインを通過したものだけを反映しています。
+            LocalBoxは、公開リポジトリ上で継続的に保守・改善されています。公開前のすべての変更は、外部通信APIの混入検査・XSS対策・Playwright実ブラウザによる通信ゼロ検証テストを自動実行するパイプラインを通過したものだけを反映しています。
           </p>
           <p class="mt-2">
-            ソースコードおよび改善タスク・要望管理は公開リポジトリにて透明性を持って運用しています。ご意見は
+            不具合の報告や機能改善のご提案は
             <a
-              href={SITE_CONFIG.repoIssuesUrl}
+              href={SITE_CONFIG.feedbackIssueUrl}
               target="_blank"
               rel="noopener noreferrer"
               class="font-semibold text-sky-700 underline"
             >
-              GitHub Issues
+              フィードバックフォーム（GitHub）
             </a>
             よりお寄せいただけます。
           </p>

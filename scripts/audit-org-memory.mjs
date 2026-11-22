@@ -79,6 +79,51 @@ if (fs.existsSync(dailyOpsPath)) {
   }
 }
 
+// 公開境界リーク防止ガード（L-11: README・公開画面への内部マネタイズ/組織用語混入禁止）
+const userFeedbackTemplatePath = path.join(
+  ROOT,
+  '.github',
+  'ISSUE_TEMPLATE',
+  'user_feedback.md'
+)
+if (!fs.existsSync(userFeedbackTemplatePath)) {
+  errors.push(
+    '[PublicBoundary] Missing .github/ISSUE_TEMPLATE/user_feedback.md for user inquiries'
+  )
+}
+
+const readmePath = path.join(ROOT, 'README.md')
+if (fs.existsSync(readmePath)) {
+  const readmeText = fs.readFileSync(readmePath, 'utf-8')
+  const forbiddenReadmeMatch = readmeText.match(
+    /マネタイズ|AdSense|収益目標|収益モデル|月\s*100\s*円|従業員兼最終責任者|AutoGrowth Studio/i
+  )
+  if (forbiddenReadmeMatch) {
+    errors.push(
+      `[PublicBoundary] README.md contains internal strategy/monetization term: "${forbiddenReadmeMatch[0]}"`
+    )
+  }
+}
+
+const PUBLIC_BOUNDARY_PAGES = [
+  'src/pages/contact.astro',
+  'src/pages/about.astro',
+  'src/pages/index.astro',
+]
+for (const rel of PUBLIC_BOUNDARY_PAGES) {
+  const full = path.join(ROOT, rel)
+  if (!fs.existsSync(full)) continue
+  const pageText = fs.readFileSync(full, 'utf-8')
+  const forbiddenPageMatch = pageText.match(
+    /マネタイズ|非YMYL|収益目標|従業員兼最終責任者|AutoGrowth Studio|Wave\s+\d+\s*予定/i
+  )
+  if (forbiddenPageMatch) {
+    errors.push(
+      `[PublicBoundary] ${rel} contains internal jargon: "${forbiddenPageMatch[0]}"`
+    )
+  }
+}
+
 // src/data/tools.ts の published ツールとビルド成果物・ページの整合性
 const toolsTs = fs.readFileSync(
   path.join(ROOT, 'src', 'data', 'tools.ts'),

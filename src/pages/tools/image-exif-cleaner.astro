@@ -46,38 +46,48 @@ const faqs: FaqItem[] = [
 >
   <ImageExifCleaner slot="tool" client:load />
 
-  <div slot="guide" class="space-y-6 text-sm leading-relaxed text-slate-700">
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
     <section>
-      <h2 class="text-xl font-bold text-slate-900">
+      <h2 class="text-lg font-bold text-slate-900">
         「画像ファイルに隠れた位置情報」を誰のサーバーにも預けず確実に消す
       </h2>
-      <p class="mt-3">
+      <p class="mt-2.5">
         自宅の作業デスク、子どもの作品、職場のホワイトボード、外出先でのメモをスマートフォンで撮影し、ブログやドキュメント、チャットへ貼り付ける機会は日常的です。しかし撮影直後の画像ファイルには、目に見える写真データとは別に、撮影時刻・GPS座標（数メートル単位の誤差で自宅位置がわかることもあります）・端末名・ソフトウェア名といったメタデータが記録されています。
       </p>
-      <p class="mt-3">
+      <p class="mt-2.5">
         プライバシーを守るために「EXIF削除サイト」を使う際、もしそのサイトが画像ファイルをクラウドサーバーへ送信する仕組みだった場合、位置情報入りの元画像を一度外部へ渡してしまうという本末転倒な状態になります。LocalBoxの画像EXIF削除ツールは、ファイルの読み取りから検査、再描画、ダウンロード用ファイル生成までをすべてブラウザ内で完結させるため、プライベートの写真も社外秘の撮影画像も外部に流れません。
       </p>
     </section>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        削除前バイナリ診断と削除後再チェックの仕組み
-      </h2>
-      <p class="mt-3">
-        本ツールに画像を読み込ませると、まず純粋なTypeScript製のバイナリ検査エンジンが先頭ヘッダーを走査します。JPEGであれば <code>0xFFE1</code>（APP1領域）内の <code>Exif</code> タグやGPS IFDポインタ（<code>0x8825</code>）、Adobe XMP、IPTC、コメントチャンクを検出し、PNGであれば <code>eXIf</code> やテキストメタデータ（<code>tEXt</code> / <code>iTXt</code> / <code>tIME</code>）を特定します。
-      </p>
-      <p class="mt-3">
-        その後、HTML5 Canvasへピクセルだけを再描画して新しい画像バイナリを作成し、完成したバイナリに対しても同じ検査エンジンをもう一度走らせます。各カードの「削除後再検査: 検出 0 件」という表示は飾りではなく、実際に出力ファイルのバイナリを確認した結果です。
-      </p>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>削除前バイナリ診断と削除後再チェックの仕組み</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          本ツールに画像を読み込ませると、まず純粋なTypeScript製のバイナリ検査エンジンが先頭ヘッダーを走査します。JPEGであれば <code>0xFFE1</code>（APP1領域）内の <code>Exif</code> タグやGPS IFDポインタ（<code>0x8825</code>）、Adobe XMP、IPTC、コメントチャンクを検出し、PNGであれば <code>eXIf</code> やテキストメタデータ（<code>tEXt</code> / <code>iTXt</code> / <code>tIME</code>）を特定します。
+        </p>
+        <p>
+          その後、HTML5 Canvasへピクセルだけを再描画して新しい画像バイナリを作成し、完成したバイナリに対しても同じ検査エンジンをもう一度走らせます。各カードの「削除後再検査: 検出 0 件」という表示は飾りではなく、実際に出力ファイルのバイナリを確認した結果です。
+        </p>
+      </div>
+    </details>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        メタデータ削除と同時にWebP軽量化・リサイズまで一括完了
-      </h2>
-      <p class="mt-3">
-        最近のスマートフォンカメラで撮影した写真は横幅が4,000pxを超え、ファイルサイズも1枚3〜6MBに達することが珍しくありません。そのまま資料やWebサイトに貼り付けると読み込みが重くなる原因になります。本ツールではEXIF削除の工程とあわせて最大横幅（1920px / 1280px / 800px）の縮小と高効率なWebP形式への変換を同時に行えるため、安全確保とページ高速化を一度の作業で終えられます。
-      </p>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>メタデータ削除と同時にWebP軽量化・リサイズまで一括完了</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="border-t border-slate-200 px-4 py-4">
+        <p>
+          最近のスマートフォンカメラで撮影した写真は横幅が4,000pxを超え、ファイルサイズも1枚3〜6MBに達することが珍しくありません。そのまま資料やWebサイトに貼り付けると読み込みが重くなる原因になります。本ツールではEXIF削除の工程とあわせて最大横幅（1920px / 1280px / 800px）の縮小と高効率なWebP形式への変換を同時に行えるため、安全確保とページ高速化を一度の作業で終えられます。
+        </p>
+      </div>
+    </details>
   </div>
 </ToolLayout>

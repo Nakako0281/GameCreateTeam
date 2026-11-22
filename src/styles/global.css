@@ -23,7 +23,37 @@
 
   button,
   [role="button"],
-  a {
+  a,
+  summary {
     touch-action: manipulation;
   }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.heading-balanced {
+  text-wrap: balance;
+  word-break: auto-phrase;
+  overflow-wrap: break-word;
+}
+
+.heading-phrase {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
