@@ -48,6 +48,37 @@ for (const rel of REQUIRED_MEMORY_FILES) {
   }
 }
 
+// 組織運用ルール退行ガード（L-09: 硬直的な1タスク固定の禁止 & Adaptive Batching 存在検証）
+const ORG_POLICY_GUARD_FILES = [
+  'AGENTS.md',
+  '.agents/skills/daily-ops/SKILL.md',
+  'docs/HUMAN_OPERATIONS_GUIDE.md',
+]
+const FORBIDDEN_SINGLE_TASK_RE = /1スライス|1タスク自律消化|最優先タスク・Issueを1つ/
+for (const rel of ORG_POLICY_GUARD_FILES) {
+  const full = path.join(ROOT, rel)
+  if (!fs.existsSync(full)) continue
+  const text = fs.readFileSync(full, 'utf-8')
+  const matched = text.match(FORBIDDEN_SINGLE_TASK_RE)
+  if (matched) {
+    errors.push(
+      `[OrgPolicy] Rigid single-task wording detected in ${rel}: "${matched[0]}" (violates L-09 Adaptive Batching)`
+    )
+  }
+}
+
+const dailyOpsPath = path.join(ROOT, '.agents', 'skills', 'daily-ops', 'SKILL.md')
+if (fs.existsSync(dailyOpsPath)) {
+  const dailyOpsText = fs.readFileSync(dailyOpsPath, 'utf-8')
+  for (const requiredToken of ['Size S', 'Size M', 'Size L', 'Adaptive']) {
+    if (!dailyOpsText.includes(requiredToken)) {
+      errors.push(
+        `[OrgPolicy] .agents/skills/daily-ops/SKILL.md missing Adaptive Batching criteria: "${requiredToken}"`
+      )
+    }
+  }
+}
+
 // src/data/tools.ts の published ツールとビルド成果物・ページの整合性
 const toolsTs = fs.readFileSync(
   path.join(ROOT, 'src', 'data', 'tools.ts'),

@@ -33,7 +33,7 @@
 
 | やりたいこと | チャットで打つ一言（そのままコピペ可） | 起動するスキル・挙動 |
 | :--- | :--- | :--- |
-| **最優先タスク・Issueを1つ進めてほしい** | **`daily-ops` で進めて** | [daily-ops](../.agents/skills/daily-ops/SKILL.md)：人間完了Issueや未対応Issueを確認し、最優先タスクを1スライス実装〜リモートCI通過PR作成まで実行 |
+| **優先タスクを適量まとめて進めてほしい** | **`daily-ops` で進めて** | [daily-ops](../.agents/skills/daily-ops/SKILL.md)：人間完了Issueや未対応Issueを確認し、タスク規模（S/M/L）と関連性を見極めて適量をバッチ統合・自律消化（軽量タスクは1PRへ集約）〜リモートCI通過PR作成まで実行 |
 | **新ツールを企画・追加してほしい** | **`new-tool` で〇〇のツールを作って**<br>（または「ロードマップの次のツールを `new-tool` で作って」） | [new-tool](../.agents/skills/new-tool/SKILL.md)：需要調査・辛口監査・純粋TSロジック・UI・1,500字解説/FAQ・E2Eゼロ送信証明〜リモートCI通過PR作成 |
 | **振り返り・再発防止の仕組み強化をしてほしい** | **`audit-and-evolve` で振り返りと仕組み強化をして** | [audit-and-evolve](../.agents/skills/audit-and-evolve/SKILL.md)：直近のPR/Issue/KPI/失敗を総括し、`POSTMORTEM` 更新＋**新しい機械チェックを実装** |
 | **特定の指摘を組織成長ごと直してほしい** | **「〇〇が気になる。組織ルール通りに原因分析・再発防止の機械チェック追加まで含めて対応して」** | つぎはぎ修正をせず、`POSTMORTEM` 記録 ➔ 自動テスト/監査追加 ➔ 修正実装 ➔ リモートCI通過PR作成 |
@@ -47,7 +47,7 @@ Antigravity の定期自動化および GitHub Actions により、以下のサ�
 
 | 自動化名 | スケジュール | 内容 |
 | :--- | :--- | :--- |
-| **Daily AutoGrowth Studio Ops** | 毎日 9:00 (JST) | Issue・PR確認 ➔ 最優先タスク1スライス消化 ➔ ローカル＆リモートCI全通過PR作成 |
+| **Daily AutoGrowth Studio Ops** | 毎日 9:00 (JST) | Issue・PR確認 ➔ 規模（S/M/L）に応じた適量バッチ消化 ➔ 検証＆リモートCI全通過PR作成 |
 | **Weekly AutoGrowth Studio Retrospective** | 毎週月曜 10:00 (JST) | 週次振り返り ➔ KPI・失敗整理 ➔ 再発防止の機械チェック強化PR作成 |
 | **GitHub Actions Weekly Audit** | 毎週月曜 9:00 (JST) | GitHub サーバー側で `npm audit`・ビルド・各種監査を自動実行し、異常時にAI Issueを自動起票 |
 
