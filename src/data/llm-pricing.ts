@@ -1,8 +1,10 @@
 /**
  * 主要LLM APIの参考料金テーブル（USD / 100万トークンあたり）
- * PRICING_LAST_VERIFIED は scripts/audit-org-memory.mjs により14日以内の鮮度が機械チェックされます。
+ * PRICING_LAST_VERIFIED は scripts/audit-org-memory.mjs --time-sensitive（日次監査および本ファイル変更PRのCI）で
+ * 14日以内の鮮度と priceEffectiveUntil が強制チェックされます。
+ * 本ファイルを更新する際は、検証日・確認した公式URL・確認者（AIセッション）をコミットまたはPR本文に明記してください。
  */
-export const PRICING_LAST_VERIFIED = '2026-11-21'
+export const PRICING_LAST_VERIFIED = '2026-11-22'
 export const MAX_PRICING_AGE_DAYS = 14
 export const DEFAULT_USD_TO_JPY = 159
 
@@ -15,6 +17,14 @@ export const OFFICIAL_PRICING_SOURCES = {
 
 export type LlmProvider = keyof typeof OFFICIAL_PRICING_SOURCES
 
+export interface ScheduledModelPrice {
+  effectiveFrom: string
+  inputPerMillionUsd: number
+  outputPerMillionUsd: number
+  cachedInputPerMillionUsd: number
+  notes: string
+}
+
 export interface LlmModelPrice {
   id: string
   provider: LlmProvider
@@ -26,6 +36,7 @@ export interface LlmModelPrice {
   cachedInputPerMillionUsd: number
   supportsBatch50: boolean
   priceEffectiveUntil?: string
+  scheduledPricing?: ScheduledModelPrice
   sourceUrl: string
   notes: string
 }
@@ -159,8 +170,15 @@ export const LLM_MODELS: LlmModelPrice[] = [
     cachedInputPerMillionUsd: 0.075,
     supportsBatch50: true,
     priceEffectiveUntil: '2026-12-31',
+    scheduledPricing: {
+      effectiveFrom: '2027-01-01',
+      inputPerMillionUsd: 1.5,
+      outputPerMillionUsd: 7.5,
+      cachedInputPerMillionUsd: 0.15,
+      notes: '2027/1/1改定後の標準単価（思考トークン含む・キャッシュ90%引）',
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
-    notes: '2026/12/31まで導入価格（2027/1/1から$1.50/$7.50予定・思考トークン含む）',
+    notes: '2026/12/31まで導入価格（2027/1/1から$1.50/$7.50へ自動切替・思考トークン含む）',
   },
   {
     id: 'gemini-4-hydrogen',
@@ -186,8 +204,15 @@ export const LLM_MODELS: LlmModelPrice[] = [
     cachedInputPerMillionUsd: 0.1,
     supportsBatch50: true,
     priceEffectiveUntil: '2026-11-30',
+    scheduledPricing: {
+      effectiveFrom: '2026-12-01',
+      inputPerMillionUsd: 4.0,
+      outputPerMillionUsd: 20.0,
+      cachedInputPerMillionUsd: 0.2,
+      notes: '2026/12/1改定後の標準単価（思考トークン含む・暗黙キャッシュ95%引）',
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
-    notes: '2026/11/30まで導入価格（12/1から$4.00/$20.00予定・思考トークン含む）',
+    notes: '2026/11/30まで導入価格（12/1から$4.00/$20.00へ自動切替・思考トークン含む）',
   },
   {
     id: 'gemini-4-neon',

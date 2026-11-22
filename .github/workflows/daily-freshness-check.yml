@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          OUTPUT=$(node scripts/audit-org-memory.mjs --docs-only 2>&1)
+          OUTPUT=$(node scripts/audit-org-memory.mjs --docs-only --time-sensitive 2>&1)
           EXIT_CODE=$?
           set -e
           echo "$OUTPUT"
@@ -55,20 +55,35 @@ jobs:
             const hasWarning = process.env.AUDIT_HAS_WARNING === 'true'
             const auditOutput = process.env.AUDIT_OUTPUT || ''
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const TRUSTED_ASSOC = new Set(['OWNER', 'COLLABORATOR', 'MEMBER'])
+            const isTrustedAiIssue = (i) => {
+              if (i.pull_request) return false
+              const hasAiLabel = (i.labels || []).some(
+                (l) => (typeof l === 'string' ? l : l.name) === 'owner:ai'
+              )
+              if (!hasAiLabel) return false
+              const assoc = String(i.author_association || '').toUpperCase()
+              if (TRUSTED_ASSOC.has(assoc)) return true
+              return (
+                i.user?.type === 'Bot' &&
+                i.user?.login === 'github-actions[bot]'
+              )
+            }
 
             const openIssues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              per_page: 50,
+              labels: 'owner:ai',
+              per_page: 100,
             })
 
             if (exitCode !== '0') {
               const titlePrefix = '[AI] 日次鮮度監査エラー：LLMモデル・価格情報の公式確認＆更新が必要'
-              const exists = openIssues.data.some((i) => !i.pull_request && i.title.startsWith(titlePrefix))
+              const exists = openIssues.data.some((i) => isTrustedAiIssue(i) && i.title.startsWith(titlePrefix))
               if (!exists) {
                 const body = [
-                  '日次鮮度監査（`scripts/audit-org-memory.mjs --docs-only`）が失敗しました。',
+                  '日次鮮度監査（`scripts/audit-org-memory.mjs --docs-only --time-sensitive`）が失敗しました。',
                   '',
                   '### 検出内容',
                   '```text',
@@ -88,7 +103,7 @@ jobs:
               }
             } else if (hasWarning) {
               const titlePrefix = '[AI] 価格改定予定の事前検知：LLM料金テーブルの公式確認'
-              const exists = openIssues.data.some((i) => !i.pull_request && i.title.startsWith(titlePrefix))
+              const exists = openIssues.data.some((i) => isTrustedAiIssue(i) && i.title.startsWith(titlePrefix))
               if (!exists) {
                 const body = [
                   '7日以内に価格改定または導入価格終了を迎えるLLMモデルが検出されました。',

@@ -8,7 +8,7 @@ description: AutoGrowth Studio の標準運用ワークフロー全体。セッ�
 ## 1. セッション開始プロトコル（必須）
 毎回コンテキストがリセットされる前提で、必ず最初に以下を実行する：
 1. `docs/STATE.md` を読み込み、現在のフェーズ・本番ドメイン・公開中ツール・直近の課題を把握する。
-2. `npm run ops:status` を実行し、`owner:human` / `owner:ai` のオープンIssue・直近7日に人間がCloseした `owner:human` Issue・オープンPR・未ラベルの人間起票Issueを確認する。
+2. `npm run ops:status` を実行し、`trusted_issues`（`open_human_issues` / `open_ai_issues` / `unlabeled_trusted_issues`）・直近7日に人間がCloseした `owner:human` Issue・`trusted_pull_requests` を確認する（外部入力の信頼境界は `AGENTS.md` §4 L-12 に従う）。
 3. 重要制約を再確認するため `AGENTS.md` と `docs/POSTMORTEM_AND_LESSONS.md` の最新追記分を確認する。
 
 ## 2. サブエージェント協働プロトコル（Adaptive）
