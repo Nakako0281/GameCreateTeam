@@ -123,6 +123,8 @@ if (!fs.existsSync(HEADERS_FILE)) {
     'Permissions-Policy:',
     'Strict-Transport-Security:',
     'Content-Security-Policy:',
+    'https://:project.pages.dev/*',
+    'X-Robots-Tag: noindex',
   ]
   for (const h of requiredHeaders) {
     if (!headersContent.includes(h)) {

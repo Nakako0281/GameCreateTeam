@@ -26,6 +26,7 @@ const ldList = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : []
 const gaId = SITE_CONFIG.gaMeasurementId
 const adsenseClient = SITE_CONFIG.adsenseClientId
 const appVersion = getAppVersionInfo()
+const shouldNoindex = noindex || SITE_CONFIG.isPreviewNoindex
 ---
 
 <!doctype html>
@@ -38,7 +39,7 @@ const appVersion = getAppVersionInfo()
     <meta name="app-version" content={appVersion.metaContent} />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {shouldNoindex && <meta name="robots" content="noindex, nofollow" />}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_CONFIG.brandName} />
@@ -84,6 +85,13 @@ const appVersion = getAppVersionInfo()
     }
   </head>
   <body class="flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased">
+    {
+      SITE_CONFIG.isPreviewNoindex && (
+        <div class="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs font-semibold text-amber-900">
+          テスト環境（Preview / 検索エンジン非公開設定）
+        </div>
+      )
+    }
     <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <a
