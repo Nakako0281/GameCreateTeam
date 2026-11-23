@@ -23,6 +23,10 @@
 ### リポジトリ継続方針
 - 既存 `Nakako0281/GameCreateTeam` をそのまま継続利用する。旧体制コードはタグ `archive/game-create-team-v1` に保全済み。Cloudflare Pages はリポジトリ名と公開ドメインが独立しているため問題ない。
 
+### テスト環境（Staging / Preview）と本番環境の2層運用
+- **テスト環境（ドメイン購入前・PR確認用）**: Cloudflare Pages の無料サブドメイン（`*.pages.dev` および PR ごとのプレビューURL `*.<project>.pages.dev`）をそのままテスト・実機確認環境として運用する。`public/_headers` にて `https://:project.pages.dev/*` および `https://:branch.:project.pages.dev/*` に `X-Robots-Tag: noindex, nofollow` を常時強制し、テストURLの検索エンジン誤インデックスと重複コンテンツ事故を防ぐ（加えて `PUBLIC_NOINDEX=true` 設定時はHTML metaとテスト環境バナーも出力可能）。
+- **本番環境（独自ドメイン取得後）**: 同一 Cloudflare Pages プロジェクトへ独自ドメイン（カスタムドメイン）を紐づけ、`SITE_URL` 環境変数に本番URLを設定して公開する。テストURLと本番が同一プロジェクトでシームレスに共存し、移行時の作り直しが発生しない。
+
 ---
 
 ## 2. セキュリティ＆ゼロPII設計方針

@@ -3,10 +3,11 @@
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
 - **最終更新日**: 2026-11-23
-- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（3層ハーネス＆ガバナンス再設計 ADR-005 導入PR作成中／PR #64 クローズ・dev経由同期へ正常化）`
+- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（PR #67 マージ完了・main ➔ dev 同期PR作成中／純粋 dev ➔ main リリース準備）`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **TemotoBox**（生成AI・社外共有前の下ごしらえ特化型・検証可能なブラウザ完結実務ワークベンチ／`ADR-004`）
+- **テスト環境URL**: Cloudflare Workers / Pages（`*.workers.dev`・`*.pages.dev` ともに `X-Robots-Tag: noindex, nofollow` 保護済み、`PUBLIC_NOINDEX=true` でバナー・meta制御可）
 - **本番URL**: 未公開（取得対象ドメイン `temotobox.com` 確定済み・`ADR-004`／Issue #32 で人間によるドメイン取得＆先行公開予定）
 - **AdSense状態**: 未申請（Phase 2 で12ツール整備＆公開後に初回申請予定）
 - **GA4 / GSC接続**: 未接続（独自ドメイン購入＆本番デプロイ時に設定）
@@ -38,7 +39,7 @@
 - **外部入力の信頼境界（`L-12`）**: `ops_github.mjs` は `OWNER`/`COLLABORATOR`/`MEMBER` と公式 `github-actions[bot]`（`type: Bot`）・同一リポPRのみを信頼し、外部Issue・外部コメント・フォークPRは隔離して本文/タイトルをデフォルト省略する。
 - **運用ルール刷新（`L-09` & 人間待ち3日ルール）**: タスク規模（Size S / M / L）と関連性に応じて1セッションあたり目安 3〜4pt を自律バッチ消化する **Adaptive Batching** 運用。ドキュメント専用PRは軽量検証（`audit:ci-parity` ＋ `audit:memory --docs-only`）で高速完了し、`owner:human` Issue の3日以上滞留時は分割案・代替案付きでリマインドする。
 - **ガバナンス ＆ 3層ハーネス（`ADR-005` / L-15）**: `.agents/hooks.json`（`SessionStart` 乖離警告、`PreToolUse` の `main`/`dev` 直操作 `deny` ＆ 保護ファイル/`main` PR `force_ask`）、`ops_github.mjs`（`status` の `branch_sync`・`create-pr` の `main`/連鎖ガード）、`.github/workflows/ci.yml`（`base_ref=main` サーバーゲート）を標準装備。常時読み込みルール（`AGENTS.md` + `.agents/rules/AGENTS.md`）も重複削減で純減し、90行ソフト予算警告を導入（Issue #56 前進）。
-- **ブランチ同期状態**: `origin/main`（PR #37）が `origin/dev` より先行中。新方針（`ADR-005`）に基づき変則リリース PR #64 はクローズし、ガバナンスPRの `dev` マージ後に専用同期PR（`chore/sync-main-to-dev` ➔ `dev`）を経て、競合ゼロの純粋な `dev` ➔ `main` リリースPRへ移行する。
+- **ブランチ同期状態**: PR #67 マージ後、専用同期 PR（`chore/sync-main-to-dev` ➔ `dev`）で先行していた `origin/main`（PR #37）を `dev` へ統合。本 PR の通常マージ（Create a merge commit）完了後、PR #65 の整理および競合ゼロの純粋な `dev ➔ main` リリース PR へ移行する。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
   - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ブランド名 `TemotoBox`・取得対象ドメイン **`temotobox.com`**（ADR-004）で確定、Track A（11/29目標 独自ドメイン取得＆GSC登録）と Track B（12/6目標 友人検証）の2トラック分割案を提示中
   - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:in-progress`, 進捗 2/4: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/` `dev`マージ済、残2本: `pdf-redactor` 優先・`pdf-organizer`)
@@ -54,6 +55,6 @@
 
 ## 3. 次セッションの実行プラン（Next Action）
 
-1. **ブランチ正常化 ＆ `temotobox.com` 本番リリース**: ガバナンスPRを `dev` へマージ後、`chore/sync-main-to-dev` で PR #37 差分を `dev` へ統合・確認し、純粋な `dev ➔ main` リリースPRを作成して `temotobox.com` 取得・GSC/GA4登録（#32 Track A）を進める（あわせて GitHub Branch Rulesets 設定と PR #65 の同期整理を実施）。
+1. **ブランチ正常化 ＆ `temotobox.com` 本番リリース**: 本同期 PR（`chore/sync-main-to-dev`）を `dev` へマージ後、PR #65 を最新 `dev` 基準へ整理し、競合ゼロの純粋な `dev ➔ main` リリース PR を作成して `temotobox.com` 本番公開・GSC/GA4登録（#32 Track A）を進める（あわせて Issue #68 の GitHub Branch Rulesets 設定を実施）。
 2. **信頼性・集客タスク消化（Issue #57 ＆ Issue #35 残1本）**: PIIマスカー評価コーパス・property-based test・UI注意表示（#57）と、集客記事ドラフト3本目（#35完了）をクリーンな `dev` ベースへ反映する。
 3. **Wave 2 残2ツール実装（Issue #33）**: 競合差別化が強い **PDF真の墨消し (`pdf-redactor`)** を最優先に、次いで `pdf-organizer` を実装する。
