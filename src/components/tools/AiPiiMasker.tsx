@@ -223,6 +223,19 @@ export default function AiPiiMasker() {
             placeholder="ここに [EMAIL_1] や [TEL_1] へ置換された文章が表示されます..."
             className="mt-1.5 w-full rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 font-mono text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none"
           />
+          <div
+            data-testid="pii-manual-review-notice"
+            role="note"
+            className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950"
+          >
+            <AlertTriangle
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600"
+              aria-hidden="true"
+            />
+            <span>
+              自動検出には漏れの可能性があります（敬称のない個人名や社内固有の案件名など）。AIへ送信する前にマスク結果を目視で確認し、漏れがあれば下の「カスタム語設定」へ追加してください。
+            </span>
+          </div>
         </div>
       </div>
 

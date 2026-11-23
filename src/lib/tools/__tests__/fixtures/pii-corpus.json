@@ -1,0 +1,1084 @@
+[
+  {
+    "id": "email-001",
+    "docType": "email",
+    "text": "株式会社サンプル商事の佐藤太郎様（sato.taro@example.co.jp / 090-1234-5678）宛てに、明日の打ち合わせ資料をお送りください。",
+    "expected": [
+      { "category": "organization", "text": "株式会社サンプル商事" },
+      { "category": "personName", "text": "佐藤太郎様" },
+      { "category": "email", "text": "sato.taro@example.co.jp" },
+      { "category": "phone", "text": "090-1234-5678" }
+    ]
+  },
+  {
+    "id": "email-002",
+    "docType": "email",
+    "text": "お疲れ様です。架空テック株式会社の鈴木一郎さんより、請求書送付先（〒100-0001）の変更依頼が届いています。",
+    "expected": [
+      { "category": "organization", "text": "架空テック株式会社" },
+      { "category": "personName", "text": "鈴木一郎さん" },
+      { "category": "postalCode", "text": "〒100-0001" }
+    ],
+    "mustNotMask": ["お疲れ様"]
+  },
+  {
+    "id": "email-003",
+    "docType": "email",
+    "text": "送信先: tanaka.hanako@example.jp\nCC: support-desk@example.com\n担当の高橋部長へも共有済みです。",
+    "expected": [
+      { "category": "email", "text": "tanaka.hanako@example.jp" },
+      { "category": "email", "text": "support-desk@example.com" },
+      { "category": "personName", "text": "高橋部長" }
+    ]
+  },
+  {
+    "id": "email-004",
+    "docType": "email",
+    "text": "有限会社テスト製作所の山田花子様から、固定電話 03-0000-1111 宛ての折り返し要望がありました。",
+    "expected": [
+      { "category": "organization", "text": "有限会社テスト製作所" },
+      { "category": "personName", "text": "山田花子様" },
+      { "category": "phone", "text": "03-0000-1111" }
+    ]
+  },
+  {
+    "id": "email-005",
+    "docType": "email",
+    "text": "合同会社あさひ開発の伊藤健一氏と相談し、顧客ID 1234-5678-9012 のデータ移行を来週実施します。",
+    "expected": [
+      { "category": "organization", "text": "合同会社あさひ開発" },
+      { "category": "personName", "text": "伊藤健一氏" },
+      { "category": "myNumber", "text": "1234-5678-9012" }
+    ]
+  },
+  {
+    "id": "email-006",
+    "docType": "email",
+    "text": "株式会社みずほ商会の渡辺 裕子様へ契約更新案内を送付しました。窓口番号は (06) 0000-2222 です。",
+    "expected": [
+      { "category": "organization", "text": "株式会社みずほ商会" },
+      { "category": "personName", "text": "渡辺 裕子様" },
+      { "category": "phone", "text": "(06) 0000-2222" }
+    ]
+  },
+  {
+    "id": "email-007",
+    "docType": "email",
+    "text": "ご連絡ありがとうございます。ジョン・スミス様から受領したテスト環境IPは 192.168.10.25 になります。",
+    "expected": [
+      { "category": "personName", "text": "ジョン・スミス様" },
+      { "category": "ipv4", "text": "192.168.10.25" }
+    ]
+  },
+  {
+    "id": "email-008",
+    "docType": "email",
+    "text": "一般社団法人オープン技術協会の小林課長と、佐々木 健太様に資料リンクをお送りしました。",
+    "expected": [
+      { "category": "organization", "text": "一般社団法人オープン技術協会" },
+      { "category": "personName", "text": "小林課長" },
+      { "category": "personName", "text": "佐々木 健太様" }
+    ]
+  },
+  {
+    "id": "email-009",
+    "docType": "email",
+    "text": "いつもお世話になっております。株式会社はてなの松本様宛てに、領収書を 150-0002 へ郵送いたします。",
+    "expected": [
+      { "category": "organization", "text": "株式会社はてな" },
+      { "category": "personName", "text": "松本様" },
+      { "category": "postalCode", "text": "150-0002" }
+    ],
+    "mustNotMask": ["お世話"]
+  },
+  {
+    "id": "email-010",
+    "docType": "email",
+    "text": "お客様への返信ドラフト作成依頼：青空システム株式会社の吉田様（yoshida@example.org）へ納期調整のメールを書きたいです。",
+    "expected": [
+      { "category": "organization", "text": "青空システム株式会社" },
+      { "category": "personName", "text": "吉田様" },
+      { "category": "email", "text": "yoshida@example.org" }
+    ],
+    "mustNotMask": ["お客様"]
+  },
+  {
+    "id": "email-011",
+    "docType": "email",
+    "text": "緊急連絡：テスト用APIキー sk-proj-example1234567890abcdef が誤ってメール本文に含まれていたため再発行します。",
+    "expected": [
+      { "category": "apiKey", "text": "sk-proj-example1234567890abcdef" }
+    ]
+  },
+  {
+    "id": "email-012",
+    "docType": "email",
+    "text": "確認依頼：新井社長、前田専務、森様のお三方へ、明日の役員会アジェンダを送信済みです。",
+    "expected": [
+      { "category": "personName", "text": "新井社長" },
+      { "category": "personName", "text": "前田専務" },
+      { "category": "personName", "text": "森様" }
+    ]
+  },
+  {
+    "id": "email-013",
+    "docType": "email",
+    "text": "特定非営利活動法人みらい支援の井上さんへ、携帯 08012345678 からお電話いたしました。",
+    "expected": [
+      { "category": "organization", "text": "特定非営利活動法人みらい支援" },
+      { "category": "personName", "text": "井上さん" },
+      { "category": "phone", "text": "08012345678" }
+    ]
+  },
+  {
+    "id": "email-014",
+    "docType": "email",
+    "text": "テストカード決済検証結果：4111-1111-1111-1111 のオーソリは成功し、伝票番号 4111-1111-1111-1112 で記録しました。",
+    "expected": [
+      { "category": "creditCard", "text": "4111-1111-1111-1111" }
+    ],
+    "mustNotMask": ["4111-1111-1111-1112"]
+  },
+  {
+    "id": "email-015",
+    "docType": "email",
+    "text": "合資会社北風物流の中村殿宛てに、出荷番号と担当連絡先（nakamura@example.net / 045-000-3333）を通知しました。",
+    "expected": [
+      { "category": "organization", "text": "合資会社北風物流" },
+      { "category": "personName", "text": "中村殿" },
+      { "category": "email", "text": "nakamura@example.net" },
+      { "category": "phone", "text": "045-000-3333" }
+    ]
+  },
+  {
+    "id": "email-016",
+    "docType": "email",
+    "text": "マイケル・ミラーさんとエミリー・クラーク様を交えた定例会の招待を calendar-bot@example.com から送りました。",
+    "expected": [
+      { "category": "personName", "text": "マイケル・ミラーさん" },
+      { "category": "personName", "text": "エミリー・クラーク様" },
+      { "category": "email", "text": "calendar-bot@example.com" }
+    ]
+  },
+  {
+    "id": "email-017",
+    "docType": "email",
+    "text": "公益財団法人サンプル振興会の斎藤様より、〒530-0001 の拠点宛てに監査資料を送るよう連絡がありました。",
+    "expected": [
+      { "category": "organization", "text": "公益財団法人サンプル振興会" },
+      { "category": "personName", "text": "斎藤様" },
+      { "category": "postalCode", "text": "〒530-0001" }
+    ]
+  },
+  {
+    "id": "email-018",
+    "docType": "email",
+    "text": "NPO法人デジタル支援の藤田様、および開発部宛てのメール（dev-info@example.jp）へ仕様書を共有しました。",
+    "expected": [
+      { "category": "organization", "text": "NPO法人デジタル支援" },
+      { "category": "personName", "text": "藤田様" },
+      { "category": "email", "text": "dev-info@example.jp" }
+    ]
+  },
+  {
+    "id": "email-019",
+    "docType": "email",
+    "text": "木村様へのご挨拶メール：来週は九州支社の清水部長と福岡出張の予定です。連絡先は 092-000-4444 です。",
+    "expected": [
+      { "category": "personName", "text": "木村様" },
+      { "category": "personName", "text": "清水部長" },
+      { "category": "phone", "text": "092-000-4444" }
+    ]
+  },
+  {
+    "id": "email-020",
+    "docType": "email",
+    "text": "ご担当者様へ。弊社とひまわり設計有限会社の契約更新について、担当の加藤さんへご連絡をお願いします。",
+    "expected": [
+      { "category": "organization", "text": "ひまわり設計有限会社" },
+      { "category": "personName", "text": "加藤さん" }
+    ],
+    "mustNotMask": ["ご担当者様", "弊社"]
+  },
+  {
+    "id": "email-021",
+    "docType": "email",
+    "text": "認証ヘッダサンプル（Authorization: Bearer sample_access_token_abcdef1234567890）を確認用に添付します。宛先は ops@example.co.jp です。",
+    "expected": [
+      { "category": "apiKey", "text": "Bearer sample_access_token_abcdef1234567890" },
+      { "category": "email", "text": "ops@example.co.jp" }
+    ]
+  },
+  {
+    "id": "email-022",
+    "docType": "email",
+    "text": "個人番号管理台帳のテストID 9876 5432 1098 について、株式会社さくらクラウドの岡田様へ確認メールを送信しました。",
+    "expected": [
+      { "category": "myNumber", "text": "9876 5432 1098" },
+      { "category": "organization", "text": "株式会社さくらクラウド" },
+      { "category": "personName", "text": "岡田様" }
+    ]
+  },
+  {
+    "id": "email-023",
+    "docType": "email",
+    "text": "フリーダイヤル 0120123456 または 08001234567 の転送先設定について、長谷川さんから確認依頼が来ています。",
+    "expected": [
+      { "category": "phone", "text": "0120123456" },
+      { "category": "phone", "text": "08001234567" },
+      { "category": "personName", "text": "長谷川さん" }
+    ]
+  },
+  {
+    "id": "email-024",
+    "docType": "email",
+    "text": "一般財団法人セキュリティ研究会の野口氏より、検証サーバー 10.20.30.40 への疎通確認完了メールを受信しました。",
+    "expected": [
+      { "category": "organization", "text": "一般財団法人セキュリティ研究会" },
+      { "category": "personName", "text": "野口氏" },
+      { "category": "ipv4", "text": "10.20.30.40" }
+    ]
+  },
+  {
+    "id": "email-025",
+    "docType": "email",
+    "text": "公益社団法人クラウド推進機構の松田様（matsuda@example.org）に、次回勉強会の登壇依頼をお送りしました。",
+    "expected": [
+      { "category": "organization", "text": "公益社団法人クラウド推進機構" },
+      { "category": "personName", "text": "松田様" },
+      { "category": "email", "text": "matsuda@example.org" }
+    ]
+  },
+  {
+    "id": "minutes-001",
+    "docType": "minutes",
+    "text": "【定例議事録】出席者：山本部長、石井課長、村田さん。次回までに株式会社架空ソリューションズへ見積書を提出する。",
+    "expected": [
+      { "category": "personName", "text": "山本部長" },
+      { "category": "personName", "text": "石井課長" },
+      { "category": "personName", "text": "村田さん" },
+      { "category": "organization", "text": "株式会社架空ソリューションズ" }
+    ]
+  },
+  {
+    "id": "minutes-002",
+    "docType": "minutes",
+    "text": "議題2：テスト工機株式会社との秘密保持契約締結。窓口は法務の坂本さんと先方の原田様。郵送先 〒220-0012。",
+    "expected": [
+      { "category": "organization", "text": "テスト工機株式会社" },
+      { "category": "personName", "text": "坂本さん" },
+      { "category": "personName", "text": "原田様" },
+      { "category": "postalCode", "text": "〒220-0012" }
+    ],
+    "mustNotMask": ["先方"]
+  },
+  {
+    "id": "minutes-003",
+    "docType": "minutes",
+    "text": "決定事項：本番リハーサル環境 172.16.8.12 のファイアウォールを解除し、竹内様へ接続手順書（manual@example.jp）を共有する。",
+    "expected": [
+      { "category": "ipv4", "text": "172.16.8.12" },
+      { "category": "personName", "text": "竹内様" },
+      { "category": "email", "text": "manual@example.jp" }
+    ]
+  },
+  {
+    "id": "minutes-004",
+    "docType": "minutes",
+    "text": "アクションアイテム：来週火曜までに田辺さんが仕様書を更新し、株式会社テストデザインの中西様へレビュー依頼を出す。",
+    "expected": [
+      { "category": "personName", "text": "田辺さん" },
+      { "category": "organization", "text": "株式会社テストデザイン" },
+      { "category": "personName", "text": "中西様" }
+    ]
+  },
+  {
+    "id": "minutes-005",
+    "docType": "minutes",
+    "text": "障害振り返りメモ：代表電話 03-0000-9999 への入電が集中した件について、谷口課長が対応フローを見直すことになった。",
+    "expected": [
+      { "category": "phone", "text": "03-0000-9999" },
+      { "category": "personName", "text": "谷口課長" }
+    ]
+  },
+  {
+    "id": "minutes-006",
+    "docType": "minutes",
+    "text": "監査対応議事録：外部監査役の福田氏より、マイナンバー相当のテストID 111122223333 をテストDBから削除するよう指摘あり。",
+    "expected": [
+      { "category": "personName", "text": "福田氏" },
+      { "category": "myNumber", "text": "111122223333" }
+    ]
+  },
+  {
+    "id": "minutes-007",
+    "docType": "minutes",
+    "text": "ベンダー選定会議：合同会社クラウド工房から提示された検証端末 192.168.50.10 のベンチマークを遠藤さんがまとめた。",
+    "expected": [
+      { "category": "organization", "text": "合同会社クラウド工房" },
+      { "category": "ipv4", "text": "192.168.50.10" },
+      { "category": "personName", "text": "遠藤さん" }
+    ]
+  },
+  {
+    "id": "minutes-008",
+    "docType": "minutes",
+    "text": "経営会議メモ：今期の新規開拓について、平井社長より有限会社やまびこ印刷の杉山様と連携強化する方針が示された。",
+    "expected": [
+      { "category": "personName", "text": "平井社長" },
+      { "category": "organization", "text": "有限会社やまびこ印刷" },
+      { "category": "personName", "text": "杉山様" }
+    ]
+  },
+  {
+    "id": "minutes-009",
+    "docType": "minutes",
+    "text": "タスク確認：顧客番号 2222-3333-4444 のテストデータ削除は金子さんが担当し、完了後に audit@example.co.jp へ報告する。",
+    "expected": [
+      { "category": "myNumber", "text": "2222-3333-4444" },
+      { "category": "personName", "text": "金子さん" },
+      { "category": "email", "text": "audit@example.co.jp" }
+    ]
+  },
+  {
+    "id": "minutes-010",
+    "docType": "minutes",
+    "text": "セキュリティ会議：AWSテストキー {{FAKE_AWS_KEY_1}} の無効化を内田さんが実施。再発防止策を来週発表予定。",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_AWS_KEY_1}}" },
+      { "category": "personName", "text": "内田さん" }
+    ]
+  },
+  {
+    "id": "minutes-011",
+    "docType": "minutes",
+    "text": "新規パートナー面談：株式会社さくらメディアの小野様と名刺交換（090-0000-5555 / ono@example.jp）。",
+    "expected": [
+      { "category": "organization", "text": "株式会社さくらメディア" },
+      { "category": "personName", "text": "小野様" },
+      { "category": "phone", "text": "090-0000-5555" },
+      { "category": "email", "text": "ono@example.jp" }
+    ]
+  },
+  {
+    "id": "minutes-012",
+    "docType": "minutes",
+    "text": "開発スプリント振り返り：担当：佐藤。認証APIのレスポンス改善を完了し、テスト用JWT {{FAKE_JWT_1}} で疎通確認済み。",
+    "expected": [
+      { "category": "personName", "text": "佐藤" },
+      { "category": "apiKey", "text": "{{FAKE_JWT_1}}" }
+    ],
+    "note": "敬称なしの呼び捨て実務表記（誠実な Recall 計測のため正解に含める）"
+  },
+  {
+    "id": "minutes-013",
+    "docType": "minutes",
+    "text": "採用面接サマリー：候補者の大塚様から希望年収と連絡先（080-0000-7777）の提示あり。次回は河野部長が同席する。",
+    "expected": [
+      { "category": "personName", "text": "大塚様" },
+      { "category": "phone", "text": "080-0000-7777" },
+      { "category": "personName", "text": "河野部長" }
+    ]
+  },
+  {
+    "id": "minutes-014",
+    "docType": "minutes",
+    "text": "社内システム移行会議：旧VPNゲートウェイ 203.0.113.10 を停止し、新設の〒160-0023 拠点回線へ切り替えることで合意した。",
+    "expected": [
+      { "category": "ipv4", "text": "203.0.113.10" },
+      { "category": "postalCode", "text": "〒160-0023" }
+    ]
+  },
+  {
+    "id": "minutes-015",
+    "docType": "minutes",
+    "text": "顧客要望ヒアリング：株式会社テスト産業の丸山様より、CSV文字化け解消ツールの導入検討について相談を受けた。",
+    "expected": [
+      { "category": "organization", "text": "株式会社テスト産業" },
+      { "category": "personName", "text": "丸山様" }
+    ]
+  },
+  {
+    "id": "minutes-016",
+    "docType": "minutes",
+    "text": "法務レビュー記録：前回同様に基本仕様書を共有し、菊池氏と株式会社みずほリサーチ間の契約条項を確認した。",
+    "expected": [
+      { "category": "personName", "text": "菊池氏" },
+      { "category": "organization", "text": "株式会社みずほリサーチ" }
+    ],
+    "mustNotMask": ["前回同様", "基本仕様"]
+  },
+  {
+    "id": "minutes-017",
+    "docType": "minutes",
+    "text": "インフラ定例：データベース管理用の秘密鍵 {{FAKE_PEM_KEY_1}} をローテーションし、工藤さんが手順書へ反映した。",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_PEM_KEY_1}}" },
+      { "category": "personName", "text": "工藤さん" }
+    ]
+  },
+  {
+    "id": "minutes-018",
+    "docType": "minutes",
+    "text": "広報打ち合わせ：架空メディア合同会社の古川様と、来月の共同ウェビナー開催（連絡窓口 pr@example.com）について合意した。",
+    "expected": [
+      { "category": "organization", "text": "架空メディア合同会社" },
+      { "category": "personName", "text": "古川様" },
+      { "category": "email", "text": "pr@example.com" }
+    ]
+  },
+  {
+    "id": "minutes-019",
+    "docType": "minutes",
+    "text": "品質管理会議：田中が対応予定だったテストカード 4242-4242-4242-4242 のリグレッション確認を今週中に完了する。",
+    "expected": [
+      { "category": "personName", "text": "田中" },
+      { "category": "creditCard", "text": "4242-4242-4242-4242" }
+    ],
+    "note": "敬称なしの呼び捨て実務表記（誠実な Recall 計測のため正解に含める）"
+  },
+  {
+    "id": "minutes-020",
+    "docType": "minutes",
+    "text": "購買定例メモ：備品発注先のサンプル文具株式会社（担当：野村さん / 052-000-6666）の登録住所を 460-0008 へ更新した。",
+    "expected": [
+      { "category": "organization", "text": "サンプル文具株式会社" },
+      { "category": "personName", "text": "野村さん" },
+      { "category": "phone", "text": "052-000-6666" },
+      { "category": "postalCode", "text": "460-0008" }
+    ]
+  },
+  {
+    "id": "inquiry-001",
+    "docType": "inquiry",
+    "text": "【お問い合わせ】株式会社テスト商会の林 太郎様より。ログインメール hayashi@example.co.jp に認証コードが届きません。",
+    "expected": [
+      { "category": "organization", "text": "株式会社テスト商会" },
+      { "category": "personName", "text": "林 太郎様" },
+      { "category": "email", "text": "hayashi@example.co.jp" }
+    ]
+  },
+  {
+    "id": "inquiry-002",
+    "docType": "inquiry",
+    "text": "フォーム送信内容：氏名＝西村 美咲様、電話番号＝070-0000-1234、郵便番号＝〒541-0041。請求書再発行をご希望です。",
+    "expected": [
+      { "category": "personName", "text": "西村 美咲様" },
+      { "category": "phone", "text": "070-0000-1234" },
+      { "category": "postalCode", "text": "〒541-0041" }
+    ]
+  },
+  {
+    "id": "inquiry-003",
+    "docType": "inquiry",
+    "text": "サポート受付#104：お客様（森田様）から「カード 5500-0000-0000-0004 のエラーが出る」と連絡。折返し先 011-000-8888。",
+    "expected": [
+      { "category": "personName", "text": "森田様" },
+      { "category": "creditCard", "text": "5500-0000-0000-0004" },
+      { "category": "phone", "text": "011-000-8888" }
+    ],
+    "mustNotMask": ["お客様"]
+  },
+  {
+    "id": "inquiry-004",
+    "docType": "inquiry",
+    "text": "問い合わせ番号205：接続元IP 198.51.100.42 からのアクセスが遮断されたとのこと。連絡先：miura@example.jp（三浦様）。",
+    "expected": [
+      { "category": "ipv4", "text": "198.51.100.42" },
+      { "category": "email", "text": "miura@example.jp" },
+      { "category": "personName", "text": "三浦様" }
+    ]
+  },
+  {
+    "id": "inquiry-005",
+    "docType": "inquiry",
+    "text": "ご担当者様へ：テスト工業株式会社の櫻井様から、口座番号とは別に顧客コード 3333-4444-5555 の照会依頼がありました。",
+    "expected": [
+      { "category": "organization", "text": "テスト工業株式会社" },
+      { "category": "personName", "text": "櫻井様" },
+      { "category": "myNumber", "text": "3333-4444-5555" }
+    ],
+    "mustNotMask": ["ご担当者様"]
+  },
+  {
+    "id": "inquiry-006",
+    "docType": "inquiry",
+    "text": "資料請求フォーム：法人名 株式会社あおば総研、ご氏名 宮崎 健様、電話 (03)0000-7777、住所 〒105-0001。",
+    "expected": [
+      { "category": "organization", "text": "株式会社あおば総研" },
+      { "category": "personName", "text": "宮崎 健様" },
+      { "category": "phone", "text": "(03)0000-7777" },
+      { "category": "postalCode", "text": "〒105-0001" }
+    ]
+  },
+  {
+    "id": "inquiry-007",
+    "docType": "inquiry",
+    "text": "苦情受付メモ：株式会社架空物流の上田様から配送遅延の連絡。返信アドレスは ueda.ops@example.com です。",
+    "expected": [
+      { "category": "organization", "text": "株式会社架空物流" },
+      { "category": "personName", "text": "上田様" },
+      { "category": "email", "text": "ueda.ops@example.com" }
+    ]
+  },
+  {
+    "id": "inquiry-008",
+    "docType": "inquiry",
+    "text": "技術サポート依頼：Google APIキー {{FAKE_GOOGLE_KEY_1}} を誤って公開コードに貼ってしまったとの相談（相談者：馬場様）。",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_GOOGLE_KEY_1}}" },
+      { "category": "personName", "text": "馬場様" }
+    ]
+  },
+  {
+    "id": "inquiry-009",
+    "docType": "inquiry",
+    "text": "解約申請フォーム：有限会社さくら印刷の小川様より申請。確認電話番号は 075-000-1212、郵便番号は 604-8006 です。",
+    "expected": [
+      { "category": "organization", "text": "有限会社さくら印刷" },
+      { "category": "personName", "text": "小川様" },
+      { "category": "phone", "text": "075-000-1212" },
+      { "category": "postalCode", "text": "604-8006" }
+    ]
+  },
+  {
+    "id": "inquiry-010",
+    "docType": "inquiry",
+    "text": "法人見積依頼：NPO法人オープン教育の岩崎様より、100名規模プランの見積書を iwasaki@example.org へ送付希望。",
+    "expected": [
+      { "category": "organization", "text": "NPO法人オープン教育" },
+      { "category": "personName", "text": "岩崎様" },
+      { "category": "email", "text": "iwasaki@example.org" }
+    ]
+  },
+  {
+    "id": "inquiry-011",
+    "docType": "inquiry",
+    "text": "カード変更手続き：テスト決済番号 4111111111111111 の切り替え希望が千葉様（090-0000-9876）より届いています。",
+    "expected": [
+      { "category": "creditCard", "text": "4111111111111111" },
+      { "category": "personName", "text": "千葉様" },
+      { "category": "phone", "text": "090-0000-9876" }
+    ]
+  },
+  {
+    "id": "inquiry-012",
+    "docType": "inquiry",
+    "text": "バグ報告チケット：担当者の太田さんより、接続先IP 10.0.15.88 へのプロキシ設定手順を教えてほしいとの問い合わせ。",
+    "expected": [
+      { "category": "personName", "text": "太田さん" },
+      { "category": "ipv4", "text": "10.0.15.88" }
+    ],
+    "mustNotMask": ["担当者"]
+  },
+  {
+    "id": "inquiry-013",
+    "docType": "inquiry",
+    "text": "アカウント復旧依頼：登録メール recovery.user+01@example.co.jp のパスワードリセットを希望（荒木様）。",
+    "expected": [
+      { "category": "email", "text": "recovery.user+01@example.co.jp" },
+      { "category": "personName", "text": "荒木様" }
+    ]
+  },
+  {
+    "id": "inquiry-014",
+    "docType": "inquiry",
+    "text": "セキュリティ診断問い合わせ：株式会社テストセキュリティの久保様より、検証許可IP 192.0.2.55 からのスキャン許可申請。",
+    "expected": [
+      { "category": "organization", "text": "株式会社テストセキュリティ" },
+      { "category": "personName", "text": "久保様" },
+      { "category": "ipv4", "text": "192.0.2.55" }
+    ]
+  },
+  {
+    "id": "inquiry-015",
+    "docType": "inquiry",
+    "text": "請求問い合わせ：顧客番号 444455556666 に関する領収書宛名を「はてな株式会社」へ修正してほしいと平野様から連絡あり。",
+    "expected": [
+      { "category": "myNumber", "text": "444455556666" },
+      { "category": "organization", "text": "はてな株式会社" },
+      { "category": "personName", "text": "平野様" }
+    ]
+  },
+  {
+    "id": "inquiry-016",
+    "docType": "inquiry",
+    "text": "取材申し込み：架空新聞社より、広報窓口 press-desk@example.jp 宛てに取材依頼（担当者名：大野様 / 03-0000-4545）。",
+    "expected": [
+      { "category": "email", "text": "press-desk@example.jp" },
+      { "category": "personName", "text": "大野様" },
+      { "category": "phone", "text": "03-0000-4545" }
+    ]
+  },
+  {
+    "id": "inquiry-017",
+    "docType": "inquiry",
+    "text": "配送先変更フォーム：合資会社サンプル運輸の浜田様より、新倉庫 〒812-0011 への納品変更依頼が届きました。",
+    "expected": [
+      { "category": "organization", "text": "合資会社サンプル運輸" },
+      { "category": "personName", "text": "浜田様" },
+      { "category": "postalCode", "text": "〒812-0011" }
+    ]
+  },
+  {
+    "id": "inquiry-018",
+    "docType": "inquiry",
+    "text": "API連携相談：GitHub PAT {{FAKE_GHP_TOKEN_1}} のスコープ不足エラーについて、永井様から質問が来ています。",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_GHP_TOKEN_1}}" },
+      { "category": "personName", "text": "永井様" }
+    ]
+  },
+  {
+    "id": "inquiry-019",
+    "docType": "inquiry",
+    "text": "導入検討フォーム：一般社団法人日本クラウド協会の星野様（hoshino@example.jp / 09000001122）がデモを希望されています。",
+    "expected": [
+      { "category": "organization", "text": "一般社団法人日本クラウド協会" },
+      { "category": "personName", "text": "星野様" },
+      { "category": "email", "text": "hoshino@example.jp" },
+      { "category": "phone", "text": "09000001122" }
+    ]
+  },
+  {
+    "id": "inquiry-020",
+    "docType": "inquiry",
+    "text": "アカウント統合依頼：旧メール old.member@example.com と新メール new.member@example.jp を統合したい（黒田様）。",
+    "expected": [
+      { "category": "email", "text": "old.member@example.com" },
+      { "category": "email", "text": "new.member@example.jp" },
+      { "category": "personName", "text": "黒田様" }
+    ]
+  },
+  {
+    "id": "inquiry-021",
+    "docType": "inquiry",
+    "text": "支払い確認：テストカード 4111 1111 1111 1111 の利用明細確認について、水野様から 082-000-3322 へ連絡希望。",
+    "expected": [
+      { "category": "creditCard", "text": "4111 1111 1111 1111" },
+      { "category": "personName", "text": "水野様" },
+      { "category": "phone", "text": "082-000-3322" }
+    ]
+  },
+  {
+    "id": "inquiry-022",
+    "docType": "inquiry",
+    "text": "法人名義変更：有限会社あけぼの工務店から合同会社あけぼの設計へ社名変更されたとの届出（担当：土屋様）。",
+    "expected": [
+      { "category": "organization", "text": "有限会社あけぼの工務店" },
+      { "category": "organization", "text": "合同会社あけぼの設計" },
+      { "category": "personName", "text": "土屋様" }
+    ]
+  },
+  {
+    "id": "inquiry-023",
+    "docType": "inquiry",
+    "text": "契約照会：12桁の顧客識別番号 5555-6666-7777 について、望月様から電話 048-000-9090 へ連絡あり。",
+    "expected": [
+      { "category": "myNumber", "text": "5555-6666-7777" },
+      { "category": "personName", "text": "望月様" },
+      { "category": "phone", "text": "048-000-9090" }
+    ]
+  },
+  {
+    "id": "inquiry-024",
+    "docType": "inquiry",
+    "text": "ネットワーク疎通質問：社内端末 172.20.1.5 から外部APIに接続できない件（投稿者：アレックス・ブラウン様 / alex@example.net）。",
+    "expected": [
+      { "category": "ipv4", "text": "172.20.1.5" },
+      { "category": "personName", "text": "アレックス・ブラウン様" },
+      { "category": "email", "text": "alex@example.net" }
+    ]
+  },
+  {
+    "id": "inquiry-025",
+    "docType": "inquiry",
+    "text": "パンフレット郵送依頼：〒980-0021 の事務所宛てに、公益財団法人東北技術財団の佐野様から3部送付希望がありました。",
+    "expected": [
+      { "category": "postalCode", "text": "〒980-0021" },
+      { "category": "organization", "text": "公益財団法人東北技術財団" },
+      { "category": "personName", "text": "佐野様" }
+    ]
+  },
+  {
+    "id": "chat-001",
+    "docType": "chat",
+    "text": "@team 明日 10時に株式会社サンプルネットの青木様とMTGです。Zoomリンクは aoki@example.jp に送っておきました！",
+    "expected": [
+      { "category": "organization", "text": "株式会社サンプルネット" },
+      { "category": "personName", "text": "青木様" },
+      { "category": "email", "text": "aoki@example.jp" }
+    ]
+  },
+  {
+    "id": "chat-002",
+    "docType": "chat",
+    "text": "いま障害対応中。検証IP 192.168.100.50 が落ちてて、市川さんが再起動してくれてます。緊急連絡先は 07000004455。",
+    "expected": [
+      { "category": "ipv4", "text": "192.168.100.50" },
+      { "category": "personName", "text": "市川さん" },
+      { "category": "phone", "text": "07000004455" }
+    ]
+  },
+  {
+    "id": "chat-003",
+    "docType": "chat",
+    "text": "SlackテストWebhook連携用の仮トークン {{FAKE_SLACK_TOKEN_1}} をチャンネルから削除してください！",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_SLACK_TOKEN_1}}" }
+    ]
+  },
+  {
+    "id": "chat-004",
+    "docType": "chat",
+    "text": "お疲れ様！松井課長に確認したら、株式会社みずほ電子への納品は来週月曜でOKとのことでした。",
+    "expected": [
+      { "category": "personName", "text": "松井課長" },
+      { "category": "organization", "text": "株式会社みずほ電子" }
+    ],
+    "mustNotMask": ["お疲れ様"]
+  },
+  {
+    "id": "chat-005",
+    "docType": "chat",
+    "text": "顧客ID 7777-8888-9999 の検証データを誤ってSlackに貼りかけた。佐伯さんありがとう、すぐ気づけました。",
+    "expected": [
+      { "category": "myNumber", "text": "7777-8888-9999" },
+      { "category": "personName", "text": "佐伯さん" }
+    ]
+  },
+  {
+    "id": "chat-006",
+    "docType": "chat",
+    "text": "明日の大阪出張、本社の郵便番号 〒550-0004 と連絡電話 06-0000-1234 をメモ共有しておきます。",
+    "expected": [
+      { "category": "postalCode", "text": "〒550-0004" },
+      { "category": "phone", "text": "06-0000-1234" }
+    ]
+  },
+  {
+    "id": "chat-007",
+    "docType": "chat",
+    "text": "先ほど佐々木様が来社されました。次回はサクラ企画株式会社の五十嵐様も参加予定です。",
+    "expected": [
+      { "category": "personName", "text": "佐々木様" },
+      { "category": "organization", "text": "サクラ企画株式会社" },
+      { "category": "personName", "text": "五十嵐様" }
+    ]
+  },
+  {
+    "id": "chat-008",
+    "docType": "chat",
+    "text": "ステージング環境の管理メール admin-stg@example.com 宛てに招待が飛んでるので、高木さん承認お願いできますか？",
+    "expected": [
+      { "category": "email", "text": "admin-stg@example.com" },
+      { "category": "personName", "text": "高木さん" }
+    ]
+  },
+  {
+    "id": "chat-009",
+    "docType": "chat",
+    "text": "テスト用のダミーOpenAIキー sk-test-mockkey9876543210abcdef がREADME例に残ってないか川上さんがチェック中です。",
+    "expected": [
+      { "category": "apiKey", "text": "sk-test-mockkey9876543210abcdef" },
+      { "category": "personName", "text": "川上さん" }
+    ]
+  },
+  {
+    "id": "chat-010",
+    "docType": "chat",
+    "text": "テスト決済通りました！使用カード 4111-1111-1111-1111、承認担当は柳沢部長です。",
+    "expected": [
+      { "category": "creditCard", "text": "4111-1111-1111-1111" },
+      { "category": "personName", "text": "柳沢部長" }
+    ]
+  },
+  {
+    "id": "chat-011",
+    "docType": "chat",
+    "text": "新メンバーのデイビッド・リーさんが今日からジョインします。メールは david.lee@example.jp です！",
+    "expected": [
+      { "category": "personName", "text": "デイビッド・リーさん" },
+      { "category": "email", "text": "david.lee@example.jp" }
+    ]
+  },
+  {
+    "id": "chat-012",
+    "docType": "chat",
+    "text": "このIP 10.10.0.254 って誰のテストサーバー？ 小松さんが使ってるやつかな？",
+    "expected": [
+      { "category": "ipv4", "text": "10.10.0.254" },
+      { "category": "personName", "text": "小松さん" }
+    ]
+  },
+  {
+    "id": "chat-013",
+    "docType": "chat",
+    "text": "お疲れ様です、取引先の合同会社テストベースから「03-0000-5656 に連絡ほしい」とチャット来てます。",
+    "expected": [
+      { "category": "organization", "text": "合同会社テストベース" },
+      { "category": "phone", "text": "03-0000-5656" }
+    ],
+    "mustNotMask": ["お疲れ様", "取引先"]
+  },
+  {
+    "id": "chat-014",
+    "docType": "chat",
+    "text": "請求書送付用の郵便番号 060-0005 をフォームに入れ忘れていたので、柴田さんに再送をお願いしました。",
+    "expected": [
+      { "category": "postalCode", "text": "060-0005" },
+      { "category": "personName", "text": "柴田さん" }
+    ]
+  },
+  {
+    "id": "chat-015",
+    "docType": "chat",
+    "text": "テスト用の番号 6666-7777-8888 を本番のダッシュボードに入力しないよう、関口さんから注意喚起が出ました。",
+    "expected": [
+      { "category": "myNumber", "text": "6666-7777-8888" },
+      { "category": "personName", "text": "関口さん" }
+    ]
+  },
+  {
+    "id": "chat-016",
+    "docType": "chat",
+    "text": "報告\n石田様から修正OKの連絡あり（mail: ishida@example.org）。",
+    "expected": [
+      { "category": "personName", "text": "石田様" },
+      { "category": "email", "text": "ishida@example.org" }
+    ]
+  },
+  {
+    "id": "chat-017",
+    "docType": "chat",
+    "text": "はてな有限会社の本間社長とランチMTG終了。午後から議事録をまとめます。",
+    "expected": [
+      { "category": "organization", "text": "はてな有限会社" },
+      { "category": "personName", "text": "本間社長" }
+    ]
+  },
+  {
+    "id": "chat-018",
+    "docType": "chat",
+    "text": "確認済み：吉村さん経由で株式会社テストフロンティアの最新ロゴを受け取りました。",
+    "expected": [
+      { "category": "personName", "text": "吉村さん" },
+      { "category": "organization", "text": "株式会社テストフロンティア" }
+    ]
+  },
+  {
+    "id": "chat-019",
+    "docType": "chat",
+    "text": "テスト用Bearerトークン（Authorization: Bearer dummy_chat_token_1234567890abcdef）がログに残ってたのでマスク依頼。",
+    "expected": [
+      { "category": "apiKey", "text": "Bearer dummy_chat_token_1234567890abcdef" }
+    ]
+  },
+  {
+    "id": "chat-020",
+    "docType": "chat",
+    "text": "高橋が今から 192.168.1.99 のコンテナを再デプロイします。影響時間は1分程度です。",
+    "expected": [
+      { "category": "personName", "text": "高橋" },
+      { "category": "ipv4", "text": "192.168.1.99" }
+    ],
+    "note": "敬称なしの呼び捨て実務表記（誠実な Recall 計測のため正解に含める）"
+  },
+  {
+    "id": "log-001",
+    "docType": "log",
+    "text": "[2026-11-23T10:15:00Z] INFO auth_success user=user01@example.jp src_ip=203.0.113.5",
+    "expected": [
+      { "category": "email", "text": "user01@example.jp" },
+      { "category": "ipv4", "text": "203.0.113.5" }
+    ]
+  },
+  {
+    "id": "log-002",
+    "docType": "log",
+    "text": "[WARN] upstream=10.240.12.9 status=401 header='Authorization: Bearer mock_bearer_log_token_9988776655'",
+    "expected": [
+      { "category": "ipv4", "text": "10.240.12.9" },
+      { "category": "apiKey", "text": "Bearer mock_bearer_log_token_9988776655" }
+    ]
+  },
+  {
+    "id": "log-003",
+    "docType": "log",
+    "text": "ERROR billing_webhook: customer_id=8888-9999-0000 card=4242-4242-4242-4242 retry_email=billing@example.com",
+    "expected": [
+      { "category": "myNumber", "text": "8888-9999-0000" },
+      { "category": "creditCard", "text": "4242-4242-4242-4242" },
+      { "category": "email", "text": "billing@example.com" }
+    ]
+  },
+  {
+    "id": "log-004",
+    "docType": "log",
+    "text": "DEBUG github_sync: token={{FAKE_GHP_TOKEN_1}} host_ip=172.16.0.4",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_GHP_TOKEN_1}}" },
+      { "category": "ipv4", "text": "172.16.0.4" }
+    ]
+  },
+  {
+    "id": "log-005",
+    "docType": "log",
+    "text": "INFO sms_dispatch phone=090-0000-2468 carrier=mock postal=101-0021 status=sent",
+    "expected": [
+      { "category": "phone", "text": "090-0000-2468" },
+      { "category": "postalCode", "text": "101-0021" }
+    ]
+  },
+  {
+    "id": "log-006",
+    "docType": "log",
+    "text": "WARN aws_sts_check access_key={{FAKE_AWS_KEY_1}} client_ip=198.51.100.77",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_AWS_KEY_1}}" },
+      { "category": "ipv4", "text": "198.51.100.77" }
+    ]
+  },
+  {
+    "id": "log-007",
+    "docType": "log",
+    "text": "INFO org_audit org=\"株式会社テストクラウド\" operator=\"内山様\" email=uchiyama@example.co.jp",
+    "expected": [
+      { "category": "organization", "text": "株式会社テストクラウド" },
+      { "category": "personName", "text": "内山様" },
+      { "category": "email", "text": "uchiyama@example.co.jp" }
+    ]
+  },
+  {
+    "id": "log-008",
+    "docType": "log",
+    "text": "ERROR jwt_verify failed jwt={{FAKE_JWT_1}} remote_addr=192.0.2.80",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_JWT_1}}" },
+      { "category": "ipv4", "text": "192.0.2.80" }
+    ]
+  },
+  {
+    "id": "log-009",
+    "docType": "log",
+    "text": "INFO slack_alert webhook={{FAKE_SLACK_TOKEN_1}} notify=alert-ops@example.org",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_SLACK_TOKEN_1}}" },
+      { "category": "email", "text": "alert-ops@example.org" }
+    ]
+  },
+  {
+    "id": "log-010",
+    "docType": "log",
+    "text": "TRACE key_loader pem={{FAKE_PEM_KEY_1}} loaded_by=deploy@example.jp",
+    "expected": [
+      { "category": "apiKey", "text": "{{FAKE_PEM_KEY_1}}" },
+      { "category": "email", "text": "deploy@example.jp" }
+    ]
+  },
+  {
+    "id": "negative-001",
+    "docType": "negative",
+    "text": "お疲れ様です。お客様、ご担当者様、皆様へ向けた一般案内文のテンプレートを作成してください。",
+    "expected": [],
+    "mustNotMask": ["お疲れ様", "お客様", "ご担当者様", "皆様"]
+  },
+  {
+    "id": "negative-002",
+    "docType": "negative",
+    "text": "いつもお世話になっております。ご苦労様でした。今後ともよろしくお願いいたします。",
+    "expected": [],
+    "mustNotMask": ["ご苦労様"]
+  },
+  {
+    "id": "negative-003",
+    "docType": "negative",
+    "text": "前回同様にシステム仕様・基本仕様・詳細仕様・製品仕様を見直し、多様な意見と花模様の背景案を採用します。",
+    "expected": [],
+    "mustNotMask": ["前回同様", "システム仕様", "基本仕様", "詳細仕様", "製品仕様", "多様", "花模様"]
+  },
+  {
+    "id": "negative-004",
+    "docType": "negative",
+    "text": "営業部長、開発本部長、人事課長、総務部長、弊社社長、前社長、新社長、副社長による方針レビュー。",
+    "expected": [],
+    "mustNotMask": ["営業部長", "開発本部長", "人事課長", "総務部長", "弊社社長", "前社長", "新社長", "副社長"]
+  },
+  {
+    "id": "negative-005",
+    "docType": "negative",
+    "text": "新規取引先や関連会社、子会社、親会社および株式会社または有限会社の一般規約について解説します。",
+    "expected": [],
+    "mustNotMask": ["新規取引先", "関連会社", "株式会社", "有限会社"]
+  },
+  {
+    "id": "negative-006",
+    "docType": "negative",
+    "text": "バージョン v1.2.3 から v2.10.0 へアップデートし、レスポンスタイム 120ms・成功率 99.9% を達成しました。",
+    "expected": [],
+    "mustNotMask": ["v1.2.3", "v2.10.0", "120ms", "99.9%"]
+  },
+  {
+    "id": "negative-007",
+    "docType": "negative",
+    "text": "伝票番号 4111-1111-1111-1112 および 5500-0000-0000-0001 はLuhn検算を通過しないためカード番号ではありません。",
+    "expected": [],
+    "mustNotMask": ["4111-1111-1111-1112", "5500-0000-0000-0001"]
+  },
+  {
+    "id": "negative-008",
+    "docType": "negative",
+    "text": "日付 2026-11-23 および期間 2026-11-01〜2026-11-30 の集計レポートをJSON形式で出力してください。",
+    "expected": [],
+    "mustNotMask": ["2026-11-23", "2026-11-01", "2026-11-30"]
+  },
+  {
+    "id": "negative-009",
+    "docType": "negative",
+    "text": "様式第1号・様子見・模様替え・仕様変更・本人確認書類・関係各位・顧客満足度調査。",
+    "expected": [],
+    "mustNotMask": ["様式", "様子", "模様", "仕様", "本人", "関係各位", "顧客"]
+  },
+  {
+    "id": "negative-010",
+    "docType": "negative",
+    "text": "サーバーエラー 500、タイムアウト 3000ms、最大長 256文字、ページサイズ 1024x768 の設定値を確認します。",
+    "expected": [],
+    "mustNotMask": ["500", "3000ms", "256", "1024x768"]
+  },
+  {
+    "id": "negative-011",
+    "docType": "negative",
+    "text": "非機能要件として、暗号化方式 AES-256-GCM とハッシュ関数 SHA-256 の利用を標準化しています。",
+    "expected": [],
+    "mustNotMask": ["AES-256-GCM", "SHA-256"]
+  },
+  {
+    "id": "negative-012",
+    "docType": "negative",
+    "text": "オクテット最大値 255 を超える 256.100.10.1 や 999.0.0.1 や 192.168.1 は有効なIPv4アドレスではありません。",
+    "expected": [],
+    "mustNotMask": ["256.100.10.1", "999.0.0.1", "192.168.1"]
+  },
+  {
+    "id": "negative-013",
+    "docType": "negative",
+    "text": "神様・仏様・お姫様・殿様・王様・奥様・旦那様・ご主人様・お子様・おかげ様といった慣用表現は除外されます。",
+    "expected": [],
+    "mustNotMask": ["神様", "仏様", "お姫様", "殿様", "王様", "奥様", "旦那様", "ご主人様", "お子様", "おかげ様"]
+  },
+  {
+    "id": "negative-014",
+    "docType": "negative",
+    "text": "社員各位、スタッフ一同、開発者コミュニティ、ユーザー代表、クライアント側の責任範囲を整理する。",
+    "expected": [],
+    "mustNotMask": ["社員各位", "スタッフ", "開発者", "ユーザー", "クライアント"]
+  },
+  {
+    "id": "negative-015",
+    "docType": "negative",
+    "text": "契約期間 12ヶ月、月額 10,000円、消費税 10%、合計 11,000円の見積内訳を箇条書きにまとめてください。",
+    "expected": [],
+    "mustNotMask": ["12ヶ月", "10,000円", "11,000円"]
+  }
+]

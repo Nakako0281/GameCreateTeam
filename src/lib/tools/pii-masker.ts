@@ -181,6 +181,8 @@ const ORG_NON_HIRA_BODY_RE =
   /^[A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&._-]{1,24}/u
 const ORG_HIRA_RUN_RE = /^[\p{Script=Hiragana}ー]{1,10}/u
 const ORG_TRAILING_SINGLE_PARTICLE_RE = /[のはがをにへとでやも]$/
+const ORG_CONTINUATION_SUFFIX_RE =
+  /^(?:工務店|設計|製作所|製造所|研究所|総合研究所|総研|商店|商事|産業|工業|建設|不動産|運輸|物流|企画|開発|出版|印刷|薬局|医院|クリニック|銀行|証券|保険|電機|電子|食品|通信|放送|新聞|サービス|システム|ソフト|ソリューション|ソリューションズ|テクノロジー|テクノロジーズ|テック|ラボ|スタジオ|ワークス|グループ|センター|ハウス|ホーム|ホールディングス|メディア|デザイン|クラフト|ベース|フロンティア|ネット|クラウド)/
 const ORG_SUFFIX_HIRA_RE =
   /(?<=^|[\s、。,.「『（(\[:：/／・のはがをにへとでやも])([\p{Script=Hiragana}ー]{2,8})([A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&_-]{0,16})[ \u3000]?(?:株式会社|有限会社|合同会社|合資会社)/gu
 const ORG_SUFFIX_NON_HIRA_RE =
@@ -200,7 +202,7 @@ const PERSON_ROLE_PREFIX_STOP_RE =
 
 const TOKEN_EXACT_RE = /^\[([A-Z0-9]+)_(\d+)\]$/
 const UNRESOLVED_TOKEN_RE =
-  /(?:\\?\[|［)(?:SECRET|EMAIL|TEL|ZIP|IP|CARD|ID12|ORG|PERSON|CUSTOM)\\?_\d+(?:\\?\]|］)/g
+  /(?:\\\[(?:SECRET|EMAIL|TEL|ZIP|IP|CARD|ID12|ORG|PERSON|CUSTOM)\\?_\d+\\\]|\[(?:SECRET|EMAIL|TEL|ZIP|IP|CARD|ID12|ORG|PERSON|CUSTOM)\\?_\d+\]|［(?:SECRET|EMAIL|TEL|ZIP|IP|CARD|ID12|ORG|PERSON|CUSTOM)_\d+］)/g
 
 export function passesLuhnCheck(digitsOnly: string): boolean {
   if (!/^\d{13,19}$/.test(digitsOnly)) return false
@@ -260,8 +262,16 @@ function collectPatternMatches(
   return matches
 }
 
-function trimOrgSuffixDecorations(value: string): string {
-  return value.replace(/(?:御中|様|殿)+$/, '').replace(/[._・-]+$/, '')
+function trimOrgSuffixDecorations(value: string, afterText = ''): string {
+  let trimmed = value.replace(/(?:御中|様|殿)+$/, '').replace(/[._・-]+$/, '')
+  if (
+    trimmed.length >= 3 &&
+    /(?:(?<![時空間人世])間|[側宛])$/.test(trimmed) &&
+    (!afterText || /^[のはがをにへとでやも、。,.）)\s]/.test(afterText))
+  ) {
+    trimmed = trimmed.slice(0, -1).replace(/[._・-]+$/, '')
+  }
+  return trimmed
 }
 
 function collectOrganizationMatches(text: string): CandidateMatch[] {
@@ -281,7 +291,7 @@ function collectOrganizationMatches(text: string): CandidateMatch[] {
     let body = ''
     const nonHira = rest.match(ORG_NON_HIRA_BODY_RE)
     if (nonHira) {
-      body = trimOrgSuffixDecorations(nonHira[0])
+      body = trimOrgSuffixDecorations(nonHira[0], rest.slice(nonHira[0].length))
     } else if (/^[\p{Script=Hiragana}]/u.test(rest)) {
       if (ORG_HIRA_STOP_PREFIX_RE.test(rest)) continue
       if (/^[のはがをにへとでやも](?=$|[^\p{Script=Hiragana}])/u.test(rest)) {
@@ -297,15 +307,25 @@ function collectOrganizationMatches(text: string): CandidateMatch[] {
           hitBoundary = true
         }
         if (hira.length >= 2 && ORG_TRAILING_SINGLE_PARTICLE_RE.test(hira)) {
-          hira = hira.slice(0, -1)
-          hitBoundary = true
+          const afterHira = rest.slice(hira.length)
+          const keepsNoConnector =
+            hira.endsWith('の') && ORG_CONTINUATION_SUFFIX_RE.test(afterHira)
+          if (!keepsNoConnector) {
+            hira = hira.slice(0, -1)
+            hitBoundary = true
+          }
         }
         if (!hitBoundary && hira.length > 0) {
           const afterHira = rest.slice(hira.length)
           const cont = afterHira.match(
             /^[A-Za-z0-9\p{Script=Han}\p{Script=Katakana}ー・々ヶ&._-]{1,16}/u
           )
-          body = cont ? trimOrgSuffixDecorations(hira + cont[0]) : hira
+          body = cont
+            ? trimOrgSuffixDecorations(
+                hira + cont[0],
+                afterHira.slice(cont[0].length)
+              )
+            : hira
         } else {
           body = hira
         }
@@ -472,7 +492,7 @@ export function maskPiiText(
     candidates.push(
       ...collectPatternMatches(
         text,
-        /-----BEGIN [A-Z0-9 ]+PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]+PRIVATE KEY-----/g,
+        /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g,
         'apiKey',
         95
       ),
@@ -606,7 +626,8 @@ export function maskPiiText(
   }
   accepted.sort((a, b) => a.start - b.start)
 
-  // 既存辞書を引き継ぎつつ決定論的にトークン採番
+  // 既存辞書を引き継ぎつつ決定論的にトークン採番（元テキストに既存の仮名トークンがあれば衝突回避）
+  const existingTokensInText = new Set(findUnresolvedTokens(text))
   const entriesMap = new Map<string, MaskEntry>()
   const nextIndexByCategory: Record<PiiCategory, number> = {
     apiKey: 1,
@@ -641,8 +662,13 @@ export function maskPiiText(
     const key = `${match.category}::${match.original}`
     let entry = entriesMap.get(key)
     if (!entry) {
-      const idx = nextIndexByCategory[match.category]++
-      const token = `[${TOKEN_PREFIX[match.category]}_${idx}]`
+      let idx = nextIndexByCategory[match.category]
+      let token = `[${TOKEN_PREFIX[match.category]}_${idx}]`
+      while (existingTokensInText.has(token)) {
+        idx += 1
+        token = `[${TOKEN_PREFIX[match.category]}_${idx}]`
+      }
+      nextIndexByCategory[match.category] = idx + 1
       entry = {
         token,
         original: match.original,
@@ -703,11 +729,13 @@ export function restoreMaskedText(
   }
 
   // 全角括弧やMarkdownエスケープ（\[PERSON\_1\]）がAI出力に含まれても復元できるようにする
+  // 開閉括弧がペアでエスケープされた場合のみ先頭バックスラッシュを消費し、元文の単独バックスラッシュ（\[TOKEN_1]）は保護する
   const tokenPatterns = tokens.map((token) => {
     const exact = token.match(TOKEN_EXACT_RE)
     if (exact) {
       const [, prefix, num] = exact
-      return `(?:\\\\?\\[|［)${escapeRegExp(prefix)}\\\\?_${num}(?:\\\\?\\]|］)`
+      const escPrefix = escapeRegExp(prefix)
+      return `(?:\\\\\\[${escPrefix}\\\\?_${num}\\\\\\]|\\[${escPrefix}\\\\?_${num}\\]|［${escPrefix}_${num}］)`
     }
     return escapeRegExp(token)
   })

@@ -148,6 +148,10 @@ test('proves zero external transmission across interactive execution of all 6 pu
 
   // 1. AI PII Masker
   await page.goto('/tools/ai-pii-masker/', { waitUntil: 'networkidle' })
+  const manualReviewNotice = page.getByTestId('pii-manual-review-notice')
+  await expect(manualReviewNotice).toBeVisible()
+  await expect(manualReviewNotice).toContainText('自動検出には漏れの可能性があります')
+  await expect(manualReviewNotice).toContainText('目視で確認')
   await page.getByRole('button', { name: 'サンプル文を試す' }).click()
   const maskedVal = await page.locator('#pii-masked-textarea').inputValue()
   expect(maskedVal).toContain('[ORG_1]の[PERSON_1]')
