@@ -1,8 +1,8 @@
 export const SITE_CONFIG = {
-  brandName: 'LocalBox',
-  brandTagline: 'ブラウザ完結・入力データ送信ゼロ 実務ツール集',
+  brandName: 'TemotoBox',
+  brandTagline: '機密・AI実務のブラウザ完結ワークベンチ（入力データ送信ゼロ）',
   description:
-    '入力したテキスト・CSV・画像の内容をサーバーへ一切送信せず、ブラウザ内だけで安全に処理できる実務Webツール集。AI入力前の個人情報マスキング、設定ファイル秘匿化、Markdown整形、LLM料金試算、CSV修復、画像EXIF削除を無料で提供。',
+    '生成AIや社外共有の前に、入力したテキスト・設定ファイル・CSV・画像の内容をサーバーへ一切送信せずブラウザ内だけで安全に下ごしらえできる実務ワークベンチ。個人情報マスキング、.env秘匿化、Markdown整形、LLM料金試算、CSV修復、EXIF削除を無料で提供。',
   defaultUrl: 'https://example.com',
   repoIssuesUrl: 'https://github.com/Nakako0281/GameCreateTeam/issues',
   feedbackIssueUrl:

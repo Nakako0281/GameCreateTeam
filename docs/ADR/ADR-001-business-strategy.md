@@ -4,6 +4,8 @@
 - **ステータス**: 採用（Accepted）
 - **決定者**: AutoGrowth Studio（AIトップリーダー）＋ 最高責任者承認（2026-11-21チャット）
 
+> **改定注記 (2026-11-23)**: ブランド名・競合対比ポジショニング・2層ポートフォリオ戦略は [ADR-004](ADR-004-brand-temotobox-and-workbench-positioning.md) により **TemotoBox（`temotobox.com`）** へ改定済み。
+
 ---
 
 ## 1. 背景と絶対制約

@@ -18,7 +18,8 @@ import {
   type PiiCategory,
 } from '../../lib/tools/pii-masker'
 
-const STORAGE_KEY_CUSTOM_TERMS = 'localbox.ai-pii-masker.custom-terms.v1'
+const STORAGE_KEY_CUSTOM_TERMS = 'temotobox.ai-pii-masker.custom-terms.v1'
+const LEGACY_STORAGE_KEY_CUSTOM_TERMS = 'localbox.ai-pii-masker.custom-terms.v1'
 
 const SAMPLE_BUSINESS_TEXT = `お疲れ様です。株式会社サンプル商事の佐藤太郎様（sato.taro@example.co.jp / 090-1234-5678 / 〒100-0001）から、新サーバー 192.168.10.25 への接続エラーについて問い合わせがありました。
 顧客番号 1234-5678-9012 のログを確認したところ、以下のテスト用キーが出力されていたため原因を整理して回答文を作成してください。
@@ -60,7 +61,9 @@ export default function AiPiiMasker() {
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY_CUSTOM_TERMS)
+      const saved =
+        window.localStorage.getItem(STORAGE_KEY_CUSTOM_TERMS) ??
+        window.localStorage.getItem(LEGACY_STORAGE_KEY_CUSTOM_TERMS)
       if (saved) {
         setCustomTermsInput(saved)
         setRememberCustomTerms(true)
@@ -76,6 +79,7 @@ export default function AiPiiMasker() {
         window.localStorage.setItem(STORAGE_KEY_CUSTOM_TERMS, customTermsInput)
       } else {
         window.localStorage.removeItem(STORAGE_KEY_CUSTOM_TERMS)
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY_CUSTOM_TERMS)
       }
     } catch {
       // ignore storage errors

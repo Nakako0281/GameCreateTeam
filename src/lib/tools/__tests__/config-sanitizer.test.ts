@@ -56,7 +56,7 @@ describe('config-sanitizer', () => {
 
     it('handles multi-line quoted PEM values inside .env without breaking format detection', () => {
       const envWithMultilinePem = [
-        'APP_NAME=localbox-api',
+        'APP_NAME=temotobox-api',
         'PRIVATE_KEY="-----BEGIN PRIVATE KEY-----',
         'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC00000',
         '1111222233334444555566667777888899990000aaaabbbbccccdddd',
@@ -65,7 +65,7 @@ describe('config-sanitizer', () => {
 
       const result = sanitizeConfig(envWithMultilinePem)
       expect(result.detectedFormat).toBe('env')
-      expect(result.output).toContain('APP_NAME=localbox-api')
+      expect(result.output).toContain('APP_NAME=temotobox-api')
       expect(result.output).toContain('PRIVATE_KEY="<REDACTED>"')
       expect(result.output).not.toContain('MIIEvQIBADANBgkqhkiG9w0')
     })

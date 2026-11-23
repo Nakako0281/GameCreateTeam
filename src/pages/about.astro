@@ -3,9 +3,9 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 
-const title = 'LocalBoxについて・入力データ非送信の技術検証方法'
+const title = 'TemotoBoxについて・入力データ非送信の技術検証方法'
 const description =
-  'LocalBoxのブラウザ完結設計、入力データやファイル内容を外部送信しない仕組み、およびDevToolsのNetworkタブで入力漏洩がないことを検証する手順を解説します。'
+  'TemotoBoxのブラウザ完結設計、入力データやファイル内容を外部送信しない仕組み、およびDevToolsのNetworkタブで入力漏洩がないことを検証する手順を解説します。'
 ---
 
 <BaseLayout title={title} description={description}>
@@ -13,7 +13,7 @@ const description =
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
       <PhraseHeading
         as="h1"
-        segments={['LocalBoxの', '入力データ', '非送信設計と', '検証手順']}
+        segments={['TemotoBoxの', '入力データ', '非送信設計と', '検証手順']}
         class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
       />
 
@@ -24,7 +24,7 @@ const description =
             世の中には便利なオンライン変換サイトやChrome拡張機能が数多く存在しますが、「ファイルを一度海外サーバーへアップロードする仕様で社内規定に引っかかる」「便利なAI補助拡張機能が実は入力テキストを外部へ送信していた」というセキュリティ上の不安がつきまといます。
           </p>
           <p class="mt-2">
-            LocalBoxは、最初から<strong>サーバーサイドの受信APIもデータベースも持たない100%静的配信サイト（SSG）</strong>として設計されています。お客様が入力したテキストや選んだ画像・CSVは、お使いのPC・スマートフォンのブラウザメモリの中だけで変換・加工され、そのままローカルへダウンロードまたはコピーされます。
+            TemotoBoxは、最初から<strong>サーバーサイドの受信APIもデータベースも持たない100%静的配信サイト（SSG）</strong>として設計されています。お客様が入力したテキストや選んだ画像・CSVは、お使いのPC・スマートフォンのブラウザメモリの中だけで変換・加工され、そのままローカルへダウンロードまたはコピーされます。
           </p>
         </section>
 
@@ -52,7 +52,7 @@ const description =
         <section>
           <h2 class="text-lg font-bold text-slate-900">3. 品質保証とソースコードの透明性</h2>
           <p class="mt-2">
-            LocalBoxは、公開リポジトリ上で継続的に保守・改善されています。公開前のすべての変更は、外部通信APIの混入検査・XSS対策・Playwright実ブラウザによる入力データ非送信検証テスト（解析・広告スクリプト有効構成での入力漏洩ゼロ検証を含む）を自動実行するパイプラインを通過したものだけを反映しています。
+            TemotoBoxは、公開リポジトリ上で継続的に保守・改善されています。公開前のすべての変更は、外部通信APIの混入検査・XSS対策・Playwright実ブラウザによる入力データ非送信検証テスト（解析・広告スクリプト有効構成での入力漏洩ゼロ検証を含む）を自動実行するパイプラインを通過したものだけを反映しています。
           </p>
           <p class="mt-2">
             不具合の報告や機能改善のご提案は
