@@ -1,8 +1,8 @@
 export const SITE_CONFIG = {
   brandName: 'LocalBox',
-  brandTagline: 'ブラウザ完結・ゼロ送信 実務ツール集',
+  brandTagline: 'ブラウザ完結・入力データ送信ゼロ 実務ツール集',
   description:
-    '入力テキスト・CSV・画像を1バイトもサーバーへ送信せず、お使いのブラウザ内だけで安全に処理できる実務Webツール集。AI入力前の個人情報マスキング、LLM料金試算、CSV文字化け修復、EXIF位置情報削除を無料で利用できます。',
+    '入力したテキスト・CSV・画像の内容をサーバーへ一切送信せず、ブラウザ内だけで安全に処理できる実務Webツール集。AI入力前の個人情報マスキング、設定ファイル秘匿化、Markdown整形、LLM料金試算、CSV修復、画像EXIF削除を無料で提供。',
   defaultUrl: 'https://example.com',
   repoIssuesUrl: 'https://github.com/Nakako0281/GameCreateTeam/issues',
   feedbackIssueUrl:

@@ -86,7 +86,7 @@ const jsonLd = [
 
       <span class="inline-flex items-center gap-1.5 font-medium text-emerald-700">
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-        ブラウザ完結・外部送信なし
+        ブラウザ完結・入力データ送信なし
       </span>
     </div>
 
@@ -107,7 +107,7 @@ const jsonLd = [
     >
       <slot name="tool" />
       <p class="mt-5 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-500">
-        すべての処理はブラウザ内のみで実行され、入力内容がサーバーへ送信されることはありません。業務利用や送信前には出力結果をご自身で確認してください。
+        入力データやファイルの内容はブラウザ内のみで処理され、サーバーへ送信されることはありません（アクセス解析・広告配信による外部送信の内訳は <a href="/privacy/" class="underline hover:text-slate-700">プライバシーポリシー</a> をご確認ください）。業務利用や送信前には出力結果をご自身で確認してください。
       </p>
     </section>
 

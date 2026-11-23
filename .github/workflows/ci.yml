@@ -111,3 +111,7 @@ jobs:
       - name: Run Playwright E2E & Zero-Transmission Proof
         if: steps.changes.outputs.docs_only != 'true'
         run: npm run test:e2e
+
+      - name: Run Ad/Analytics-Enabled Input-Leakage Zero E2E
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm run test:e2e:ads
