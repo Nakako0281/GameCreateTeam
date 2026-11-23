@@ -45,6 +45,7 @@ const appBuiltAt = `${new Date().toISOString().slice(0, 16).replace('T', ' ')} U
 
 export default defineConfig({
   site: process.env.SITE_URL || 'https://example.com',
+  outDir: process.env.ASTRO_OUT_DIR || './dist',
   output: 'static',
   trailingSlash: 'always',
   integrations: [react(), sitemap()],

@@ -63,7 +63,7 @@
 5. `npm run audit:seo`: 初期HTML文字数・`<title>`/`<meta description>` 重複・JSON-LD・法務ページ・リンク切れ・ページ間類似度全クリア
 6. `npm run audit:memory`: 永続メモリファイル整合性・公開ツール台帳とビルド成果物の一致・LLM料金テーブル構造検証（退役モデル非混入・4社公式URL・`scheduledPricing`整合）・信頼境界（L-12）・L-09退行ガードを実行する（日付依存の14日鮮度＆`priceEffectiveUntil`期限切れ判定は `--time-sensitive` 指定時＝`npm run audit:memory:freshness`・日次ジョブ・`llm-pricing.ts`変更PRのみエラー扱い）。
 7. `npm run audit:ci-parity`: `.node-version` とローカル/CI Node バージョン統一、`package.json` と `package-lock.json` 整合、ネスト依存バージョン乖離ゼロ確認
-8. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**
+8. `npm run test:e2e`: Playwright によるPC/モバイル両幅レイアウト検証・コンソールエラー0件・**全ツールの実操作中外部リクエスト0件証明**（＋ `npm run test:e2e:ads` による広告・GA4有効ビルドでの入力漏洩ゼロ証明）
 9. **依存変更時の `npm ci` クリーン再現確認**: `package.json` 変更時は `npm ci` がエラーなく完了することをローカルで事前検証する。
 10. **リモートCI全通過証明（`wait-ci` / `ready-pr`）**: Push / PR 作成後、`node scripts/ops_github.mjs ready-pr <pr_number>` で GitHub Actions 上の全ジョブ `success` を実測確認してから Ready 昇格＆人間報告を行う。
 

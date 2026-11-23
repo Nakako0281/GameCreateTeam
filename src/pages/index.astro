@@ -4,9 +4,9 @@ import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 import { PLANNED_TOOLS, PUBLISHED_TOOLS } from '../data/tools'
 
-const pageTitle = 'LocalBox | ブラウザ完結・ゼロ送信 実務Webツール集'
+const pageTitle = 'LocalBox | ブラウザ完結・入力データ送信ゼロの実務Webツール集'
 const pageDescription =
-  '入力データやファイルを1バイトもサーバーへ送らずブラウザ内だけで安全に処理できる無料Webツール集。AI個人情報マスキング、.env・JSON・YAML秘匿化、AI出力Markdown整形、LLM料金試算、CSV修復、画像EXIF削除を提供。'
+  '入力データやファイルの内容をサーバーへ一切送らず、ブラウザ内だけで安全に処理できる無料実務Webツール集。AI個人情報マスキング、.env・JSON・YAML秘匿化、AI出力Markdown整形、LLM料金試算、CSV修復、画像EXIF削除を提供。'
 
 const siteOrigin = Astro.site?.href || SITE_CONFIG.defaultUrl
 const jsonLd = {
@@ -26,7 +26,7 @@ const jsonLd = {
       <div class="max-w-3xl">
         <PhraseHeading
           as="h1"
-          segments={['データを送らず、', 'ブラウザだけで', '完結する', '実務ツール集']}
+          segments={['入力データを', '送らず、', 'ブラウザだけで', '完結する', '実務ツール集']}
           class="text-[1.625rem] font-extrabold tracking-tight text-slate-900 sm:text-4xl"
         />
         <p class="mt-2.5 text-sm leading-relaxed text-slate-600 sm:text-base">
@@ -140,9 +140,9 @@ const jsonLd = {
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         <div>
-          <h3 class="text-sm font-bold text-slate-900">サーバー送信ゼロ</h3>
+          <h3 class="text-sm font-bold text-slate-900">入力データ送信ゼロ</h3>
           <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
-            すべての計算とファイル変換をブラウザメモリ・Canvas上で直接処理します。
+            入力テキストやファイルの処理はすべてブラウザメモリ・Canvas上で完結します（解析・広告の外部送信内訳は<a href="/privacy/" class="font-semibold text-sky-700 underline">プライバシーポリシー</a>に公表）。
           </p>
         </div>
       </div>
@@ -167,7 +167,7 @@ const jsonLd = {
         <div>
           <h3 class="text-sm font-bold text-slate-900">DevToolsで検証可能</h3>
           <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
-            Networkタブやオフライン状態で、外部通信が発生しないことを<a href="/about/" class="font-semibold text-sky-700 underline">ご自身で確認</a>できます。
+            Networkタブやオフライン状態で、入力内容が外部へ送信されないことを<a href="/about/" class="font-semibold text-sky-700 underline">ご自身で確認</a>できます。
           </p>
         </div>
       </div>
@@ -180,7 +180,7 @@ const jsonLd = {
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="text-base font-bold text-slate-900">追加予定のローカルツール</h2>
         <p class="text-xs text-slate-500">
-          すべてサーバー送信なしのブラウザ完結設計で順次公開予定です。
+          すべて入力データをサーバーへ送信しないブラウザ完結設計で順次公開予定です。
         </p>
       </div>
       <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
