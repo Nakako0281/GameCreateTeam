@@ -10,6 +10,8 @@ export const SITE_CONFIG = {
   contactEmailLabel: '専用ドメイン公開後にメールアドレスを掲載予定（現在はGitHubフォームにて受付）',
   gaMeasurementId: (import.meta.env.PUBLIC_GA_ID || '').trim(),
   adsenseClientId: (import.meta.env.PUBLIC_ADSENSE_CLIENT || '').trim(),
+  isPreviewNoindex:
+    (import.meta.env.PUBLIC_NOINDEX || '').trim().toLowerCase() === 'true',
 } as const
 
 export const LEGAL_LINKS = [
