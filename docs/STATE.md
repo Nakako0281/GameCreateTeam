@@ -3,7 +3,7 @@
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
 - **最終更新日**: 2026-11-23
-- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（PR #61 devマージ済・#53/#58 クローズ済、TemotoBox リブランド＆ADR-004確定対応）`
+- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（PR #62 devマージ済、TemotoBox/ADR-004確定・組織ルール/スキル学習反映）`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **TemotoBox**（生成AI・社外共有前の下ごしらえ特化型・検証可能なブラウザ完結実務ワークベンチ／`ADR-004`）
