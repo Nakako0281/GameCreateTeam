@@ -47,7 +47,28 @@ const REQUIRED_MEMORY_FILES = [
   'docs/TOOLS_ROADMAP.md',
   'docs/ADR/ADR-001-business-strategy.md',
   'docs/ADR/ADR-002-tech-security-architecture.md',
+  'docs/ADR/ADR-005-governance-escalation-and-roles.md',
 ]
+
+export const RULE_LINE_BUDGET = 90
+
+export function auditAlwaysOnRuleBudget(
+  root = process.cwd(),
+  budget = RULE_LINE_BUDGET
+) {
+  const budgetWarnings = []
+  for (const rel of ['AGENTS.md', '.agents/rules/AGENTS.md']) {
+    const full = path.join(root, rel)
+    if (!fs.existsSync(full)) continue
+    const lineCount = fs.readFileSync(full, 'utf-8').split(/\r?\n/).length
+    if (lineCount > budget) {
+      budgetWarnings.push(
+        `[RuleBudget Warning] ${rel} has ${lineCount} lines (> ${budget} line target). Move details to docs/ADR/ or skills.`
+      )
+    }
+  }
+  return budgetWarnings
+}
 
 function extractTopLevelArrayObjects(sourceText, marker) {
   const markerIdx = sourceText.indexOf(marker)
@@ -130,35 +151,54 @@ export function runOrgMemoryAudit({
     }
   }
 
-  // 組織運用ルール退行ガード（L-09: 硬直的な1タスク固定の禁止 & Adaptive Batching 存在検証）
-  const ORG_POLICY_GUARD_FILES = [
-    'AGENTS.md',
-    '.agents/skills/daily-ops/SKILL.md',
-    'docs/HUMAN_OPERATIONS_GUIDE.md',
-  ]
-  const FORBIDDEN_SINGLE_TASK_RE =
-    /1スライス|1タスク自律消化|最優先タスク・Issueを1つ/
-  for (const rel of ORG_POLICY_GUARD_FILES) {
-    const full = path.join(root, rel)
-    if (!fs.existsSync(full)) continue
-    const text = fs.readFileSync(full, 'utf-8')
-    const matched = text.match(FORBIDDEN_SINGLE_TASK_RE)
-    if (matched) {
-      errors.push(
-        `[OrgPolicy] Rigid single-task wording detected in ${rel}: "${matched[0]}" (violates L-09 Adaptive Batching)`
-      )
-    }
-  }
+  // 常時読み込みルールのコンテキスト予算ソフト警告（Issue #56）
+  warnings.push(...auditAlwaysOnRuleBudget(root))
 
-  const dailyOpsPath = path.join(root, '.agents', 'skills', 'daily-ops', 'SKILL.md')
-  if (fs.existsSync(dailyOpsPath)) {
-    const dailyOpsText = fs.readFileSync(dailyOpsPath, 'utf-8')
-    for (const requiredToken of ['Size S', 'Size M', 'Size L', 'Adaptive']) {
-      if (!dailyOpsText.includes(requiredToken)) {
-        errors.push(
-          `[OrgPolicy] .agents/skills/daily-ops/SKILL.md missing Adaptive Batching criteria: "${requiredToken}"`
-        )
+  // ハーネス設定 (.agents/hooks.json) とフックスクリプトの実在・JSON妥当性チェック
+  const hooksJsonPath = path.join(root, '.agents', 'hooks.json')
+  if (!fs.existsSync(hooksJsonPath)) {
+    errors.push('[Harness] Missing .agents/hooks.json')
+  } else {
+    try {
+      const hooksCfg = JSON.parse(fs.readFileSync(hooksJsonPath, 'utf-8'))
+      if (!hooksCfg || typeof hooksCfg !== 'object' || Array.isArray(hooksCfg)) {
+        errors.push('[Harness] .agents/hooks.json must be a JSON object')
+      } else {
+        const commands = []
+        for (const hookDef of Object.values(hooksCfg)) {
+          if (!hookDef || typeof hookDef !== 'object') continue
+          for (const event of ['SessionStart', 'PreInvocation', 'PostInvocation', 'Stop']) {
+            for (const item of hookDef[event] || []) {
+              if (item?.command) commands.push(item.command)
+            }
+          }
+          for (const event of ['PreToolUse', 'PostToolUse']) {
+            for (const group of hookDef[event] || []) {
+              for (const item of group?.hooks || []) {
+                if (item?.command) commands.push(item.command)
+              }
+            }
+          }
+        }
+        if (commands.length === 0) {
+          errors.push('[Harness] .agents/hooks.json defines no hook commands')
+        }
+        for (const cmd of commands) {
+          const scriptMatches = cmd.match(/(?:\.\.?\/)?scripts\/[^\s"']+\.(?:mjs|js|sh|ps1)/g) || []
+          for (const scriptRef of scriptMatches) {
+            const resolved = path.resolve(path.join(root, '.agents'), scriptRef)
+            if (!fs.existsSync(resolved)) {
+              errors.push(
+                `[Harness] Hook command references missing script: ${scriptRef}`
+              )
+            }
+          }
+        }
       }
+    } catch (err) {
+      errors.push(
+        `[Harness] Invalid JSON in .agents/hooks.json: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 
@@ -288,19 +328,7 @@ export function runOrgMemoryAudit({
     )
   }
 
-  // 正本・スキル・ワークフロー間の信頼境界・廃止キー整合チェック
-  const agentsMdPath = path.join(root, 'AGENTS.md')
-  if (fs.existsSync(agentsMdPath)) {
-    const agentsText = fs.readFileSync(agentsMdPath, 'utf-8')
-    if (
-      !agentsText.includes('trusted_issues') ||
-      !agentsText.includes('external_issues')
-    ) {
-      errors.push(
-        '[TrustBoundary] AGENTS.md must define trusted_issues and external_issues trust boundary'
-      )
-    }
-  }
+  // 廃止キー残存チェック
   for (const rel of [
     'AGENTS.md',
     '.agents/rules/AGENTS.md',

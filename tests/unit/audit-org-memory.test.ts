@@ -1,6 +1,10 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runOrgMemoryAudit } from '../../scripts/audit-org-memory.mjs'
+import {
+  RULE_LINE_BUDGET,
+  auditAlwaysOnRuleBudget,
+  runOrgMemoryAudit,
+} from '../../scripts/audit-org-memory.mjs'
 
 const REPO_ROOT = path.resolve('.')
 
@@ -90,5 +94,15 @@ describe('audit-org-memory deterministic vs time-sensitive separation (Issue #52
     expect(
       timeSensitive.errors.some((e) => e.includes('gemini-3-8-flash'))
     ).toBe(true)
+  })
+
+  it('enforces always-on rule line budget as a non-blocking soft warning and keeps repo under budget', () => {
+    expect(RULE_LINE_BUDGET).toBe(90)
+    expect(auditAlwaysOnRuleBudget(REPO_ROOT)).toEqual([])
+
+    const overBudget = auditAlwaysOnRuleBudget(REPO_ROOT, 10)
+    expect(overBudget).toHaveLength(2)
+    expect(overBudget[0]).toContain('[RuleBudget Warning]')
+    expect(overBudget[1]).toContain('[RuleBudget Warning]')
   })
 })

@@ -15,6 +15,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Branch Governance Gate (main target)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        shell: bash
+        run: |
+          git fetch origin dev main --no-tags
+          HAS_EXCEPTION="${{ contains(github.event.pull_request.labels.*.name, 'release:exception-approved') }}"
+          HEAD_REF="${{ github.head_ref }}"
+          if [ "$HAS_EXCEPTION" != "true" ]; then
+            if ! git merge-base --is-ancestor origin/main origin/dev; then
+              echo "ERROR: origin/main contains commits not yet in origin/dev. Sync main -> dev before opening a PR to main."
+              exit 1
+            fi
+            if [ "$HEAD_REF" != "dev" ]; then
+              echo "ERROR: Pull requests targeting main must originate from 'dev' (got '$HEAD_REF'). Add label 'release:exception-approved' only with explicit Human approval."
+              exit 1
+            fi
+          fi
+          echo "Branch governance gate passed (head=$HEAD_REF, exception=$HAS_EXCEPTION)."
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

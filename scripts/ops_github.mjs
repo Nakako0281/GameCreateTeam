@@ -32,7 +32,7 @@ const STANDARD_LABELS = [
   {
     name: 'owner:human',
     color: 'd93f0b',
-    description: '従業員兼最終責任者（人間）の操作・確認・決裁待ちタスク',
+    description: '人間（法的最終責任者・外部実務担当）の操作・確認・決裁待ちタスク',
   },
   {
     name: 'type:tool',
@@ -277,11 +277,21 @@ function getExpectedPushedHeadSha(headRef) {
 async function waitAndVerifyPrCi(prNumber, timeoutSec = 600) {
   if (!prNumber) throw new Error('PR番号を指定してください')
   let pr = await githubRequest(`/pulls/${prNumber}`)
+  if (pr.state !== 'open') {
+    throw new Error(
+      `PR #${pr.number} は既に ${pr.state}（merged=${Boolean(pr.merged)}）のためCI検証対象外です。最新devから新ブランチ・新PRを作成してください。`
+    )
+  }
   const expectedSha = pr.head?.ref ? getExpectedPushedHeadSha(pr.head.ref) : null
   const syncDeadline = Date.now() + 30000
   while (expectedSha && pr.head?.sha !== expectedSha && Date.now() < syncDeadline) {
     await sleep(2000)
     pr = await githubRequest(`/pulls/${prNumber}`)
+  }
+  if (expectedSha && pr.head?.sha !== expectedSha) {
+    throw new Error(
+      `PR #${pr.number} の head.sha (${pr.head?.sha}) が最新Push済みコミット (${expectedSha}) と一致しません。CI誤判定を防ぐため停止しました。`
+    )
   }
   const headSha = pr.head?.sha
   if (!headSha) throw new Error(`PR #${prNumber} の head.sha が取得できません`)
@@ -479,6 +489,143 @@ export function formatPullRequestSummary(
   }
 }
 
+export function evaluateBranchSync(compareRes) {
+  if (
+    !compareRes ||
+    typeof compareRes !== 'object' ||
+    typeof compareRes.ahead_by !== 'number'
+  ) {
+    return {
+      status: 'unknown',
+      main_ahead_by: null,
+      dev_ahead_by: null,
+      needs_escalation: true,
+      warning:
+        'Unable to verify origin/dev vs origin/main branch sync (fail-closed). Escalate (Tier 2) before releasing to main.',
+    }
+  }
+
+  const mainAheadBy = compareRes.ahead_by
+  const devAheadBy =
+    typeof compareRes.behind_by === 'number' ? compareRes.behind_by : 0
+  const status =
+    compareRes.status ||
+    (mainAheadBy > 0 && devAheadBy > 0
+      ? 'diverged'
+      : mainAheadBy > 0
+        ? 'ahead'
+        : devAheadBy > 0
+          ? 'behind'
+          : 'identical')
+  const needsEscalation = mainAheadBy > 0
+  const warning = needsEscalation
+    ? `origin/main is ahead of origin/dev by ${mainAheadBy} commit(s) (status=${status}). Escalate (Tier 2) and sync main -> dev before releasing to main.`
+    : null
+
+  return {
+    status,
+    main_ahead_by: mainAheadBy,
+    dev_ahead_by: devAheadBy,
+    needs_escalation: needsEscalation,
+    warning,
+  }
+}
+
+export function validateCreatePrBranchGuard({
+  head,
+  base,
+  branchSync,
+  headContainsUnmergedMain = false,
+  allowException = false,
+  exceptionReason = '',
+}) {
+  const hasValidException =
+    Boolean(allowException) && String(exceptionReason || '').trim().length >= 5
+
+  if (base === 'main') {
+    const mainAhead = branchSync?.main_ahead_by
+    const hasSyncDivergence =
+      !branchSync ||
+      branchSync.needs_escalation ||
+      mainAhead === null ||
+      mainAhead === undefined ||
+      mainAhead > 0
+
+    if (head !== 'dev' || hasSyncDivergence) {
+      if (hasValidException) {
+        return {
+          allowed: true,
+          override_used: true,
+          reason: String(exceptionReason).trim(),
+        }
+      }
+      const details = [
+        head !== 'dev'
+          ? `main宛てPRのheadは "dev" である必要があります（指定: "${head}"）`
+          : null,
+        hasSyncDivergence
+          ? branchSync?.warning ||
+            'origin/main が origin/dev と未同期または確認不能のため、先に main -> dev 同期が必要です'
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' / ')
+
+      return {
+        allowed: false,
+        override_used: false,
+        reason: `[BranchGuard] ${details}。事前相談（Tier 2）で合意した例外のみ --allow-exception --reason "<5文字以上の理由>" で実行してください。`,
+      }
+    }
+    return { allowed: true, override_used: false, reason: null }
+  }
+
+  if (base === 'dev') {
+    const isSyncBranch = /^(?:sync\/|chore\/sync-main)/.test(String(head || ''))
+    if (headContainsUnmergedMain && !isSyncBranch) {
+      if (hasValidException) {
+        return {
+          allowed: true,
+          override_used: true,
+          reason: String(exceptionReason).trim(),
+        }
+      }
+      return {
+        allowed: false,
+        override_used: false,
+        reason: `[BranchGuard] ブランチ "${head}" に未マージの origin/main コミットが含まれています。通常開発と main 同期の連鎖混入を防ぐため、先に同期専用ブランチ（chore/sync-main-to-dev 等）で main -> dev を解消してください。`,
+      }
+    }
+  }
+
+  return { allowed: true, override_used: false, reason: null }
+}
+
+function detectHeadContainsUnmergedMain(headRef) {
+  try {
+    const mainInDev = spawnSync(
+      'git',
+      ['merge-base', '--is-ancestor', 'origin/main', 'origin/dev'],
+      { encoding: 'utf-8' }
+    )
+    if (mainInDev.status === 0) return false
+
+    const targetRef = spawnSync('git', ['rev-parse', '--verify', headRef], {
+      encoding: 'utf-8',
+    }).status === 0
+      ? headRef
+      : 'HEAD'
+    const mainInHead = spawnSync(
+      'git',
+      ['merge-base', '--is-ancestor', 'origin/main', targetRef],
+      { encoding: 'utf-8' }
+    )
+    return mainInHead.status === 0
+  } catch {
+    return false
+  }
+}
+
 function hasLabel(issue, labelName) {
   return (issue.labels || []).some(
     (l) => (typeof l === 'string' ? l : l.name) === labelName
@@ -579,14 +726,18 @@ async function main() {
         Date.now() - 7 * 24 * 60 * 60 * 1000
       ).toISOString()
 
-      const [milestones, openRaw, closedHumanRaw, pulls] = await Promise.all([
-        githubRequest('/milestones?state=open&per_page=20'),
-        githubRequest('/issues?state=open&per_page=100'),
-        githubRequest(
-          `/issues?state=closed&labels=owner:human&since=${encodeURIComponent(sevenDaysAgoIso)}&per_page=30`
-        ),
-        githubRequest('/pulls?state=open&per_page=20'),
-      ])
+      const [milestones, openRaw, closedHumanRaw, pulls, compareRes] =
+        await Promise.all([
+          githubRequest('/milestones?state=open&per_page=20'),
+          githubRequest('/issues?state=open&per_page=100'),
+          githubRequest(
+            `/issues?state=closed&labels=owner:human&since=${encodeURIComponent(sevenDaysAgoIso)}&per_page=30`
+          ),
+          githubRequest('/pulls?state=open&per_page=20'),
+          githubRequest('/compare/dev...main').catch(() => null),
+        ])
+
+      const branchSync = evaluateBranchSync(compareRes)
 
       const {
         openIssues,
@@ -622,7 +773,10 @@ async function main() {
               open_prs: trustedPrs.length,
               trusted_open_prs: trustedPrs.length,
               external_open_prs: externalPrs.length,
+              main_ahead_of_dev: branchSync.main_ahead_by,
+              branch_sync_alert: branchSync.needs_escalation,
             },
+            branch_sync: branchSync,
             ...(hasExternal
               ? {
                   trust_warning:
@@ -902,13 +1056,41 @@ async function main() {
       if (!head || !title) {
         throw new Error('ブランチ名(head)とPRタイトルを指定してください')
       }
+      const targetBase = flags.base || base
+      const allowException = Boolean(flags['allow-exception'])
+      const exceptionReason =
+        typeof flags.reason === 'string' ? flags.reason : ''
+
+      let branchSync = null
+      let headContainsUnmergedMain = false
+      if (targetBase === 'main') {
+        const compareRes = await githubRequest('/compare/dev...main').catch(
+          () => null
+        )
+        branchSync = evaluateBranchSync(compareRes)
+      } else if (targetBase === 'dev') {
+        headContainsUnmergedMain = detectHeadContainsUnmergedMain(head)
+      }
+
+      const guard = validateCreatePrBranchGuard({
+        head,
+        base: targetBase,
+        branchSync,
+        headContainsUnmergedMain,
+        allowException,
+        exceptionReason,
+      })
+      if (!guard.allowed) {
+        throw new Error(guard.reason)
+      }
+
       const body = readContentOrText(bodyArg || flags.body || '')
       // 安全強制：CIゲート未通過でのレビュー依頼を防ぐため常にDraftで作成し、ready-pr経由のみ昇格させる
       const draft = true
       const pr = await githubRequest('/pulls', 'POST', {
         title,
         head,
-        base: flags.base || base,
+        base: targetBase,
         body,
         draft,
       })
@@ -918,6 +1100,9 @@ async function main() {
             number: pr.number,
             draft: pr.draft,
             html_url: pr.html_url,
+            ...(guard.override_used
+              ? { branch_guard_override: guard.reason }
+              : {}),
             next_required_gate: `node scripts/ops_github.mjs ready-pr ${pr.number}`,
           },
           null,
@@ -1023,7 +1208,7 @@ async function main() {
           '  update-issue <issue_number> [--title "..."] [--body <file_or_text>] [--state open|closed] [--labels "a,b"] [--add-labels "c"] [--remove-labels "d"] [--milestone <number|null>]',
           '  comment-issue <issue_number> <body_file_or_text>',
           '  list-prs [open|closed|all] [--include-external]',
-          '  create-pr <head_branch> "<title>" <body_file_or_text> [base_branch]  (always Draft until ready-pr)',
+          '  create-pr <head_branch> "<title>" <body_file_or_text> [base_branch] [--allow-exception --reason "..."]  (always Draft until ready-pr)',
           '  wait-ci <pr_number> [--timeout <seconds>]',
           '  ready-pr <pr_number> [--timeout <seconds>]',
           '  update-pr <pr_number> [--title "..."] [--body <file_or_text>] [--state open|closed]',
