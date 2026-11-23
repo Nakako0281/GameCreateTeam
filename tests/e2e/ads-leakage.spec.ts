@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const EXPECTED_ADSENSE_CLIENT = 'ca-pub-0000000000000000'
-const EXPECTED_GA_ID = 'G-LOCALBOXTEST'
+const EXPECTED_GA_ID = 'G-TEMOTOBOXTEST'
 
 const ALLOWED_EXTERNAL_HOSTS = new Set([
   'www.googletagmanager.com',

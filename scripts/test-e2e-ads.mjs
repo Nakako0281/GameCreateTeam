@@ -10,7 +10,7 @@ const ROOT = process.cwd()
 const OUT_DIR = 'dist-ads'
 const OUT_ABS = path.join(ROOT, OUT_DIR)
 const DUMMY_ADSENSE_CLIENT = 'ca-pub-0000000000000000'
-const DUMMY_GA_ID = 'G-LOCALBOXTEST'
+const DUMMY_GA_ID = 'G-TEMOTOBOXTEST'
 
 const astroBin = path.join(ROOT, 'node_modules', 'astro', 'bin', 'astro.mjs')
 const playwrightBin = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js')

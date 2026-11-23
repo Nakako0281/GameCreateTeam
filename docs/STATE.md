@@ -3,11 +3,11 @@
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
 - **最終更新日**: 2026-11-23
-- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（PR #60 devマージ済・#51/#52 クローズ済、#53・#58・#35ドラフト2本対応）`
+- **運用フェーズ**: `Phase 1 → Phase 2 前倒し移行中（PR #61 devマージ済・#53/#58 クローズ済、TemotoBox リブランド＆ADR-004確定対応）`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
-- **ブランド / サイト名**: **LocalBox**（完全ブラウザ完結・ゼロ送信 実務ツールスタジオ）
-- **本番URL**: 未公開（人間によるテスト環境実機確認・友人エンジニア検証の後に独自ドメイン購入予定／Issue #32）
+- **ブランド / サイト名**: **TemotoBox**（生成AI・社外共有前の下ごしらえ特化型・検証可能なブラウザ完結実務ワークベンチ／`ADR-004`）
+- **本番URL**: 未公開（取得対象ドメイン `temotobox.com` 確定済み・`ADR-004`／Issue #32 で人間によるドメイン取得＆先行公開予定）
 - **AdSense状態**: 未申請（Phase 2 で12ツール整備＆公開後に初回申請予定）
 - **GA4 / GSC接続**: 未接続（独自ドメイン購入＆本番デプロイ時に設定）
 
@@ -39,14 +39,12 @@
 - **運用ルール刷新（`L-09` & 人間待ち3日ルール）**: タスク規模（Size S / M / L）と関連性に応じて1セッションあたり目安 3〜4pt を自律バッチ消化する **Adaptive Batching** 運用。ドキュメント専用PRは軽量検証（`audit:ci-parity` ＋ `audit:memory --docs-only`）で高速完了し、`owner:human` Issue の3日以上滞留時は分割案・代替案付きでリマインドする。
 - **ブランチ同期メモ**: PR #37（`*.pages.dev` 自動 `noindex` 防護）が `main` へ先行マージされているため、次回の `dev` ➔ `main` 本番リリース PR 作成時に差分を統合する。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
-  - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ADR-003 に基づき Track A（独自ドメイン取得＆GSC登録・11/29目標）と Track B（友人検証・12/6目標）の2トラック分割案を提示中
-  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:in-progress`, 進捗 2/4: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/` `dev`マージ済、残2本: `pdf-organizer`, `pdf-redactor`)
+  - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ブランド名 `TemotoBox`・取得対象ドメイン **`temotobox.com`**（ADR-004）で確定、Track A（11/29目標 独自ドメイン取得＆GSC登録）と Track B（12/6目標 友人検証）の2トラック分割案を提示中
+  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:in-progress`, 進捗 2/4: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/` `dev`マージ済、残2本: `pdf-redactor` 優先・`pdf-organizer`)
   - Issue #57 `[AI] PIIマスカーの検出率ベンチマーク・往復property test・検出漏れ注意表示` (`owner:ai`, `priority:p1`)
-  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`)
+  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, `ADR-004` 優先順: `text-cleaner` → `offline-qr-password` → `jp-business-days` → `regex-tester-jp`)
 - **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 前倒し目標 2026-11-29 公開・12/10申請)**:
-  - Issue #53 `[AI] 「ゼロ送信」表現を広告・解析導入後の実態に整合＆広告有効ビルドでの入力漏洩E2E追加` (`status:review`, 本PR対応)
-  - Issue #58 `[AI] ローンチ前倒し計画の策定と人間待ちボトルネック解消（#32分割・#35格上げ）` (`status:review`, ADR-003 策定・3日滞留エスカレーション追加・本PR対応)
-  - Issue #35 `[AI] 初期集客・被リンク獲得用 Zenn/Qiita/X 技術記事ドラフト3本作成` (`owner:ai`, `priority:p1`, `status:in-progress`, `docs/promotions/` に 2/3 本作成済・残1本)
+  - Issue #35 `[AI] 初期集客・被リンク獲得用 Zenn/Qiita/X 技術記事ドラフト3本作成` (`owner:ai`, `priority:p1`, `status:in-progress`, `docs/promotions/` に `TemotoBox` / `temotobox.com` 版で 2/3 本作成済・残1本)
 - **その他 AI運用・品質強化バックログ**:
   - Issue #54（自律度KPI計測）, #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策）, #59（問い合わせ導線・リポジトリ公開方針/衛生）
 - **Milestone 4 (`M3: Growth PDCA, EN Expansion & 100 JPY/mo`, 期限 2027-02-20)**: 収益化・英語展開・週次PDCA目標。
@@ -55,6 +53,6 @@
 
 ## 3. 次セッションの実行プラン（Next Action）
 
-1. **`dev ➔ main` 本番リリース同期 ＆ #32 分割判断反映**: PR #37 差分統合を含めて `dev ➔ main` リリースPRを作成し、人間による Track A（11/29目標 独自ドメイン取得・GSC登録）のアンブロックを受け入れる。
+1. **`dev ➔ main` 本番リリース同期 ＆ `temotobox.com` 先行公開**: 本リブランドPRを `dev` へマージ後、PR #37 差分統合を含めて `dev ➔ main` リリースPRを作成し、`temotobox.com` 取得・GSC/GA4登録（#32 Track A）を受け入れる。
 2. **信頼性・集客タスク消化（Issue #57 ＆ Issue #35 残1本）**: PIIマスカー100件評価コーパス・property-based test・UI注意表示（#57）と、集客記事ドラフト3本目（#35完了）を進める。
-3. **Wave 2 残2ツール実装（Issue #33）**: 残る Wave 2 ツール（PDFローカル結合分割 `pdf-organizer`、PDF真の墨消し `pdf-redactor`）を `new-tool` スキルに従って順次実装する。
+3. **Wave 2 残2ツール実装（Issue #33）**: 競合差別化が強い **PDF真の墨消し (`pdf-redactor`)** を最優先に、次いで `pdf-organizer` を実装する。

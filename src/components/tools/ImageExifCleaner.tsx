@@ -46,7 +46,7 @@ function createSyntheticExifJpegBlob(): Promise<Uint8Array> {
     ctx.fillRect(40, 40, 560, 320)
     ctx.fillStyle = '#0f172a'
     ctx.font = 'bold 28px sans-serif'
-    ctx.fillText('LocalBox EXIF Test Sample', 110, 210)
+    ctx.fillText('TemotoBox EXIF Test Sample', 110, 210)
 
     canvas.toBlob(
       async (blob) => {

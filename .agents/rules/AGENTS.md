@@ -6,7 +6,7 @@
 
 ## 1. サイト・技術アーキテクチャ規約
 
-- **プラットフォーム名**: `LocalBox`（完全ブラウザ完結・ゼロ送信 実務ツールスタジオ）
+- **プラットフォーム名**: `TemotoBox`（入力データ送信ゼロ・ブラウザ完結の実務ワークベンチ）
 - **技術スタック**: Astro（`output: 'static'` SSG）＋ React 18 Islands（`client:load` / `client:idle`）＋ TypeScript（strict）＋ Tailwind CSS v4
 - **ホスティング**: Cloudflare Pages（無料枠・商用利用可）＋ 独自ドメイン（Cloudflare Registrar 原価運用）
 - **禁止ホスティング・設計**:

@@ -1,6 +1,6 @@
 ---
 name: 不具合報告・機能リクエスト
-about: LocalBox ツールの不具合報告や改善・新ツールのご要望
+about: TemotoBox ツールの不具合報告や改善・新ツールのご要望
 title: '[Feedback] '
 labels: ['type:feedback', 'status:needs-triage']
 ---
