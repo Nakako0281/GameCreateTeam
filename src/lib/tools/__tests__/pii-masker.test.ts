@@ -210,4 +210,24 @@ describe('pii-masker', () => {
     expect(emptyDictRestore.restoredCount).toBe(0)
     expect(emptyDictRestore.unresolvedTokens).toEqual(['[ORG_1]', '[PERSON_1]'])
   })
+
+  it('preserves leading backslashes, avoids existing token collisions, and detects PKCS#8 keys and org connectors accurately', () => {
+    const backslashInput = '\\sato@example.com と [EMAIL_1] と tanaka@example.jp'
+    const res1 = maskPiiText(backslashInput, DEFAULT_MASK_OPTIONS)
+    expect(res1.maskedText).toBe('\\[EMAIL_2] と [EMAIL_1] と [EMAIL_3]')
+    const restored1 = restoreMaskedText(res1.maskedText, res1.entries)
+    expect(restored1.restoredText).toBe(backslashInput)
+
+    const edgeOrgAndPem =
+      '有限会社あけぼの工務店と株式会社みずほリサーチ間の契約に -----BEGIN PRIVATE KEY-----\nMIIE_DUMMY\n-----END PRIVATE KEY----- を含める'
+    const res2 = maskPiiText(edgeOrgAndPem, DEFAULT_MASK_OPTIONS)
+    expect(res2.entries.map((e) => e.original)).toEqual([
+      '有限会社あけぼの工務店',
+      '株式会社みずほリサーチ',
+      '-----BEGIN PRIVATE KEY-----\nMIIE_DUMMY\n-----END PRIVATE KEY-----',
+    ])
+    expect(restoreMaskedText(res2.maskedText, res2.entries).restoredText).toBe(
+      edgeOrgAndPem
+    )
+  })
 })
