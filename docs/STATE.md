@@ -48,7 +48,7 @@
 - **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 前倒し目標 2026-11-29 公開・12/10申請)**:
   - Issue #35 `[AI] 初期集客・被リンク獲得用 Zenn/Qiita/X 技術記事ドラフト3本作成` (`owner:ai`, `priority:p1`, `status:in-progress`, `docs/promotions/` に `TemotoBox` / `temotobox.com` 版で 2/3 本作成済・残1本)
 - **その他 AI運用・品質強化バックログ**:
-  - Issue #54（自律度KPI計測）, #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策）, #59（問い合わせ導線・リポジトリ公開方針/衛生）
+  - Issue #54（自律度KPI計測: `status:review` / `ops:autonomy`・`found-by:*` ラベル・Week 1基準値記録PR提出）, #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策）, #59（問い合わせ導線・リポジトリ公開方針/衛生）
 - **Milestone 4 (`M3: Growth PDCA, EN Expansion & 100 JPY/mo`, 期限 2027-02-20)**: 収益化・英語展開・週次PDCA目標。
 
 ---
