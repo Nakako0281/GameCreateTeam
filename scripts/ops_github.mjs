@@ -124,6 +124,16 @@ const STANDARD_LABELS = [
     color: '0075ca',
     description: '通常優先（計画順）',
   },
+  {
+    name: 'found-by:ai',
+    color: '0e8a16',
+    description: 'AI自身が自律的に発見・起票した不具合や改善課題',
+  },
+  {
+    name: 'found-by:human',
+    color: 'fbca04',
+    description: '人間（メンバー・責任者・アドバイザー）が発見・指摘した不具合や改善課題',
+  },
 ]
 
 function getGitHubToken() {
@@ -665,6 +675,171 @@ export function classifyStatusIssues(
   }
 }
 
+export function computeAutonomyReport({
+  issues = [],
+  pulls = [],
+  sinceIso,
+  untilIso = new Date().toISOString(),
+  days = 7,
+} = {}) {
+  const sinceMs = sinceIso
+    ? Date.parse(sinceIso)
+    : Date.parse(untilIso) - days * 24 * 60 * 60 * 1000
+  const untilMs = Date.parse(untilIso)
+  const effectiveSinceIso = new Date(sinceMs).toISOString()
+
+  const inWindow = (iso) => {
+    if (!iso) return false
+    const t = Date.parse(iso)
+    return !Number.isNaN(t) && t >= sinceMs && t <= untilMs
+  }
+
+  const trustedIssues = (issues || []).filter(
+    (i) => !i.pull_request && isTrustedAuthor(i)
+  )
+  const issuesCreatedInWindow = trustedIssues.filter((i) =>
+    inWindow(i.created_at)
+  )
+
+  const foundByAiIssues = issuesCreatedInWindow.filter((i) =>
+    hasLabel(i, 'found-by:ai')
+  )
+  const foundByHumanIssues = issuesCreatedInWindow.filter((i) =>
+    hasLabel(i, 'found-by:human')
+  )
+  const defectOrImprovementIssues = issuesCreatedInWindow.filter(
+    (i) =>
+      hasLabel(i, 'type:postmortem') ||
+      hasLabel(i, 'type:security') ||
+      hasLabel(i, 'type:seo-growth') ||
+      hasLabel(i, 'type:ops')
+  )
+  const unclassifiedDefectOrImprovement = defectOrImprovementIssues.filter(
+    (i) => !hasLabel(i, 'found-by:ai') && !hasLabel(i, 'found-by:human')
+  )
+
+  const discoveryDenominator =
+    foundByAiIssues.length + foundByHumanIssues.length
+  const selfDiscoveryRate =
+    discoveryDenominator > 0
+      ? Number((foundByAiIssues.length / discoveryDenominator).toFixed(4))
+      : null
+
+  const humanIssuesAll = trustedIssues.filter((i) =>
+    hasLabel(i, 'owner:human')
+  )
+  const ownerHumanOpened = humanIssuesAll.filter((i) =>
+    inWindow(i.created_at)
+  ).length
+  const ownerHumanClosedIssues = humanIssuesAll.filter(
+    (i) => i.state === 'closed' && inWindow(i.closed_at)
+  )
+  const closedWaitDays = ownerHumanClosedIssues
+    .map((i) => {
+      const start = Date.parse(i.created_at)
+      const end = Date.parse(i.closed_at)
+      if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null
+      return (end - start) / (24 * 60 * 60 * 1000)
+    })
+    .filter((v) => v !== null)
+
+  const avgHumanWaitDays =
+    closedWaitDays.length > 0
+      ? Number(
+          (
+            closedWaitDays.reduce((a, b) => a + b, 0) / closedWaitDays.length
+          ).toFixed(2)
+        )
+      : null
+  const maxHumanWaitDays =
+    closedWaitDays.length > 0
+      ? Number(Math.max(...closedWaitDays).toFixed(2))
+      : null
+
+  const stagnantThresholdMs = 72 * 60 * 60 * 1000
+  const openHumanStagnantOver3d = humanIssuesAll.filter((i) => {
+    if (i.state !== 'open') return false
+    const updated = Date.parse(i.updated_at || i.created_at)
+    return !Number.isNaN(updated) && untilMs - updated >= stagnantThresholdMs
+  }).length
+
+  const trustedPulls = (pulls || []).filter(
+    (p) => classifyPullRequestTrust(p) === 'trusted'
+  )
+  const pullsInWindow = trustedPulls.filter((p) => inWindow(p.created_at))
+  const mergedCount = pullsInWindow.filter((p) => Boolean(p.merged_at)).length
+  const closedUnmergedCount = pullsInWindow.filter(
+    (p) => p.state === 'closed' && !p.merged_at
+  ).length
+  const openCount = pullsInWindow.filter((p) => p.state === 'open').length
+  const fixPrCount = pullsInWindow.filter((p) =>
+    /^(?:fix(?:\([^)]*\))?:|fix\/)/i.test(String(p.title || '').trim()) ||
+    /^fix\//i.test(String(p.head?.ref || '').trim())
+  ).length
+
+  const reworkRate =
+    pullsInWindow.length > 0
+      ? Number(
+          (
+            pullsInWindow.filter(
+              (p) =>
+                (p.state === 'closed' && !p.merged_at) ||
+                /^(?:fix(?:\([^)]*\))?:|fix\/)/i.test(
+                  String(p.title || '').trim()
+                ) ||
+                /^fix\//i.test(String(p.head?.ref || '').trim())
+            ).length / pullsInWindow.length
+          ).toFixed(4)
+        )
+      : null
+
+  return {
+    window: {
+      since_iso: effectiveSinceIso,
+      until_iso: untilIso,
+      days,
+    },
+    issues: {
+      total_trusted_created: issuesCreatedInWindow.length,
+      found_by_ai: foundByAiIssues.length,
+      found_by_human: foundByHumanIssues.length,
+      unclassified_defect_or_improvement:
+        unclassifiedDefectOrImprovement.length,
+      self_discovery_rate: selfDiscoveryRate,
+      owner_human_opened: ownerHumanOpened,
+      owner_human_closed: ownerHumanClosedIssues.length,
+      human_wait_days: {
+        sample_count: closedWaitDays.length,
+        avg_days: avgHumanWaitDays,
+        max_days: maxHumanWaitDays,
+        open_stagnant_over_3d: openHumanStagnantOver3d,
+      },
+    },
+    pull_requests: {
+      total_trusted_created: pullsInWindow.length,
+      merged_count: mergedCount,
+      closed_unmerged_count: closedUnmergedCount,
+      open_count: openCount,
+      fix_pr_count: fixPrCount,
+      rework_rate: reworkRate,
+    },
+  }
+}
+
+async function fetchPagedGithub(pathWithoutPage, maxPages = 3) {
+  const all = []
+  const sep = pathWithoutPage.includes('?') ? '&' : '?'
+  for (let page = 1; page <= maxPages; page++) {
+    const items = await githubRequest(
+      `${pathWithoutPage}${sep}per_page=100&page=${page}`
+    )
+    if (!Array.isArray(items) || items.length === 0) break
+    all.push(...items)
+    if (items.length < 100) break
+  }
+  return all
+}
+
 export function formatGetIssueResponse(
   issue,
   comments = [],
@@ -814,6 +989,29 @@ async function main() {
           2
         )
       )
+      break
+    }
+
+    case 'autonomy-report': {
+      const days = flags.days ? Math.max(1, Number(flags.days)) : 7
+      const untilIso = new Date().toISOString()
+      const sinceIso = new Date(
+        Date.now() - days * 24 * 60 * 60 * 1000
+      ).toISOString()
+
+      const [issues, pulls] = await Promise.all([
+        fetchPagedGithub('/issues?state=all&sort=created&direction=desc', 3),
+        fetchPagedGithub('/pulls?state=all&sort=created&direction=desc', 3),
+      ])
+
+      const report = computeAutonomyReport({
+        issues,
+        pulls,
+        sinceIso,
+        untilIso,
+        days,
+      })
+      console.log(JSON.stringify(report, null, 2))
       break
     }
 
@@ -1198,6 +1396,7 @@ async function main() {
           'Usage: ops_github.mjs <command> [args...]',
           'Commands:',
           '  status | dashboard [--include-external]',
+          '  autonomy-report [--days <N>]',
           '  ensure-labels',
           '  list-milestones [open|closed|all]',
           '  create-milestone "<title>" "[description]" "[due_on_iso]"',
