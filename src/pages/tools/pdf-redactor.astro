@@ -1,0 +1,102 @@
+---
+import ToolLayout, { type FaqItem } from '../../layouts/ToolLayout.astro'
+import PdfRedactor from '../../components/tools/PdfRedactor'
+import { getToolBySlug } from '../../data/tools'
+
+const tool = getToolBySlug('pdf-redactor')
+const seoTitle = 'PDF黒塗り・墨消し＆メタデータ完全削除 | TemotoBox'
+const seoDescription =
+  '機密PDFファイルをサーバーへ送信せず、ブラウザ内で画像化して黒塗りを物理焼付け。文字データのコピペ・検索による情報漏洩を防ぎ、Info/XMPメタデータ削除と処理後0件の再検証結果まで一画面で確認できます。'
+
+const faqs: FaqItem[] = [
+  {
+    question: 'PDFの文字の上に黒い図形を乗せて隠す方法と、本ツールの「真の墨消し」は何が違いますか？',
+    answer:
+      'PDF編集ソフトで黒い矩形図形や注釈レイヤーを重ねただけでは、下層に元のテキストデータや検索インデックスがそのまま残ります。受け取り手が文字をドラッグ選択してコピー＆ペーストしたり、Ctrl+Fで検索したり、図形を移動させたりすると隠した内容が露出します。本ツールはページを画像へラスタライズして黒塗りをピクセルへ焼き付けるため、該当部分の文字データ自体が物理的に存在しなくなります。',
+  },
+  {
+    question: '契約書や源泉徴収票など、社外秘のPDFファイルをブラウザで読み込んでも外部に漏れませんか？',
+    answer:
+      'はい、入力されたPDFファイルの内容や変換後のデータが外部サーバーへ送信・保存されることはありません。PDFページの描画、テキスト候補の解析、墨塗り焼き付け、新規PDFの組み立ておよび処理後スキャンはすべてお使いの端末のブラウザメモリ上のみで完結し、リセット操作やタブを閉じた時点でメモリから破棄されます。',
+  },
+  {
+    question: '処理後のPDFでは黒塗りしていない部分の文字もコピーや検索ができなくなりますか？',
+    answer:
+      'はい。セキュリティの確実性を最優先し、出力対象の各ページを丸ごと画像ベースへ再構築するため、生成後のPDFではテキスト選択や文字検索ができなくなります（ファイル容量も元のテキストPDFより増える場合があります）。検索可能なテキスト文書のまま社名や氏名だけを伏せて生成AIへ渡したい場合は「AI入力前 PIIマスカー」などのテキスト系ツールと使い分けてください。',
+  },
+  {
+    question: '作成者名や使用ソフトなどのPDFプロパティ（メタデータ）も同時に消せますか？',
+    answer:
+      'はい。墨消し処理と同時に、Info辞書（作成者・タイトル・作成ツール・変換ソフト・作成および更新日時等）やカタログ上のXMPメタデータストリーム、注釈・フォーム・添付ファイル・JavaScriptを含まないクリーンなPDFとして新規構築します。出力完了後には本ツール自身が生成済みPDFを再解析し、抽出可能テキスト文字数と残存メタデータがともに0件になった結果を表示します。',
+  },
+]
+---
+
+<ToolLayout
+  tool={tool}
+  seoTitle={seoTitle}
+  seoDescription={seoDescription}
+  featureList={[
+    '全ページ画像化（ラスタライズ）と不透明黒塗り・白塗りピクセル焼付けによる文字層完全除去',
+    'PDF内テキスト座標解析によるメールアドレス・電話番号・APIキー・マイナンバー候補の1クリック黒塗り提案',
+    'Info辞書（Author/Creator/日時）・XMPメタデータ・注釈・添付ファイルの全消去と匿名ファイル名出力',
+    '出力PDFの再読み込みによる「抽出テキスト 0文字・残存メタデータ 0件」のブラウザ内自動検証',
+  ]}
+  faqs={faqs}
+>
+  <PdfRedactor slot="tool" client:load />
+
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
+    <section>
+      <h2 class="text-lg font-bold text-slate-900">
+        「黒い四角を乗せただけ」のPDF黒塗りが情報漏洩事故を起こす構造的理由
+      </h2>
+      <p class="mt-2.5">
+        見積書や業務委託契約書、採用書類、行政提出用の申請控えを取引先や外部アドバイザーへ共有する際、特定の金額・個人名・口座情報だけを隠す目的で「PDFに黒い四角形を描いて上書き保存」してしまうケースが後を絶ちません。しかし、一般的なPDF閲覧ソフトの注釈機能や簡易図形ツールで黒塗りを載せた場合、PDFファイルの内部構造ではテキストオブジェクトの上に黒い塗りの図形レイヤーが重なっているだけの状態になります。
+      </p>
+      <p class="mt-2.5">
+        この状態では、閲覧者がマウスで該当箇所をなぞってコピー＆ペーストしたり、<code>Ctrl+F</code> で文字検索したり、別のPDF編集ソフトで黒い矩形だけを選択してずらしたりするだけで、隠したはずの機密テキストがそのまま読み取られてしまいます。従来、この事故を確実に防ぐには「原本を一度紙へ印刷し、油性マジックで塗りつぶしてからスキャナでPDF化し直す」という手間のかかるアナログ手順が採られてきました。
+      </p>
+      <p class="mt-2.5">
+        TemotoBox の PDF 真の墨消しツールは、印刷して再スキャンする工程と本質的に同じ「ページ画像化（ラスタライズ）による物理的な情報破棄」をブラウザのメモリ内だけで再現します。しかもクラウド型の無料PDF変換サービスとは異なり、機密を含む原本ファイルを第三者サーバーへ預けることなく、端末内のみで安全な墨消しとメタデータ消去を完結できます。
+      </p>
+    </section>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>ラスタライズ焼付け＋処理後再スキャンと、Info/XMPメタデータ全消去の仕組み</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          PDFファイルを読み込むと、まずローカル上の解析処理がページ数・各ページに埋め込まれた抽出可能テキストの文字数・注釈（<code>Annots</code>）・フォーム（<code>AcroForm</code>）・作成者PCユーザー名などを含む <code>Info</code> 辞書や <code>XMP</code> メタデータを事前診断します。同時にテキスト座標を走査し、メールアドレス・電話番号・郵便番号・APIトークン・マイナンバー風12桁などの機密候補をハイライト提案するため、小さなスマートフォン画面でも1タップで該当箇所を黒塗り枠へ追加できます。
+        </p>
+        <p>
+          「真の墨消しPDFを生成」を実行すると、1ページずつ指定解像度でビットマップへ描画し、指定された黒塗り・白塗り領域を外側2ピクセルの安全マージン付きで完全不透明塗りつぶしとしてピクセルへ焼き付けます。その後、元のPDF構造をコピーするのではなく白紙の新規PDFへ画像のみを貼り込んで再構築し、PDFライブラリが自動付与しがちな <code>Producer</code> や <code>CreationDate</code>（作成時刻・タイムゾーン）まで完全に排除します。
+        </p>
+        <p>
+          さらに仕上げとして、生成されたばかりのPDFバイト列をもう一度ローカルで読み込み直し、「抽出可能テキストが 0 文字」「残存メタデータ・注釈・添付ファイルが 0 件」であることを実測した上で結果画面へ表示します。
+        </p>
+      </div>
+    </details>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>画質(DPI)・容量の選び方、免責事項、関連ローカルツールとの使い分け</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          出力設定は用途に合わせて切り替えられます。画面確認やファイルサイズ制限のあるメール添付には <strong>標準（150 DPI / JPEG）</strong> または <strong>軽量（100 DPI / JPEG）</strong> が適しており、細かい約款や印影の視認性を優先する契約書類には <strong>高精細（200 DPI / JPEG）</strong>、文字滲みや圧縮ノイズを避けたい図表には <strong>可逆高画質（150 DPI / PNG）</strong> をお選びください。また、元のPDFファイル名自体に顧客名や案件名が含まれているケースが多いため、初期設定では匿名ファイル名（<code>redacted-document.pdf</code>）での保存を推奨しています。
+        </p>
+        <p>
+          <strong>実務上の使い分けと免責:</strong> テキスト文書やメール文面を伏せてChatGPTやClaudeへ要約依頼し回答から元の社名・氏名へ戻したい場合は <a href="/tools/ai-pii-masker/" class="font-semibold text-sky-700 underline">AI入力前 PIIマスカー</a> を、カメラで撮影した書類写真やスクリーンショットのGPS位置情報を消したい場合は <a href="/tools/image-exif-cleaner/" class="font-semibold text-sky-700 underline">画像 EXIF/GPS位置情報削除</a> を、設定ファイルやサーバーログの秘密鍵を伏せたい場合は <a href="/tools/config-sanitizer/" class="font-semibold text-sky-700 underline">設定ファイル秘匿化ツール</a> をご利用ください。なお、自動検出候補は補助機能であり、すべての機密記載を100%自動で網羅するものではありません。パスワード保護されたPDFや特殊フォントを含むPDFを含め、外部へ提出する前には必ず生成したPDFを開いて塗り漏れや仕上がりをご自身で最終確認してください。
+        </p>
+      </div>
+    </details>
+  </div>
+</ToolLayout>

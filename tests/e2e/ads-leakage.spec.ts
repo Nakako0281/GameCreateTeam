@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 const EXPECTED_ADSENSE_CLIENT = 'ca-pub-0000000000000000'
 const EXPECTED_GA_ID = 'G-TEMOTOBOXTEST'
@@ -32,6 +33,11 @@ const CANARY_SECRETS = [
   'MIIEvQIBADANBgkqhkiG9w0',
   'SUPER_SECRET_CANARY_KEY',
   'canary_secret_token_8822991100',
+  'CANARY_PDF_SECRET_CONFIDENTIAL_8811',
+  'canary-pdf-8811@secret-corp.example',
+  '090-8811-2233',
+  'sk-proj-canarypdf88112233445566',
+  'CanaryPdfAuthor_8811',
 ]
 
 interface RecordedRequest {
@@ -160,7 +166,7 @@ async function setupAdSandbox(page: Page) {
   }
 }
 
-test('proves zero input data leakage across all 6 tools even when AdSense and GA4 scripts are enabled', async ({
+test('proves zero input data leakage across all 7 tools even when AdSense and GA4 scripts are enabled', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -252,6 +258,32 @@ test('proves zero input data leakage across all 6 tools even when AdSense and GA
   await outputFormatGroup.getByRole('button', { name: 'YAML' }).click()
   await outputFormatGroup.getByRole('button', { name: 'JSON' }).click()
   await sandbox.snapshotDataLayer('/tools/config-sanitizer/')
+
+  // 7. PDF Redactor（カナリア文字列＋Authorメタデータ入りPDFを実アップロードして墨消し・再検査）
+  const canaryPdfDoc = await PDFDocument.create()
+  canaryPdfDoc.setTitle('CANARY_PDF_SECRET_CONFIDENTIAL_8811')
+  canaryPdfDoc.setAuthor('CanaryPdfAuthor_8811')
+  const pdfFont = await canaryPdfDoc.embedFont(StandardFonts.Helvetica)
+  const pdfPage = canaryPdfDoc.addPage([595, 842])
+  pdfPage.drawText(
+    'Email: canary-pdf-8811@secret-corp.example Tel: 090-8811-2233 Key: sk-proj-canarypdf88112233445566',
+    { x: 40, y: 740, size: 11, font: pdfFont, color: rgb(0, 0, 0) }
+  )
+  const canaryPdfBytes = await canaryPdfDoc.save()
+
+  await page.goto('/tools/pdf-redactor/', { waitUntil: 'networkidle' })
+  await page.getByTestId('pdf-file-input').setInputFiles({
+    name: 'CANARY_PDF_SECRET_CONFIDENTIAL_8811.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(canaryPdfBytes),
+  })
+  await expect(page.getByTestId('pdf-before-summary')).toBeVisible()
+  await page.getByRole('button', { name: /PII候補を一括黒塗り/ }).click()
+  await page.getByTestId('generate-redacted-pdf-btn').click()
+  await expect(page.getByTestId('pdf-redacted-result')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByTestId('pdf-after-text-chars')).toContainText('0 文字')
+  await expect(page.getByTestId('pdf-after-metadata-count')).toContainText('0 件')
+  await sandbox.snapshotDataLayer('/tools/pdf-redactor/')
 
   // 検証1: AdSense と GA4 の外部リクエスト試行が実際に発生・捕捉されていること
   expect(

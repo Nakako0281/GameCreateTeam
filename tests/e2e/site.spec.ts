@@ -10,6 +10,7 @@ const ALL_ROUTES = [
   '/tools/llm-cost-calculator/',
   '/tools/csv-encoding-fixer/',
   '/tools/image-exif-cleaner/',
+  '/tools/pdf-redactor/',
   '/tools/ai-markdown-formatter/',
   '/tools/config-sanitizer/',
 ]
@@ -140,7 +141,7 @@ for (const vp of [
   })
 }
 
-test('proves zero external transmission across interactive execution of all 6 published tools', async ({
+test('proves zero external transmission across interactive execution of all 7 published tools', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -297,6 +298,28 @@ test('proves zero external transmission across interactive execution of all 6 pu
   expect(yamlSanitized).not.toContain('---\n---')
   expect(yamlSanitized).not.toContain('YXBpX2tleT1kZW1vX3NlY3JldF92YWx1ZV8yMDI2Cg==')
   expect(yamlSanitized).not.toContain('c2FtcGxlX2s4c190b2tlbl8yMDI2')
+
+  // 7. PDF Redactor
+  await page.goto('/tools/pdf-redactor/', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'サンプル機密PDFを試す' }).click()
+  await expect(page.getByTestId('pdf-before-summary')).toBeVisible()
+  const beforeCharsText = await page.getByTestId('pdf-before-text-chars').textContent()
+  expect(Number((beforeCharsText || '0').replace(/[^0-9]/g, ''))).toBeGreaterThan(100)
+  await expect(page.getByTestId('pdf-before-risk-count')).toContainText('件検出')
+
+  const bulkPiiBtn = page.getByRole('button', { name: /PII候補を一括黒塗り/ })
+  await expect(bulkPiiBtn).toBeVisible()
+  await bulkPiiBtn.click()
+  expect(await page.getByTestId('redaction-box').count()).toBeGreaterThan(0)
+
+  await page.getByTestId('generate-redacted-pdf-btn').click()
+  await expect(page.getByTestId('pdf-redacted-result')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByTestId('pdf-after-text-chars')).toContainText('0 文字')
+  await expect(page.getByTestId('pdf-after-metadata-count')).toContainText('0 件')
+  const downloadHref = await page
+    .getByTestId('download-redacted-pdf')
+    .getAttribute('href')
+  expect(downloadHref).toMatch(/^blob:/)
 
   // 全ツール実操作中、外部送信が0件であることを確認
   expect(tracker.consoleErrors).toEqual([])
