@@ -19,6 +19,83 @@ const INPUT_SCOPE_QUALIFIER_RE =
 
 const CLAUSE_BOUNDARY_RE = /[。！？\r\n|｜・—]/
 
+const FORBIDDEN_CANONICAL_HOST_RE =
+  /(?:^|\.)(?:example\.com|pages\.dev|workers\.dev)$/i
+
+export function validateRobotsAndCanonical({
+  robotsTxt = '',
+  canonicalEntries = [],
+  sitemapXmls = [],
+} = {}) {
+  const errors = []
+
+  const sitemapLineMatch = String(robotsTxt || '').match(/^Sitemap:\s*(\S+)\s*$/m)
+  if (!sitemapLineMatch) {
+    errors.push('[SEO] robots.txt missing Sitemap: directive')
+  } else {
+    const sitemapUrl = sitemapLineMatch[1]
+    if (!sitemapUrl.startsWith('https://')) {
+      errors.push(
+        `[SEO] robots.txt Sitemap directive must be an absolute https:// URL (got "${sitemapUrl}")`
+      )
+    } else {
+      try {
+        const parsed = new URL(sitemapUrl)
+        if (FORBIDDEN_CANONICAL_HOST_RE.test(parsed.hostname)) {
+          errors.push(
+            `[SEO] robots.txt Sitemap URL points to placeholder/preview host "${parsed.hostname}"`
+          )
+        }
+      } catch {
+        errors.push(`[SEO] robots.txt Sitemap URL is invalid: "${sitemapUrl}"`)
+      }
+    }
+  }
+
+  for (const { route, href } of canonicalEntries) {
+    if (!href) {
+      errors.push(`[SEO] ${route}: Missing canonical href`)
+      continue
+    }
+    if (!href.startsWith('https://')) {
+      errors.push(
+        `[SEO] ${route}: Canonical href must be an absolute https:// URL (got "${href}")`
+      )
+      continue
+    }
+    try {
+      const parsed = new URL(href)
+      if (FORBIDDEN_CANONICAL_HOST_RE.test(parsed.hostname)) {
+        errors.push(
+          `[SEO] ${route}: Canonical URL points to placeholder/preview noindex host "${parsed.hostname}"`
+        )
+      }
+    } catch {
+      errors.push(`[SEO] ${route}: Invalid canonical URL "${href}"`)
+    }
+  }
+
+  for (const { name, content } of sitemapXmls) {
+    for (const locMatch of String(content || '').matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+      const loc = locMatch[1].trim()
+      try {
+        const parsed = new URL(loc)
+        if (FORBIDDEN_CANONICAL_HOST_RE.test(parsed.hostname)) {
+          errors.push(
+            `[SEO] ${name}: Sitemap <loc> points to placeholder/preview host "${parsed.hostname}" (${loc})`
+          )
+          break
+        }
+      } catch {
+        errors.push(`[SEO] ${name}: Invalid <loc> URL "${loc}"`)
+        break
+      }
+    }
+  }
+
+  return errors
+}
+
 function getClausePrefix(text, index, maxLookback = 24) {
   const start = Math.max(0, index - maxLookback)
   const rawSlice = text.slice(start, index)
@@ -186,6 +263,7 @@ export function runSeoAudit({ root = process.cwd() } = {}) {
   const seenTitles = new Map()
   const seenDescriptions = new Map()
   const toolTexts = []
+  const canonicalEntries = []
 
   for (const filePath of htmlFiles) {
     const rel = path.relative(distDir, filePath).replace(/\\/g, '/')
@@ -234,8 +312,13 @@ export function runSeoAudit({ root = process.cwd() } = {}) {
     }
 
     // Canonical & OGP
-    if (!/<link\s+rel=["']canonical["']/i.test(html)) {
+    const canonicalMatch = html.match(
+      /<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']\s*\/?>/i
+    )
+    if (!canonicalMatch) {
       errors.push(`[SEO] ${route}: Missing canonical link`)
+    } else {
+      canonicalEntries.push({ route, href: canonicalMatch[1].trim() })
     }
     if (!/property=["']og:title["']/i.test(html)) {
       errors.push(`[SEO] ${route}: Missing og:title`)
@@ -323,6 +406,26 @@ export function runSeoAudit({ root = process.cwd() } = {}) {
       }
     }
   }
+
+  // robots.txt / Canonical / Sitemap の本番オリジン妥当性チェック（L-17）
+  const robotsDistPath = path.join(distDir, 'robots.txt')
+  const robotsTxt = fs.existsSync(robotsDistPath)
+    ? fs.readFileSync(robotsDistPath, 'utf-8')
+    : ''
+  const sitemapXmls = fs
+    .readdirSync(distDir)
+    .filter((name) => /^sitemap.*\.xml$/i.test(name))
+    .map((name) => ({
+      name,
+      content: fs.readFileSync(path.join(distDir, name), 'utf-8'),
+    }))
+  errors.push(
+    ...validateRobotsAndCanonical({
+      robotsTxt,
+      canonicalEntries,
+      sitemapXmls,
+    })
+  )
 
   // ツールページ間の3-gram類似度チェック（Scaled Content Abuse 防止）
   for (let i = 0; i < toolTexts.length; i++) {

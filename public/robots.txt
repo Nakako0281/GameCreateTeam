@@ -1,5 +1,4 @@
-# Production deployment checklist: update Sitemap URL to your final custom domain
 User-agent: *
 Allow: /
 
-Sitemap: /sitemap-index.xml
+Sitemap: https://temotobox.com/sitemap-index.xml

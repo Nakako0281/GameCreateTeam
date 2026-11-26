@@ -29,6 +29,26 @@ describe('ops_github branch sync & create-pr governance guard (Layer 2)', () => 
     const unknown = evaluateBranchSync(null)
     expect(unknown.needs_escalation).toBe(true)
     expect(unknown.status).toBe('unknown')
+
+    const mergeCommitOnly = evaluateBranchSync({
+      status: 'ahead',
+      ahead_by: 1,
+      behind_by: 0,
+      files: [],
+    })
+    expect(mergeCommitOnly.needs_escalation).toBe(true)
+    expect(mergeCommitOnly.changed_files_count).toBe(0)
+    expect(mergeCommitOnly.sync_kind).toBe('merge_commit_only')
+    expect(mergeCommitOnly.warning).toContain('0 file diffs')
+
+    const contentDiverged = evaluateBranchSync({
+      status: 'diverged',
+      ahead_by: 1,
+      behind_by: 3,
+      files: [{ filename: 'public/_headers' }],
+    })
+    expect(contentDiverged.changed_files_count).toBe(1)
+    expect(contentDiverged.sync_kind).toBe('content_diverged')
   })
 
   it('enforces dev-only release PRs to main unless explicit exception reason is given', () => {

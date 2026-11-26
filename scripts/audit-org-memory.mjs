@@ -17,6 +17,7 @@ import {
   classifyPullRequestTrust,
   classifyStatusIssues,
 } from './ops_github.mjs'
+import { findUnqualifiedZeroSendClaims } from './audit-seo-adsense.mjs'
 
 const MAX_PRICING_AGE_DAYS = 14
 const TRANSITION_WARN_DAYS = 7
@@ -68,6 +69,174 @@ export function auditAlwaysOnRuleBudget(
     }
   }
   return budgetWarnings
+}
+
+function walkTextFiles(dir, extRe, out = []) {
+  if (!fs.existsSync(dir)) return out
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkTextFiles(full, extRe, out)
+    } else if (extRe.test(entry.name)) {
+      out.push(full)
+    }
+  }
+  return out
+}
+
+const TOOL_SYNC_TARGETS = [
+  'README.md',
+  'docs/STATE.md',
+  'docs/TOOLS_ROADMAP.md',
+  'tests/e2e/site.spec.ts',
+  'tests/e2e/ads-leakage.spec.ts',
+]
+
+const LIVE_ONLY_TOOL_TARGETS = [
+  'README.md',
+  'tests/e2e/site.spec.ts',
+  'tests/e2e/ads-leakage.spec.ts',
+]
+
+export function auditPublishedToolSync(root = process.cwd()) {
+  const errors = []
+  const toolsPath = path.join(root, 'src', 'data', 'tools.ts')
+  if (!fs.existsSync(toolsPath)) {
+    return ['[Registry] Missing src/data/tools.ts']
+  }
+
+  const toolsTs = fs.readFileSync(toolsPath, 'utf-8')
+  const toolBlocks = toolsTs.match(/\{[\s\S]*?slug:\s*'[^']+'[\s\S]*?\}/g) || []
+  const publishedSlugs = []
+  const plannedSlugs = []
+
+  for (const block of toolBlocks) {
+    const slugMatch = block.match(/slug:\s*'([^']+)'/)
+    const statusMatch = block.match(/status:\s*'([^']+)'/)
+    if (!slugMatch || !statusMatch) continue
+    if (statusMatch[1] === 'published') publishedSlugs.push(slugMatch[1])
+    else if (statusMatch[1] === 'planned') plannedSlugs.push(slugMatch[1])
+  }
+
+  const fileContents = new Map()
+  for (const rel of TOOL_SYNC_TARGETS) {
+    const full = path.join(root, rel)
+    if (!fs.existsSync(full)) {
+      errors.push(`[ToolSync] Missing sync target file: ${rel}`)
+      continue
+    }
+    fileContents.set(rel, fs.readFileSync(full, 'utf-8'))
+  }
+
+  for (const slug of publishedSlugs) {
+    const needle = `/tools/${slug}/`
+    for (const rel of TOOL_SYNC_TARGETS) {
+      const content = fileContents.get(rel)
+      if (content !== undefined && !content.includes(needle)) {
+        errors.push(
+          `[ToolSync] Published tool "${needle}" is missing from ${rel}`
+        )
+      }
+    }
+  }
+
+  for (const slug of plannedSlugs) {
+    const needle = `/tools/${slug}/`
+    for (const rel of LIVE_ONLY_TOOL_TARGETS) {
+      const content = fileContents.get(rel)
+      if (content !== undefined && content.includes(needle)) {
+        errors.push(
+          `[ToolSync] Planned (unpublished) tool "${needle}" must not appear in ${rel}`
+        )
+      }
+    }
+  }
+
+  return errors
+}
+
+const LEGACY_BRAND_OR_ROLE_RE =
+  /\b(?:LocalBox|TabChest|OTEMOTO)\b|temoto-box\.com|\bTEMOTO\b|従業員兼最終責任者/
+
+export function auditBrandAndRoleTerminology(root = process.cwd()) {
+  const errors = []
+  const candidateFiles = []
+
+  for (const rel of [
+    'README.md',
+    'AGENTS.md',
+    'docs/STATE.md',
+    'docs/TOOLS_ROADMAP.md',
+    'docs/HUMAN_OPERATIONS_GUIDE.md',
+    'docs/LEGAL_AND_COMPLIANCE_CHECKLIST.md',
+  ]) {
+    const full = path.join(root, rel)
+    if (fs.existsSync(full)) candidateFiles.push(full)
+  }
+
+  for (const f of walkTextFiles(
+    path.join(root, 'src'),
+    /\.(?:astro|ts|tsx)$/i
+  )) {
+    const rel = path.relative(root, f).replace(/\\/g, '/')
+    if (rel.includes('__tests__/') || /\.test\.[tj]sx?$/.test(rel)) continue
+    candidateFiles.push(f)
+  }
+  candidateFiles.push(
+    ...walkTextFiles(path.join(root, '.agents'), /\.md$/i),
+    ...walkTextFiles(path.join(root, 'docs', 'promotions'), /\.md$/i)
+  )
+
+  for (const full of candidateFiles) {
+    const rel = path.relative(root, full).replace(/\\/g, '/')
+    const text = fs.readFileSync(full, 'utf-8')
+    const hit = text.match(LEGACY_BRAND_OR_ROLE_RE)
+    if (hit) {
+      errors.push(
+        `[Terminology] ${rel} contains deprecated brand/role term "${hit[0]}"`
+      )
+    }
+  }
+
+  return errors
+}
+
+const POSTMORTEM_ROW_RE = /^\|\s*\*\*(L-\d+)\*\*\s*\|/
+const POSTMORTEM_TIER_RE =
+  /\[Tier\s+(?:A:\s*Code\/Test|B:\s*Harness\/CLI|C:\s*Principle)\]/
+const POSTMORTEM_EVIDENCE_PATH_RE =
+  /(?:scripts\/|src\/|tests\/|\.agents\/|\.github\/|docs\/ADR\/|public\/|astro\.config\.mjs)/
+
+export function auditPostmortemClassification(
+  postmortemText = '',
+  sourceLabel = 'docs/POSTMORTEM_AND_LESSONS.md'
+) {
+  const errors = []
+  const lines = String(postmortemText || '').split(/\r?\n/)
+  let rowCount = 0
+
+  for (const line of lines) {
+    const m = line.match(POSTMORTEM_ROW_RE)
+    if (!m) continue
+    rowCount += 1
+    const id = m[1]
+    if (!POSTMORTEM_TIER_RE.test(line)) {
+      errors.push(
+        `[Postmortem] ${sourceLabel} (${id}) missing Resolution Tier tag ([Tier A: Code/Test] | [Tier B: Harness/CLI] | [Tier C: Principle])`
+      )
+    }
+    if (!POSTMORTEM_EVIDENCE_PATH_RE.test(line)) {
+      errors.push(
+        `[Postmortem] ${sourceLabel} (${id}) missing concrete repository artifact path (scripts/, src/, tests/, .agents/, .github/, or docs/ADR/)`
+      )
+    }
+  }
+
+  if (rowCount === 0) {
+    errors.push(`[Postmortem] ${sourceLabel} contains no L-XX lesson rows`)
+  }
+
+  return errors
 }
 
 function extractTopLevelArrayObjects(sourceText, marker) {
@@ -365,7 +534,7 @@ export function runOrgMemoryAudit({
     }
   }
 
-  // 公開境界リーク防止ガード（L-11: README・公開画面への内部マネタイズ/組織用語混入禁止）
+  // 公開境界リーク防止ガード（L-11: README・公開画面への内部マネタイズ/組織用語混入禁止 ＆ L-14: --docs-only 対応クレーム検査）
   const readmePath = path.join(root, 'README.md')
   if (fs.existsSync(readmePath)) {
     const readmeText = fs.readFileSync(readmePath, 'utf-8')
@@ -377,6 +546,24 @@ export function runOrgMemoryAudit({
         `[PublicBoundary] README.md contains internal strategy/monetization term: "${forbiddenReadmeMatch[0]}"`
       )
     }
+    for (const hit of findUnqualifiedZeroSendClaims(readmeText)) {
+      errors.push(
+        `[ClaimAccuracy] README.md contains unqualified zero-send claim "${hit.phrase}" (${hit.reason})`
+      )
+    }
+  }
+
+  // 公開ツール5ファイル横断同期・旧ブランド/廃止呼称ドリフト・POSTMORTEM分類監査（L-17, L-18, Issue #56）
+  errors.push(...auditPublishedToolSync(root))
+  errors.push(...auditBrandAndRoleTerminology(root))
+  const postmortemPath = path.join(root, 'docs', 'POSTMORTEM_AND_LESSONS.md')
+  if (fs.existsSync(postmortemPath)) {
+    errors.push(
+      ...auditPostmortemClassification(
+        fs.readFileSync(postmortemPath, 'utf-8'),
+        'docs/POSTMORTEM_AND_LESSONS.md'
+      )
+    )
   }
 
   const PUBLIC_BOUNDARY_PAGES = [

@@ -161,6 +161,47 @@ for (const dep of directDeps) {
   }
 }
 
+// package-lock.json 内の本番推移的依存（transitive production dependencies）のコピーレフト混入監査（L-17）
+// ※ Astro SSG ビルド時専用のネイティブ画像変換バイナリ (@img/sharp-*, dist/ へ一切バンドルされない) のみ除外
+const BUILD_ONLY_NATIVE_PREFIXES = ['node_modules/@img/sharp-']
+const lockFilePath = path.join(ROOT, 'package-lock.json')
+if (fs.existsSync(lockFilePath)) {
+  const lockJson = JSON.parse(fs.readFileSync(lockFilePath, 'utf-8'))
+  const lockPackages = lockJson.packages || {}
+  for (const [pkgKey, meta] of Object.entries(lockPackages)) {
+    if (!pkgKey || meta.dev === true || meta.link === true) continue
+    if (BUILD_ONLY_NATIVE_PREFIXES.some((p) => pkgKey.startsWith(p))) continue
+    const lic =
+      typeof meta.license === 'string'
+        ? meta.license
+        : JSON.stringify(meta.license || '')
+    if (!lic) continue
+    const hasCopyleft = FORBIDDEN_LICENSE_RE.test(lic)
+    const isDualPermissive =
+      /\bOR\b/i.test(lic) && ALLOWED_LICENSE_RE.test(lic)
+    if (hasCopyleft && !isDualPermissive) {
+      errors.push(
+        `[License] Forbidden copyleft license in production dependency ${pkgKey}: ${lic}`
+      )
+    }
+  }
+}
+
+// public/pdfjs および dist/pdfjs 配下の .wasm バイナリ非混入監査（CSP 'self' 整合・L-17）
+for (const pdfjsRelDir of ['public/pdfjs', 'dist/pdfjs']) {
+  const pdfjsFullDir = path.join(ROOT, pdfjsRelDir)
+  if (!fs.existsSync(pdfjsFullDir)) continue
+  const wasmFiles = walkFiles(pdfjsFullDir).filter((f) =>
+    f.toLowerCase().endsWith('.wasm')
+  )
+  for (const wf of wasmFiles) {
+    const relWf = path.relative(ROOT, wf).replace(/\\/g, '/')
+    errors.push(
+      `[Security] ${relWf}: Prohibited .wasm binary detected under ${pdfjsRelDir}/ (useWasm: false policy)`
+    )
+  }
+}
+
 if (errors.length > 0) {
   console.error('audit:security FAILED:')
   for (const err of errors) {
