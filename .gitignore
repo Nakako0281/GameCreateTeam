@@ -12,6 +12,7 @@ dist
 dist-ads
 dist-ssr
 .astro
+public/pdfjs/
 *.local
 
 # Playwright / Test artifacts
