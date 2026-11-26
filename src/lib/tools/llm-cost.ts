@@ -1,4 +1,8 @@
-import { LLM_MODELS, type LlmModelPrice } from '../../data/llm-pricing'
+import {
+  LLM_MODELS,
+  PRICING_LAST_VERIFIED,
+  type ScheduledModelPrice,
+} from '../../data/llm-pricing'
 
 export interface TokenEstimate {
   totalChars: number
@@ -15,6 +19,7 @@ export interface CostSimulationInput {
   cacheHitRatePercent: number
   useBatchApi: boolean
   usdToJpy: number
+  asOfDate?: string
   customModel?: {
     name: string
     inputPerMillionUsd: number
@@ -28,10 +33,16 @@ export interface ModelCostRow {
   provider: string
   name: string
   tier: string
+  releasedAt: string
+  inputPerMillionUsd: number
+  outputPerMillionUsd: number
+  cachedInputPerMillionUsd: number
   perRequestUsd: number
   monthlyUsd: number
   monthlyJpy: number
   batchApplied: boolean
+  priceEffectiveUntil?: string
+  sourceUrl: string
   notes: string
 }
 
@@ -87,21 +98,65 @@ export function estimateTokens(text: string): TokenEstimate {
   }
 }
 
+export interface SimulatableModel {
+  id: string
+  provider: string
+  name: string
+  tier: string
+  releasedAt: string
+  inputPerMillionUsd: number
+  outputPerMillionUsd: number
+  cachedInputPerMillionUsd: number
+  supportsBatch50: boolean
+  priceEffectiveUntil?: string
+  scheduledPricing?: ScheduledModelPrice
+  sourceUrl: string
+  notes: string
+}
+
+type PricedModelLike = Pick<
+  SimulatableModel,
+  | 'inputPerMillionUsd'
+  | 'outputPerMillionUsd'
+  | 'cachedInputPerMillionUsd'
+  | 'priceEffectiveUntil'
+  | 'scheduledPricing'
+  | 'notes'
+>
+
+/**
+ * 基準日 (YYYY-MM-DD) に応じて予定改定価格を適用する。
+ * デフォルト基準日は PRICING_LAST_VERIFIED に固定し、SSRおよび既存単体テストを決定的に保つ。
+ */
+export function resolveEffectiveModelPrice<T extends PricedModelLike>(
+  model: T,
+  asOfDate: string = PRICING_LAST_VERIFIED
+): T {
+  if (
+    model.scheduledPricing &&
+    asOfDate >= model.scheduledPricing.effectiveFrom
+  ) {
+    return {
+      ...model,
+      inputPerMillionUsd: model.scheduledPricing.inputPerMillionUsd,
+      outputPerMillionUsd: model.scheduledPricing.outputPerMillionUsd,
+      cachedInputPerMillionUsd:
+        model.scheduledPricing.cachedInputPerMillionUsd,
+      priceEffectiveUntil: undefined,
+      notes: model.scheduledPricing.notes,
+    }
+  }
+  return model
+}
+
 export function calculateSingleModelCost(
-  model: Pick<
-    LlmModelPrice,
-    | 'id'
-    | 'provider'
-    | 'name'
-    | 'tier'
-    | 'inputPerMillionUsd'
-    | 'outputPerMillionUsd'
-    | 'cachedInputPerMillionUsd'
-    | 'supportsBatch50'
-    | 'notes'
-  >,
+  model: SimulatableModel,
   input: CostSimulationInput
 ): ModelCostRow {
+  const effectiveModel = resolveEffectiveModelPrice(
+    model,
+    input.asOfDate ?? PRICING_LAST_VERIFIED
+  )
   const safeInputTokens = Math.max(0, input.inputTokens)
   const safeOutputTokens = Math.max(0, input.outputTokens)
   const safeRequests = Math.max(1, input.monthlyRequests)
@@ -112,11 +167,14 @@ export function calculateSingleModelCost(
   const uncachedTokens = safeInputTokens * (1 - hitRate)
 
   let inputCostUsd =
-    (uncachedTokens / 1_000_000) * model.inputPerMillionUsd +
-    (cachedTokens / 1_000_000) * model.cachedInputPerMillionUsd
-  let outputCostUsd = (safeOutputTokens / 1_000_000) * model.outputPerMillionUsd
+    (uncachedTokens / 1_000_000) * effectiveModel.inputPerMillionUsd +
+    (cachedTokens / 1_000_000) * effectiveModel.cachedInputPerMillionUsd
+  let outputCostUsd =
+    (safeOutputTokens / 1_000_000) * effectiveModel.outputPerMillionUsd
 
-  const batchApplied = Boolean(input.useBatchApi && model.supportsBatch50)
+  const batchApplied = Boolean(
+    input.useBatchApi && effectiveModel.supportsBatch50
+  )
   if (batchApplied) {
     inputCostUsd *= 0.5
     outputCostUsd *= 0.5
@@ -127,22 +185,29 @@ export function calculateSingleModelCost(
   const monthlyJpy = monthlyUsd * fx
 
   return {
-    id: model.id,
-    provider: model.provider,
-    name: model.name,
-    tier: model.tier,
+    id: effectiveModel.id,
+    provider: effectiveModel.provider,
+    name: effectiveModel.name,
+    tier: effectiveModel.tier,
+    releasedAt: effectiveModel.releasedAt,
+    inputPerMillionUsd: effectiveModel.inputPerMillionUsd,
+    outputPerMillionUsd: effectiveModel.outputPerMillionUsd,
+    cachedInputPerMillionUsd: effectiveModel.cachedInputPerMillionUsd,
     perRequestUsd,
     monthlyUsd,
     monthlyJpy,
     batchApplied,
-    notes: model.notes,
+    priceEffectiveUntil: effectiveModel.priceEffectiveUntil,
+    sourceUrl: effectiveModel.sourceUrl,
+    notes: effectiveModel.notes,
   }
 }
 
 export function calculateAllModelCosts(
   input: CostSimulationInput
 ): ModelCostRow[] {
-  const models: LlmModelPrice[] = [...LLM_MODELS]
+  const models: SimulatableModel[] = [...LLM_MODELS]
+
   if (
     input.customModel &&
     input.customModel.name.trim() &&
@@ -154,6 +219,7 @@ export function calculateAllModelCosts(
       provider: 'Custom',
       name: input.customModel.name.trim(),
       tier: 'balanced',
+      releasedAt: 'Custom',
       inputPerMillionUsd: Math.max(0, input.customModel.inputPerMillionUsd),
       outputPerMillionUsd: Math.max(0, input.customModel.outputPerMillionUsd),
       cachedInputPerMillionUsd: Math.max(
@@ -161,6 +227,7 @@ export function calculateAllModelCosts(
         input.customModel.cachedInputPerMillionUsd
       ),
       supportsBatch50: true,
+      sourceUrl: '',
       notes: 'ユーザー指定のカスタム単価条件',
     })
   }
@@ -175,10 +242,15 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
     'Provider',
     'Model',
     'Tier',
+    'ReleasedAt',
+    'InputPer1M_USD',
+    'OutputPer1M_USD',
+    'CachedInputPer1M_USD',
     'PerRequestUSD',
     'MonthlyUSD',
     'MonthlyJPY',
     'Batch50Applied',
+    'PriceEffectiveUntil',
   ].join(',')
 
   const lines = rows.map((r) =>
@@ -186,10 +258,15 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
       `"${r.provider.replace(/"/g, '""')}"`,
       `"${r.name.replace(/"/g, '""')}"`,
       r.tier,
+      r.releasedAt,
+      r.inputPerMillionUsd.toFixed(4),
+      r.outputPerMillionUsd.toFixed(4),
+      r.cachedInputPerMillionUsd.toFixed(4),
       r.perRequestUsd.toFixed(6),
       r.monthlyUsd.toFixed(4),
       Math.round(r.monthlyJpy).toString(),
       r.batchApplied ? 'YES' : 'NO',
+      r.priceEffectiveUntil ?? '',
     ].join(',')
   )
   return [header, ...lines].join('\r\n')

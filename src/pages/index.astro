@@ -1,11 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 import { PLANNED_TOOLS, PUBLISHED_TOOLS } from '../data/tools'
 
-const pageTitle = 'LocalBox | 完全ブラウザ完結・ゼロ送信 実務Webツール集'
+const pageTitle = 'TemotoBox | 入力データ送信ゼロのブラウザ完結・実務ワークベンチ'
 const pageDescription =
-  '入力データやファイルを1バイトもサーバーへ送らずブラウザ内だけで安全に処理できる無料Webツール集。AI入力前の個人情報マスキング、LLM料金試算、CSV文字化け修復、画像EXIF削除を提供。'
+  '生成AIや社外共有の前に、入力データやファイルの内容をサーバーへ送らずブラウザ内だけで安全に下ごしらえできる無料実務ワークベンチ。AI個人情報マスキング、.env・JSON・YAML秘匿化、Markdown整形、LLM料金試算、CSV修復、画像EXIF削除を提供。'
 
 const siteOrigin = Astro.site?.href || SITE_CONFIG.defaultUrl
 const jsonLd = {
@@ -21,130 +22,177 @@ const jsonLd = {
 <BaseLayout title={pageTitle} description={pageDescription} jsonLd={jsonLd}>
   <!-- Hero -->
   <section class="border-b border-slate-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <div class="max-w-3xl">
-        <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
-          ブラウザローカル処理 / サーバー送信 0 bytes / 登録不要
-        </span>
-        <h1 class="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-          社外秘や個人情報をサーバーへ送らず、ブラウザの中だけで完結する実務ツール集
-        </h1>
-        <p class="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-          LocalBoxは、生成AIへの入力前マスキング・APIコスト試算・Excel向けCSV文字化け修復・画像EXIF位置情報削除といった日々の実務を、通信ゼロで安全・高速に処理できる完全無料ツールスタジオです。
-        </p>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <a
-            href="#tools"
-            class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
-          >
-            公開中のツールを使う
-          </a>
-          <a
-            href="/about/"
-            class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-          >
-            外部送信ゼロの確認方法
-          </a>
-        </div>
-      </div>
-
-      <!-- 3つの保証 -->
-      <div class="mt-10 grid gap-4 sm:grid-cols-3">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <p class="text-xs font-bold text-sky-800">GUARANTEE 01</p>
-          <h2 class="mt-1 text-base font-bold text-slate-900">
-            入力データのサーバー送信はゼロ
-          </h2>
-          <p class="mt-2 text-sm leading-relaxed text-slate-600">
-            テキスト・CSV・画像はすべてブラウザメモリとHTML5 Canvas上で処理されます。処理APIもサーバーデータベースも一切存在しません。
-          </p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <p class="text-xs font-bold text-sky-800">GUARANTEE 02</p>
-          <h2 class="mt-1 text-base font-bold text-slate-900">
-            会員登録・個人情報保持なし
-          </h2>
-          <p class="mt-2 text-sm leading-relaxed text-slate-600">
-            ログインやアカウント登録は不要です。サイバー攻撃による顧客情報漏洩リスクを設計レベルで排除しています。
-          </p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <p class="text-xs font-bold text-sky-800">GUARANTEE 03</p>
-          <h2 class="mt-1 text-base font-bold text-slate-900">
-            Chrome拡張のインストール不要
-          </h2>
-          <p class="mt-2 text-sm leading-relaxed text-slate-600">
-            ブラウザの拡張権限を求めることなく、単一タブ内で完結して動作します。厳格なセキュリティポリシー環境でもそのまま検証可能です。
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 公開中ツール -->
-  <section id="tools" class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-    <div class="flex flex-wrap items-end justify-between gap-2">
-      <div>
-        <h2 class="text-2xl font-bold text-slate-900">公開中のローカル実務ツール</h2>
-        <p class="mt-1 text-sm text-slate-600">
-          すべてのツールにサンプル投入ボタンがあり、手元にファイルがなくてもすぐ試せます。
+        <PhraseHeading
+          as="h1"
+          segments={['入力データを', '送らず、', 'ブラウザだけで', '完結する', '実務ワークベンチ']}
+          class="text-[1.625rem] font-extrabold tracking-tight text-slate-900 sm:text-4xl"
+        />
+        <p class="mt-2.5 text-sm leading-relaxed text-slate-600 sm:text-base">
+          生成AIや社外共有の前に、入力テキスト・設定ファイル・CSV・画像をサーバーへ送らずブラウザ内で安全に下ごしらえ。登録や拡張機能は不要です。
         </p>
       </div>
-      <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
-        {PUBLISHED_TOOLS.length} ツール稼働中
-      </span>
-    </div>
 
-    <div class="mt-6 grid gap-5 md:grid-cols-2">
-      {
-        PUBLISHED_TOOLS.map((tool) => (
-          <a
-            href={`/tools/${tool.slug}/`}
-            class="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-sky-400 hover:shadow-md"
-          >
-            <div>
-              <div class="flex items-center justify-between gap-2">
-                <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200">
-                  {tool.categoryLabel}
-                </span>
-                <span class="text-xs font-semibold text-emerald-700">
-                  利用可能
-                </span>
+      <!-- 公開中ツール（ファーストビュー即アクセス） -->
+      <div id="tools" class="mt-7 grid gap-4 md:grid-cols-2">
+        {
+          PUBLISHED_TOOLS.map((tool) => (
+            <a
+              href={`/tools/${tool.slug}/`}
+              class="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50/40 p-5 transition hover:border-sky-400 hover:bg-white hover:shadow-sm"
+            >
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-200/70 transition group-hover:bg-sky-600 group-hover:text-white">
+                {tool.iconKey === 'shield' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                )}
+                {tool.iconKey === 'calculator' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="16" height="20" x="4" y="2" rx="2" />
+                    <line x1="8" x2="16" y1="6" y2="6" />
+                    <line x1="8" x2="8" y1="14" y2="14.01" />
+                    <line x1="12" x2="12" y1="14" y2="14.01" />
+                    <line x1="16" x2="16" y1="14" y2="14.01" />
+                    <line x1="8" x2="8" y1="18" y2="18.01" />
+                    <line x1="12" x2="12" y1="18" y2="18.01" />
+                    <line x1="16" x2="16" y1="18" y2="18.01" />
+                  </svg>
+                )}
+                {tool.iconKey === 'table' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3v18" />
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M3 9h18" />
+                    <path d="M3 15h18" />
+                  </svg>
+                )}
+                {tool.iconKey === 'image' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                  </svg>
+                )}
+                {tool.iconKey === 'sparkles' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                    <path d="M5 3v4" />
+                    <path d="M19 17v4" />
+                    <path d="M3 5h4" />
+                    <path d="M17 19h4" />
+                  </svg>
+                )}
+                {tool.iconKey === 'file-lock' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                    <rect width="8" height="5" x="8" y="13" rx="1" />
+                    <path d="M10 13v-2a2 2 0 1 1 4 0v2" />
+                  </svg>
+                )}
+                {tool.iconKey === 'files' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 7h-3a2 2 0 0 1-2-2V2" />
+                    <path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z" />
+                    <path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8" />
+                  </svg>
+                )}
+                {tool.iconKey === 'braces' && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1" />
+                    <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1" />
+                  </svg>
+                )}
               </div>
-              <h3 class="mt-3 text-lg font-bold text-slate-900 group-hover:text-sky-700">
-                {tool.name}
-              </h3>
-              <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                {tool.summary}
-              </p>
-            </div>
-            <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-bold text-sky-700">
-              <span>ブラウザで今すぐ使う</span>
-              <span aria-hidden="true">&rarr;</span>
-            </div>
-          </a>
-        ))
-      }
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[11px] font-semibold text-sky-700">
+                    {tool.categoryLabel}
+                  </span>
+                  <span class="text-xs font-semibold text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-sky-700" aria-hidden="true">
+                    &rarr;
+                  </span>
+                </div>
+                <h2 class="mt-0.5 text-base font-bold text-slate-900 group-hover:text-sky-700">
+                  {tool.shortTitle}
+                </h2>
+                <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                  {tool.shortSummary}
+                </p>
+              </div>
+            </a>
+          ))
+        }
+      </div>
     </div>
   </section>
 
-  <!-- 開発ロードマップ -->
+  <!-- 設計方針（スリムトラスト帯） -->
+  <section class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="mt-0.5 shrink-0 text-emerald-600">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">入力データ送信ゼロ</h3>
+          <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
+            入力テキストやファイルの処理はすべてブラウザメモリ・Canvas上で完結します（解析・広告の外部送信内訳は<a href="/privacy/" class="font-semibold text-sky-700 underline">プライバシーポリシー</a>に公表）。
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="mt-0.5 shrink-0 text-sky-600">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">登録・拡張機能不要</h3>
+          <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
+            アカウント登録やブラウザ拡張権限は不要。単一タブ内で安全に動作します。
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="mt-0.5 shrink-0 text-slate-700">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">DevToolsで検証可能</h3>
+          <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
+            Networkタブやオフライン状態で、入力内容が外部へ送信されないことを<a href="/about/" class="font-semibold text-sky-700 underline">ご自身で確認</a>できます。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 開発中・今後追加予定のツール -->
   <section class="border-t border-slate-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <h2 class="text-xl font-bold text-slate-900">今後の追加予定ツール（順次拡充中）</h2>
-      <p class="mt-1 text-sm text-slate-600">
-        以下のツールも同じく「サーバー送信0バイト」方針で順次公開予定です。
-      </p>
-      <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-base font-bold text-slate-900">追加予定のローカルツール</h2>
+        <p class="text-xs text-slate-500">
+          すべて入力データをサーバーへ送信しないブラウザ完結設計で順次公開予定です。
+        </p>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {
           PLANNED_TOOLS.map((tool) => (
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <span class="inline-block rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
-                Wave {tool.wave} 予定
+            <div class="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <span class="text-[11px] font-semibold text-slate-500">
+                {tool.categoryLabel}
               </span>
-              <h3 class="mt-2 text-sm font-bold text-slate-900">{tool.shortTitle}</h3>
+              <h3 class="mt-0.5 text-sm font-bold text-slate-800">{tool.shortTitle}</h3>
               <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                {tool.summary}
+                {tool.shortSummary}
               </p>
             </div>
           ))

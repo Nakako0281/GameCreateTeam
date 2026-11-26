@@ -1,0 +1,107 @@
+---
+import ToolLayout, { type FaqItem } from '../../layouts/ToolLayout.astro'
+import ConfigSanitizer from '../../components/tools/ConfigSanitizer'
+import { getToolBySlug } from '../../data/tools'
+
+const tool = getToolBySlug('config-sanitizer')
+const seoTitle = '.env・JSON・YAML・ログ秘匿化＆変換｜.env.example生成 | TemotoBox'
+const seoDescription =
+  '.env・JSON・YAML・サーバーログ内のAPIキー・DBパスワード・秘密鍵・Kubernetes Secretを構文を壊さずブラウザ内で自動マスク。.env.example生成やJSON⇔YAML⇔.env相互変換も入力データ送信ゼロで完結します。'
+
+const faqs: FaqItem[] = [
+  {
+    question: '.env ファイルから安全な .env.example テンプレートを作るにはどうすればよいですか？',
+    answer:
+      '本番や開発環境の .env を入力欄へ貼り付けるかドラッグ＆ドロップし、上部の置換スタイルで「.env.example」を選択してください。APIキーやDBパスワードのみが YOUR_API_KEY 形式のプレースホルダー（詳細設定で空値 KEY= へ変更可能）に置き換わり、NODE_ENV・PORT・${DB_USER} のような変数展開やコメント行はそのまま残ります。',
+  },
+  {
+    question: '複数のドキュメント（--- 区切り）を含む Kubernetes YAML や Secret もマスクできますか？',
+    answer:
+      'はい。YAMLパーサーとしてマルチドキュメント解析（parseAllDocuments）を採用しているため、1つのマニフェスト内に Deployment と Secret が混在していても全ドキュメントを走査します。kind: Secret の配下にある data（Base64エンコード値）や stringData、last-applied-configuration アノテーション内の埋め込みJSONまで一括でマスクします。',
+  },
+  {
+    question: '自然言語のメールや問い合わせ文を扱う「AI入力前 PIIマスカー」とはどう使い分ければよいですか？',
+    answer:
+      '自然言語に含まれる取引先の社名・氏名・住所を仮名化し、生成AIの回答から元の固有名詞へ往復復元したい場合は「AI入力前 PIIマスカー」が適しています。一方、本ツールは GitHub Issue や障害チケット共有前に .env・JSON/JSONC・YAML・JSONLログの構文妥当性を維持したままクレデンシャルだけを除去する開発・運用専用ツールであり、復元機能は持たせていません。',
+  },
+  {
+    question: 'すでにGitリポジトリやチャットへ誤って公開してしまったAPIキーをこのツールで処理すれば安全ですか？',
+    answer:
+      'いいえ。すでに外部のログ・Git履歴・スクリーンショット等へ一度でも露出した本番クレデンシャルは、本ツールでマスクするだけでは無効化されません。直ちに各クラウド事業者やサービス管理画面から該当キーを無効化（Revoke）し、新しいキーへのローテーションを実施してください。',
+  },
+]
+---
+
+<ToolLayout
+  tool={tool}
+  seoTitle={seoTitle}
+  seoDescription={seoDescription}
+  featureList={[
+    '.env・JSON/JSONC・マルチドキュメントYAML・JSONLログの自動判定と非破壊サニタイズ',
+    'シェルリダイレクト安全な .env.example 生成と ${VAR} 変数参照・公開設定保護',
+    'Kubernetes kind: Secret の data Base64・stringData・last-applied-configuration 一括マスク',
+    'サニタイズ済みデータの .env ⇔ JSON ⇔ YAML 相互変換と伏せ字プレビュー監査ログ',
+  ]}
+  faqs={faqs}
+>
+  <ConfigSanitizer slot="tool" client:load />
+
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
+    <section>
+      <h2 class="text-lg font-bold text-slate-900">
+        設定ファイルと障害ログの構文を壊さずに秘匿値だけを抜き取る設計思想
+      </h2>
+      <p class="mt-2.5">
+        障害調査のためにサーバーログをGitHub Issueや開発チャットへ貼るとき、あるいは新規メンバー向けに本番の
+        <code>.env</code> からテンプレート用の <code>.env.example</code> を切り出すとき、正規表現の一括置換や手作業の削除に頼ると予期せぬ構文破壊や見落としが起きます。たとえばJSONの末尾カンマやエスケープを誤って壊せば再現検証にそのまま使えず、逆に公開設定である <code>NODE_ENV</code> やポート番号、Stripeの公開鍵（<code>pk_live_</code>）、分散トレーシング用のUUIDやGitコミットSHAまで消してしまうと、障害原因の切り分け自体が困難になります。
+      </p>
+      <p class="mt-2.5">
+        本ツールは <code>.env</code>・JSON/JSONC・YAML・JSONL・プレーンログをブラウザのメモリ内だけで構文解析し、デバッグや設定レビューに必要な骨組みを保ったままクレデンシャルだけを安全に隔離します。なお、顧客名や取引先企業名など自然言語の文章を仮名化してAIの返答から元の固有名詞へ戻したい場合は、往復復元機能を備えた
+        <a href="/tools/ai-pii-masker/" class="font-semibold text-sky-700 underline">AI入力前 PIIマスカー</a>
+        と目的別に使い分けることができます。
+      </p>
+    </section>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>形式ごとの実務エッジケース対応（.env・K8s YAML・JSONL・URL userinfo）</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <ul class="list-disc space-y-2 pl-5">
+          <li>
+            <strong>.env のクォート・シェル安全性・変数参照保護:</strong> クォート内の <code>#</code> を含むパスワード（例: <code>DB_PASS="p@ss#word"</code>）をインラインコメントと誤認せず値全体をマスクします。逆に無クォート行を <code>&lt;REDACTED&gt;</code> へ置き換える際は、<code>source</code> 読込時のシェルリダイレクト演算子誤爆を防ぐため自動でダブルクォートを補います。また、<code>{'postgres://${DB_USER}:${DB_PASS}@${DB_HOST}/app'}</code> のような環境変数展開テンプレートは秘匿値を含まない参照構文としてそのまま残します。
+          </li>
+          <li>
+            <strong>YAML マルチドキュメント・Kubernetes Secret 保護:</strong> <code>---</code> で複数リソースが連なるマニフェストをすべて走査し、<code>kind: Secret</code> の <code>data</code>（Base64化されていてキー名だけでは判別不能な値）や <code>stringData</code>、さらにアノテーション <code>last-applied-configuration</code> に埋め込まれたJSON文字列まで再帰的にサニタイズします。複数行PEMのブロックスカラー（<code>|</code>）やアンカー／エイリアス（<code>&amp;anchor</code> / <code>*alias</code>）も整合性を崩さず正規化します。
+          </li>
+          <li>
+            <strong>URL認証部の末尾「@」境界判定とHTTP/2・curlログ:</strong> パスワード自体に <code>@</code> や <code>:</code>、<code>/</code> が含まれる接続URI（例: <code>postgres://user:p@ss:w/rd@db.internal:5432/prod</code>）でも、ホスト直前の最終 <code>@</code> を正確に特定してホスト名・DB名・<code>sslmode</code> 等の非機密パラメータをデバッグ用に残します。HTTP/2の小文字ヘッダー（<code>authorization</code> / <code>proxy-authorization</code> / <code>x-api-key</code> / <code>cookie</code> / <code>set-cookie</code>）や <code>curl -u</code>、AWS SigV4署名クエリにも対応しています。
+          </li>
+          <li>
+            <strong>JSON / JSONC / JSONL と相互変換:</strong> コメントや末尾カンマ付きの設定JSON（JSONC）を標準JSONへ整形しつつ、構造化ログ（JSONL）が混在するエラーファイルは行単位のJSON構造解析＋フォールバックで安全にマスクします。構造化された設定ファイルはサニタイズ済みの状態から <code>.env</code> ⇔ <code>JSON</code> ⇔ <code>YAML</code> への変換・保存も可能です。
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>ゼロ保存・肩越し覗き見対策・運用上の注意（免責とキーローテーション）</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          本ツールは入力テキスト、ファイル内容、追加指定キーのいずれもブラウザの <code>localStorage</code>・<code>sessionStorage</code>・URLパラメータへ一切保存しません。ブラウザタブを閉じた時点でメモリ上から即座に揮発します。また、下部の検出レポートでも肩越し覗き見（ショルダーサーフィン）を防ぐため、元のシークレット文字列は短い値を全伏せ（<code>••••••••</code>）、長い値も前後数文字のみのプレビューへ制限して描画しています。
+        </p>
+        <p>
+          なお、独自の社内キー命名規則や非定型フォーマットの秘匿文字列を含め、機械的なルールだけで100%の完全検出を保証することはできません。GitHub Issue や社内チャット、外部サポート窓口へ出力を貼り付ける前には、必ずご自身の目で未マスクの機密情報が含まれていないか最終確認してください。万一すでに外部へ露出した本番キーやトークンを発見した場合は、マスキング処理で隠すのではなく直ちに発行元サービスで無効化（Revoke）および再発行を行ってください。
+        </p>
+      </div>
+    </details>
+  </div>
+</ToolLayout>

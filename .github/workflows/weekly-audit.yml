@@ -45,7 +45,7 @@ jobs:
           script: |
             const title = `[AI] Weekly Audit Failure (${new Date().toISOString().slice(0, 10)})`
             const body = [
-              '週次の自動健全性監査（依存脆弱性 / ビルド / セキュリティ / SEO / 料金データ鮮度）が失敗しました。',
+              '週次の自動健全性監査（依存脆弱性 / ビルド / セキュリティ / SEO / 組織メモリ整合性）が失敗しました。',
               '',
               `- Run URL: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               '- 対応方法: 原因を調査して修正し、再発防止策を `docs/POSTMORTEM_AND_LESSONS.md` と機械チェックへ追記してください。'

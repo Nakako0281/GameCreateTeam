@@ -1,24 +1,27 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 
-const title = 'プライバシーポリシー・外部送信規律 | LocalBox'
+const title = 'プライバシーポリシー・外部送信規律 | TemotoBox'
 const description =
-  'LocalBoxにおける入力データの完全ブラウザ完結処理、localStorageの利用範囲、電気通信事業法に基づく外部送信規律およびGoogleアナリティクス・AdSenseに関する公表事項です。'
+  'TemotoBoxにおける入力データの完全ブラウザ完結処理、localStorageの利用範囲、電気通信事業法に基づく外部送信規律およびGoogleアナリティクス・AdSenseに関する公表事項です。'
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
-        プライバシーポリシー・外部送信規律に関する公表
-      </h1>
-      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月21日</p>
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
+      <PhraseHeading
+        as="h1"
+        segments={['プライバシーポリシー', 'および', '外部送信規律']}
+        class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+      />
+      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月23日</p>
 
       <div class="mt-6 space-y-8 text-sm leading-relaxed text-slate-700">
         <section>
-          <h2 class="text-lg font-bold text-slate-900">1. 入力データおよびファイルの取り扱い（ゼロ送信原則）</h2>
+          <h2 class="text-lg font-bold text-slate-900">1. 入力データおよびファイルの取り扱い（入力データ送信ゼロ原則）</h2>
           <p class="mt-2">
-            LocalBox（以下「当サイト」）が提供する各種ツール（個人情報マスキング、LLM料金試算、CSV文字化け修復、画像EXIF削除など）は、すべてお客様のWebブラウザ内（クライアントサイドのJavaScript・HTML5 Canvas等）で完結して動作します。
+            TemotoBox（以下「当サイト」）が提供する各種ツール（個人情報マスキング、LLM料金試算、CSV文字化け修復、画像EXIF削除など）は、すべてお客様のWebブラウザ内（クライアントサイドのJavaScript・HTML5 Canvas等）で完結して動作します。
           </p>
           <p class="mt-2">
             入力された文章、CSVファイル、画像ファイル、ならびに変換・削除・マスキングの処理結果は、当サイトのサーバーや外部APIへ一切送信・保存されません。また、会員登録・氏名・メールアドレス等の個人情報を当サイトのデータベースで保持することもありません。
@@ -35,7 +38,7 @@ const description =
         <section>
           <h2 class="text-lg font-bold text-slate-900">3. 電気通信事業法「外部送信規律」に基づく公表事項</h2>
           <p class="mt-2">
-            当サイトでは、サイトの利用状況の把握による改善および無料のサービス運営維持（広告配信）のため、本番環境において以下の外部事業者の計測・広告サービスを導入する場合があります（※ローカル検証環境および設定未適用時は読み込まれません）。これらによりツールへの入力内容が送信されることはありません。
+            当サイトでは、サイトの利用状況の把握による改善および無料のサービス運営維持（広告配信）のため、本番環境において以下の外部事業者の計測・広告サービスを導入する場合があります（※ローカル検証環境および設定未適用時は読み込まれません）。これらが有効な環境ではGoogle等の配信サーバーへの計測・広告リクエストが発生しますが、各ツールへの入力内容・ファイル・処理結果の計算処理とは完全に分離されており、入力データが外部へ送信されることはありません。
           </p>
 
           <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">

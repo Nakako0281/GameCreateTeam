@@ -1,18 +1,21 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 
-const title = 'LocalBoxについて・外部送信ゼロの技術検証方法'
+const title = 'TemotoBoxについて・入力データ非送信の技術検証方法'
 const description =
-  'LocalBoxの運営方針、なぜ100%静的サイトとブラウザ完結処理にこだわるのか、そして利用者自身がDevToolsのNetworkタブで外部送信ゼロを確認する具体的な手順を解説します。'
+  'TemotoBoxのブラウザ完結設計、入力データやファイル内容を外部送信しない仕組み、およびDevToolsのNetworkタブで入力漏洩がないことを検証する手順を解説します。'
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
-        LocalBoxについて・ゼロ送信アーキテクチャの検証手順
-      </h1>
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
+      <PhraseHeading
+        as="h1"
+        segments={['TemotoBoxの', '入力データ', '非送信設計と', '検証手順']}
+        class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+      />
 
       <div class="mt-6 space-y-8 text-sm leading-relaxed text-slate-700">
         <section>
@@ -21,24 +24,24 @@ const description =
             世の中には便利なオンライン変換サイトやChrome拡張機能が数多く存在しますが、「ファイルを一度海外サーバーへアップロードする仕様で社内規定に引っかかる」「便利なAI補助拡張機能が実は入力テキストを外部へ送信していた」というセキュリティ上の不安がつきまといます。
           </p>
           <p class="mt-2">
-            LocalBoxは、最初から<strong>サーバーサイドの受信APIもデータベースも持たない100%静的配信サイト（SSG）</strong>として設計されています。お客様が入力したテキストや選んだ画像・CSVは、お使いのPC・スマートフォンのブラウザメモリの中だけで変換・加工され、そのままローカルへダウンロードまたはコピーされます。
+            TemotoBoxは、最初から<strong>サーバーサイドの受信APIもデータベースも持たない100%静的配信サイト（SSG）</strong>として設計されています。お客様が入力したテキストや選んだ画像・CSVは、お使いのPC・スマートフォンのブラウザメモリの中だけで変換・加工され、そのままローカルへダウンロードまたはコピーされます。
           </p>
         </section>
 
         <section>
-          <h2 class="text-lg font-bold text-slate-900">2. ご自身の目で「外部通信ゼロ」を検証する3ステップ</h2>
+          <h2 class="text-lg font-bold text-slate-900">2. ご自身の目で「入力データ送信ゼロ」を検証する3ステップ</h2>
           <p class="mt-2">
-            「本当にデータを送信していないのか？」を言葉だけで信じていただく必要はありません。標準的なブラウザ（Chrome / Edge / Firefox等）の開発者ツールを使えば、誰でも10秒で確認できます。
+            「本当に入力データを送信していないのか？」を言葉だけで信じていただく必要はありません。標準的なブラウザ（Chrome / Edge / Firefox等）の開発者ツールを使えば、誰でも10秒で確認できます。
           </p>
           <ol class="mt-3 list-decimal space-y-2.5 rounded-xl border border-slate-200 bg-slate-50 p-5 pl-9">
             <li>
               使いたいツールページ（例：<a href="/tools/ai-pii-masker/" class="font-semibold text-sky-700 underline">AI PII マスカー</a>）を開いた状態で、キーボードの <code>F12</code> キー（Macは <code>Cmd + Option + I</code>）を押して開発者ツールを開きます。
             </li>
             <li>
-              上部の <strong>Network（ネットワーク）</strong> タブを選択し、クリアボタン（斜線付き丸アイコン）を押して初期読み込みログを空にします。さらに <strong>Fetch/XHR</strong> で絞り込むとAPI通信の有無だけが見やすくなります。
+              上部の <strong>Network（ネットワーク）</strong> タブを選択し、クリアボタン（斜線付き丸アイコン）を押して初期読み込みログを空にします。なお、本番環境でアクセス解析（GA4）や広告配信（Google AdSense）が有効になっている場合は、Googleドメイン宛ての計測・広告通信のみが記録されることがあります（内訳は <a href="/privacy/" class="font-semibold text-sky-700 underline">プライバシーポリシー</a> をご参照ください）。
             </li>
             <li>
-              その状態で「サンプル文を試す」や文字の入力、CSVファイルの変換、画像のEXIF削除を実行してください。処理を実行している間、<strong>ツール由来の通信（POST送信等）が1件も発生しないこと</strong>をリアルタイムで確認できます。
+              その状態で「サンプル文を試す」やダミー文字列の入力、CSVファイルの変換、画像のEXIF削除を実行してください。処理を実行しても<strong>ツール由来のAPI通信（POST送信等）が一切発生しないこと</strong>、および仮に解析・広告の通信が表示されてもそのURL・クエリ・Payloadに入力内容が1文字も含まれないことをリアルタイムで確認できます。
             </li>
           </ol>
           <p class="mt-3 text-xs text-slate-600">
@@ -47,19 +50,19 @@ const description =
         </section>
 
         <section>
-          <h2 class="text-lg font-bold text-slate-900">3. 運営体制と品質保証（自動化チェック）</h2>
+          <h2 class="text-lg font-bold text-slate-900">3. 品質保証とソースコードの透明性</h2>
           <p class="mt-2">
-            当サイトは個人開発およびAI自律運用チーム（AutoGrowth Studio）の協働により保守・改善されています。公開前のすべての変更は、外部通信API混入検査・XSS対策・Playwright実ブラウザ通信ゼロ証明テストを自動実行するパイプラインを通過したものだけを反映しています。
+            TemotoBoxは、公開リポジトリ上で継続的に保守・改善されています。公開前のすべての変更は、外部通信APIの混入検査・XSS対策・Playwright実ブラウザによる入力データ非送信検証テスト（解析・広告スクリプト有効構成での入力漏洩ゼロ検証を含む）を自動実行するパイプラインを通過したものだけを反映しています。
           </p>
           <p class="mt-2">
-            ソースコードおよび改善タスク・要望管理は公開リポジトリにて透明性を持って運用しています。ご意見は
+            不具合の報告や機能改善のご提案は
             <a
-              href={SITE_CONFIG.repoIssuesUrl}
+              href={SITE_CONFIG.feedbackIssueUrl}
               target="_blank"
               rel="noopener noreferrer"
               class="font-semibold text-sky-700 underline"
             >
-              GitHub Issues
+              フィードバックフォーム（GitHub）
             </a>
             よりお寄せいただけます。
           </p>

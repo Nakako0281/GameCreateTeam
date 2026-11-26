@@ -2,9 +2,9 @@ name: CI (Typecheck, Unit Test, Build, Audits & E2E)
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   verify:
@@ -12,6 +12,27 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Branch Governance Gate (main target)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        shell: bash
+        run: |
+          git fetch origin dev main --no-tags
+          HAS_EXCEPTION="${{ contains(github.event.pull_request.labels.*.name, 'release:exception-approved') }}"
+          HEAD_REF="${{ github.head_ref }}"
+          if [ "$HAS_EXCEPTION" != "true" ]; then
+            if ! git merge-base --is-ancestor origin/main origin/dev; then
+              echo "ERROR: origin/main contains commits not yet in origin/dev. Sync main -> dev before opening a PR to main."
+              exit 1
+            fi
+            if [ "$HEAD_REF" != "dev" ]; then
+              echo "ERROR: Pull requests targeting main must originate from 'dev' (got '$HEAD_REF'). Add label 'release:exception-approved' only with explicit Human approval."
+              exit 1
+            fi
+          fi
+          echo "Branch governance gate passed (head=$HEAD_REF, exception=$HAS_EXCEPTION)."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -19,32 +40,97 @@ jobs:
           node-version-file: '.node-version'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Detect changed file scopes
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+          else
+            CHANGED="FORCE_FULL_CI"
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          DOCS_ONLY="true"
+          PRICING_CHANGED="false"
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [ "$file" = "FORCE_FULL_CI" ]; then
+              DOCS_ONLY="false"
+              PRICING_CHANGED="false"
+              continue
+            fi
+            if [ "$file" = "src/data/llm-pricing.ts" ]; then
+              PRICING_CHANGED="true"
+            fi
+            case "$file" in
+              docs/*|.agents/*|.github/ISSUE_TEMPLATE/*|README.md|AGENTS.md)
+                ;;
+              *)
+                DOCS_ONLY="false"
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          echo "docs_only=$DOCS_ONLY" >> "$GITHUB_OUTPUT"
+          echo "pricing_changed=$PRICING_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Detected docs_only=$DOCS_ONLY, pricing_changed=$PRICING_CHANGED"
 
       - name: CI Parity & Lockfile Audit
         run: npm run audit:ci-parity
 
+      - name: Lightweight Docs & Memory Audit (docs-only PR)
+        if: steps.changes.outputs.docs_only == 'true'
+        run: node scripts/audit-org-memory.mjs --docs-only
+
+      - name: Install dependencies
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm ci
+
       - name: Type check (Astro & TypeScript)
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run typecheck
 
       - name: Run Unit Tests (Vitest)
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run test
 
       - name: Build static site
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run build
 
       - name: Security & License Audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run audit:security
 
       - name: SEO & AdSense Policy Audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run audit:seo
 
       - name: Org Memory & Freshness Audit
-        run: npm run audit:memory
+        if: steps.changes.outputs.docs_only != 'true'
+        shell: bash
+        run: |
+          if [ "${{ steps.changes.outputs.pricing_changed }}" = "true" ]; then
+            npm run audit:memory:freshness
+          else
+            npm run audit:memory
+          fi
 
       - name: Install Playwright Chromium
+        if: steps.changes.outputs.docs_only != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E & Zero-Transmission Proof
+        if: steps.changes.outputs.docs_only != 'true'
         run: npm run test:e2e
+
+      - name: Run Ad/Analytics-Enabled Input-Leakage Zero E2E
+        if: steps.changes.outputs.docs_only != 'true'
+        run: npm run test:e2e:ads

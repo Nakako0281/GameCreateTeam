@@ -4,7 +4,7 @@ import CsvEncodingFixer from '../../components/tools/CsvEncodingFixer'
 import { getToolBySlug } from '../../data/tools'
 
 const tool = getToolBySlug('csv-encoding-fixer')
-const seoTitle = 'Excel CSV文字化け修復(UTF-8 BOM付)＆列マスキング | LocalBox'
+const seoTitle = 'Excel CSV文字化け修復(UTF-8 BOM付)＆列マスキング | TemotoBox'
 const seoDescription =
   'CSVファイルをサーバーへ送信せずブラウザ内だけで文字コードを自動判定し、Excelで文字化けしないUTF-8(BOM付)やShift-JISへ変換。氏名・メール等の列マスクや削除も可能です。'
 
@@ -46,38 +46,48 @@ const faqs: FaqItem[] = [
 >
   <CsvEncodingFixer slot="tool" client:load />
 
-  <div slot="guide" class="space-y-6 text-sm leading-relaxed text-slate-700">
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
     <section>
-      <h2 class="text-xl font-bold text-slate-900">
+      <h2 class="text-lg font-bold text-slate-900">
         ExcelでCSVが「驟｡螟峨↑」と文字化けする本当の理由と一番確実な解決策
       </h2>
-      <p class="mt-3">
+      <p class="mt-2.5">
         Webサービス、SaaS管理画面、ECショップ、決済システムからダウンロードしたCSVファイルをWindowsのExcelで開いた瞬間、日本語が意味不明な漢字の羅列に化けてしまう現象は、日本のオフィス実務における定番トラブルの一つです。これはデータが壊れているわけではなく、出力側のシステムが「UTF-8（BOMなし）」で書き出したファイルを、Excel側が「Shift-JIS」だと誤解して読み込む文字コードのすれ違いによって起きます。
       </p>
-      <p class="mt-3">
+      <p class="mt-2.5">
         従来の対処法では、メモ帳やテキストエディタで一度開いて「名前を付けて保存」をやり直したり、Excelのデータタブから毎回インポートウィザードを起動したりと面倒な手順が必要でした。本ツールを使えば、ファイルをドラッグまたは選択するだけでブラウザがバイト列から文字コードを自動判別し、1クリックでExcelがそのまま正しく開ける「UTF-8（BOM付）」へ作り直せます。
       </p>
     </section>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        変換ついでに個人情報を伏せられる「列マスキング＆列削除」の実務価値
-      </h2>
-      <p class="mt-3">
-        日本の多くの企業では、「顧客一覧・注文履歴・社員名簿が含まれるCSVをオンラインの無料変換サイトへアップロードすること」自体が情報セキュリティ規定で禁止されています。なぜなら、通常のWeb変換ツールはサーバーへファイルを送信して処理するため、いつどこにファイルがキャッシュされるか分からないからです。
-      </p>
-      <p class="mt-3">
-        LocalBoxのCSV修復ツールは<strong>完全ローカル処理</strong>であることに加え、プレビューを確認しながら列ごとに<strong>「そのまま」「マスク (***)」「列を削除」</strong>を指定できる機能を搭載しました。例えば、AIツールに売上データの傾向分析を任せたい時、「顧客名」と「メールアドレス」の列だけをローカルでマスクまたは削除してから出力すれば、分析に必要な数値や商品カテゴリを保ったまま安全にデータ活用へ進めます。
-      </p>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>変換ついでに個人情報を伏せられる「列マスキング＆列削除」の実務価値</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          日本の多くの企業では、「顧客一覧・注文履歴・社員名簿が含まれるCSVをオンラインの無料変換サイトへアップロードすること」自体が情報セキュリティ規定で禁止されています。なぜなら、通常のWeb変換ツールはサーバーへファイルを送信して処理するため、いつどこにファイルがキャッシュされるか分からないからです。
+        </p>
+        <p>
+          TemotoBoxのCSV修復ツールは<strong>完全ローカル処理</strong>であることに加え、プレビューを確認しながら列ごとに<strong>「そのまま」「マスク (***)」「列を削除」</strong>を指定できる機能を搭載しました。例えば、AIツールに売上データの傾向分析を任せたい時、「顧客名」と「メールアドレス」の列だけをローカルでマスクまたは削除してから出力すれば、分析に必要な数値や商品カテゴリを保ったまま安全にデータ活用へ進めます。
+        </p>
+      </div>
+    </details>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        セル内改行やカンマを含む複雑なCSVでも崩れないパース処理
-      </h2>
-      <p class="mt-3">
-        単純にテキストを改行やカンマで分割する簡易スクリプトでは、アンケートの自由記述欄に含まれる「セル内の改行」や「金額の3桁カンマ区切り」で行がズレてしまい、データが破損します。本ツールはRFC-4180準拠のステートマシンパーサーを採用しているため、ダブルクォートで囲まれたフィールド内の改行やカンマ、エスケープされた引用符も正確に解釈した上で安全に再出力します。
-      </p>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>セル内改行やカンマを含む複雑なCSVでも崩れないパース処理</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="border-t border-slate-200 px-4 py-4">
+        <p>
+          単純にテキストを改行やカンマで分割する簡易スクリプトでは、アンケートの自由記述欄に含まれる「セル内の改行」や「金額の3桁カンマ区切り」で行がズレてしまい、データが破損します。本ツールはRFC-4180準拠のステートマシンパーサーを採用しているため、ダブルクォートで囲まれたフィールド内の改行やカンマ、エスケープされた引用符も正確に解釈した上で安全に再出力します。
+        </p>
+      </div>
+    </details>
   </div>
 </ToolLayout>

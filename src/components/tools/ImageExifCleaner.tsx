@@ -1,10 +1,9 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type DragEvent } from 'react'
 import {
   Download,
   Image as ImageIcon,
   ShieldAlert,
   ShieldCheck,
-  Sliders,
   Sparkles,
   Trash2,
   Upload,
@@ -47,7 +46,7 @@ function createSyntheticExifJpegBlob(): Promise<Uint8Array> {
     ctx.fillRect(40, 40, 560, 320)
     ctx.fillStyle = '#0f172a'
     ctx.font = 'bold 28px sans-serif'
-    ctx.fillText('LocalBox EXIF Test Sample', 110, 210)
+    ctx.fillText('TemotoBox EXIF Test Sample', 110, 210)
 
     canvas.toBlob(
       async (blob) => {
@@ -162,6 +161,7 @@ export default function ImageExifCleaner() {
   const [quality, setQuality] = useState(0.85)
   const [maxWidth, setMaxWidth] = useState(1920)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
@@ -170,8 +170,7 @@ export default function ImageExifCleaner() {
     }
   }, [items])
 
-  const handleFilesSelected = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
+  const processFileList = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setIsProcessing(true)
     setErrorMsg('')
@@ -195,8 +194,18 @@ export default function ImageExifCleaner() {
       setErrorMsg(err instanceof Error ? err.message : '画像処理中にエラーが発生しました')
     } finally {
       setIsProcessing(false)
-      e.target.value = ''
     }
+  }
+
+  const handleFilesSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    await processFileList(e.target.files)
+    e.target.value = ''
+  }
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    await processFileList(e.dataTransfer.files)
   }
 
   const handleLoadSampleExifImage = async () => {
@@ -227,80 +236,29 @@ export default function ImageExifCleaner() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 設定パネル */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-          <Sliders className="h-4 w-4 text-sky-700" />
-          <span>書き出し・軽量化設定（Canvas再描画でメタデータを物理削除）</span>
-        </div>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <div>
-            <label
-              htmlFor="exif-output-mime"
-              className="block text-xs font-semibold text-slate-700"
-            >
-              出力フォーマット
-            </label>
-            <select
-              id="exif-output-mime"
-              value={targetMime}
-              onChange={(e) => setTargetMime(e.target.value as OutputImageMime)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900"
-            >
-              <option value="image/webp">WebP（高圧縮・Web公開最適）</option>
-              <option value="image/jpeg">JPEG（汎用・写真向け）</option>
-              <option value="image/png">PNG（劣化なし・図版向け）</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="exif-quality"
-              className="block text-xs font-semibold text-slate-700"
-            >
-              画質設定: {Math.round(quality * 100)}%
-            </label>
-            <input
-              id="exif-quality"
-              type="range"
-              min={0.5}
-              max={0.95}
-              step={0.05}
-              value={quality}
-              onChange={(e) => setQuality(Number(e.target.value))}
-              className="mt-3 w-full accent-sky-700"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="exif-max-width"
-              className="block text-xs font-semibold text-slate-700"
-            >
-              最大横幅リサイズ
-            </label>
-            <select
-              id="exif-max-width"
-              value={maxWidth}
-              onChange={(e) => setMaxWidth(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900"
-            >
-              <option value={0}>リサイズしない（原寸）</option>
-              <option value={1920}>最大 1920px</option>
-              <option value={1280}>最大 1280px（ブログ・資料向け）</option>
-              <option value={800}>最大 800px（軽量共有向け）</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ファイル追加アクション */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-5">
+      {/* 最上部: ドロップ対応アップロード枠 */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        className={`rounded-xl border-2 border-dashed p-6 text-center transition ${
+          isDragging
+            ? 'border-sky-400 bg-sky-50/70'
+            : 'border-slate-300 bg-slate-50/60'
+        }`}
+      >
+        <ImageIcon className="mx-auto h-8 w-8 text-slate-400" />
+        <p className="mt-2.5 text-sm font-semibold text-slate-800">
+          JPEG / PNG / WebP 画像をドロップ、または選択して一括削除
+        </p>
+        <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2.5">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800">
             <Upload className="h-4 w-4" />
-            <span>画像を選択（複数可・ローカル処理）</span>
+            <span>画像を選択（複数可）</span>
             <input
               type="file"
               multiple
@@ -314,23 +272,73 @@ export default function ImageExifCleaner() {
             type="button"
             onClick={handleLoadSampleExifImage}
             disabled={isProcessing}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-50 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3.5 py-2 text-xs font-semibold text-sky-800 transition hover:bg-sky-50 disabled:opacity-60"
           >
             <Sparkles className="h-3.5 w-3.5" />
             GPS/EXIF入りサンプル画像で検証
           </button>
         </div>
+      </div>
 
-        {items.length > 0 && (
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+      {/* スリムな書き出し設定行 */}
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 sm:grid-cols-3">
+        <div>
+          <label
+            htmlFor="exif-output-mime"
+            className="block text-xs font-semibold text-slate-700"
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            一覧を消去
-          </button>
-        )}
+            出力形式
+          </label>
+          <select
+            id="exif-output-mime"
+            value={targetMime}
+            onChange={(e) => setTargetMime(e.target.value as OutputImageMime)}
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900"
+          >
+            <option value="image/webp">WebP（高圧縮・Web向け）</option>
+            <option value="image/jpeg">JPEG（汎用）</option>
+            <option value="image/png">PNG（劣化なし）</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="exif-quality"
+            className="block text-xs font-semibold tabular-nums text-slate-700"
+          >
+            画質: {Math.round(quality * 100)}%
+          </label>
+          <input
+            id="exif-quality"
+            type="range"
+            min={0.5}
+            max={0.95}
+            step={0.05}
+            value={quality}
+            onChange={(e) => setQuality(Number(e.target.value))}
+            className="mt-2.5 w-full accent-sky-700"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="exif-max-width"
+            className="block text-xs font-semibold text-slate-700"
+          >
+            最大横幅
+          </label>
+          <select
+            id="exif-max-width"
+            value={maxWidth}
+            onChange={(e) => setMaxWidth(Number(e.target.value))}
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900"
+          >
+            <option value={0}>リサイズしない（原寸）</option>
+            <option value={1920}>最大 1920px</option>
+            <option value={1280}>最大 1280px</option>
+            <option value={800}>最大 800px</option>
+          </select>
+        </div>
       </div>
 
       {errorMsg && (
@@ -340,18 +348,22 @@ export default function ImageExifCleaner() {
       )}
 
       {/* 結果リスト */}
-      {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-8 text-center">
-          <ImageIcon className="mx-auto h-10 w-10 text-slate-400" />
-          <p className="mt-3 text-sm font-semibold text-slate-800">
-            JPEG / PNG / WebP 画像を選択するか、サンプル画像でEXIF完全削除を体験できます
-          </p>
-          <p className="mt-1 text-xs text-slate-600">
-            処理前後のバイナリを即時検査し、GPS位置情報や端末名タグが0件になったことを確認できます。
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
+      {items.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold tabular-nums text-slate-700">
+              処理済み画像（{items.length}件）
+            </span>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              一覧を消去
+            </button>
+          </div>
+
           {items.map((item) => {
             const savedPercent = calculateSavedBytesPercent(
               item.originalBytes,
@@ -361,25 +373,25 @@ export default function ImageExifCleaner() {
               <div
                 key={item.id}
                 data-testid="cleaned-image-card"
-                className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[120px_1fr_auto] sm:items-center"
+                className="grid gap-3.5 rounded-xl border border-slate-200 bg-white p-3.5 sm:grid-cols-[108px_1fr_auto] sm:items-center"
               >
                 <img
                   src={item.cleanedUrl}
                   alt={`${item.cleanedName} の削除後プレビュー`}
-                  className="h-24 w-full rounded-lg border border-slate-200 object-cover sm:w-[120px]"
+                  className="h-20 w-full rounded-lg border border-slate-200 object-cover sm:w-[108px]"
                 />
 
-                <div className="min-w-0 space-y-2">
+                <div className="min-w-0 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-sm font-bold text-slate-900">
                       {item.originalName}
                     </p>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs tabular-nums text-slate-500">
                       ({item.width} x {item.height}px)
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 text-xs">
+                  <div className="flex flex-wrap gap-1.5 text-xs">
                     {item.beforeReport.detectedTags.length > 0 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-200">
                         <ShieldAlert className="h-3.5 w-3.5" />
@@ -397,8 +409,8 @@ export default function ImageExifCleaner() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-600">
-                    サイズ: {formatBytes(item.originalBytes)} &rarr;{' '}
+                  <p className="text-xs tabular-nums text-slate-600">
+                    {formatBytes(item.originalBytes)} &rarr;{' '}
                     <strong className="text-slate-900">{formatBytes(item.cleanedBytes)}</strong>
                     {savedPercent >= 0 ? ` (${savedPercent}% 削減)` : ' (再エンコード済み)'}
                   </p>

@@ -8,14 +8,17 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check && tsc --noEmit",
-    "test": "vitest run src",
+    "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:ads": "node scripts/test-e2e-ads.mjs",
     "audit:security": "node scripts/audit-security.mjs",
     "audit:seo": "node scripts/audit-seo-adsense.mjs",
     "audit:memory": "node scripts/audit-org-memory.mjs",
+    "audit:memory:freshness": "node scripts/audit-org-memory.mjs --time-sensitive",
     "audit:ci-parity": "node scripts/audit-ci-parity.mjs",
-    "check:all": "npm run audit:ci-parity && npm run typecheck && npm run test && npm run build && npm run audit:security && npm run audit:seo && npm run audit:memory && npm run test:e2e",
+    "check:all": "npm run audit:ci-parity && npm run typecheck && npm run test && npm run build && npm run audit:security && npm run audit:seo && npm run audit:memory && npm run test:e2e && npm run test:e2e:ads",
     "ops:status": "node scripts/ops_github.mjs status",
+    "ops:autonomy": "node scripts/ops_github.mjs autonomy-report",
     "ops:labels": "node scripts/ops_github.mjs ensure-labels",
     "ops:wait-ci": "node scripts/ops_github.mjs wait-ci",
     "ops:ready-pr": "node scripts/ops_github.mjs ready-pr"
@@ -27,7 +30,8 @@
     "encoding-japanese": "^2.5.0",
     "lucide-react": "^1.77.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
@@ -36,6 +40,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "fast-check": "^4.11.0",
     "tailwindcss": "^4.3.5",
     "typescript": "^5.7.3",
     "vitest": "^5.1.1"

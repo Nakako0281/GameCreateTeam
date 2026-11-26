@@ -1,0 +1,14 @@
+---
+interface Props {
+  segments: readonly string[]
+  as?: 'h1' | 'h2' | 'h3'
+  class?: string
+}
+
+const { segments, as = 'h1', class: className = '' } = Astro.props
+const Tag = as
+---
+
+<Tag class:list={['heading-balanced', className]}>
+  {segments.map((seg) => (<span class="heading-phrase">{seg}</span>))}
+</Tag>

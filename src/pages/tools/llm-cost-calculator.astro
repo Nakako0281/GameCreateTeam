@@ -4,9 +4,9 @@ import LlmCostCalculator from '../../components/tools/LlmCostCalculator'
 import { getToolBySlug } from '../../data/tools'
 
 const tool = getToolBySlug('llm-cost-calculator')
-const seoTitle = 'LLMトークン数＆API料金 リアルタイム比較シミュレーター | LocalBox'
+const seoTitle = 'LLMトークン数＆API料金 リアルタイム比較シミュレーター | TemotoBox'
 const seoDescription =
-  '日本語プロンプトやソースコードのトークン数をローカル推定し、OpenAI・Anthropic・Google・DeepSeekのAPI月額料金やPrompt Caching・Batch割引を日本円で比較試算します。'
+  '日本語プロンプトやソースコードのトークン数をローカル推定し、OpenAI GPT-6・Claude 5.5/5.2・Gemini 4/3.8・DeepSeek V4のAPI月額料金やPrompt Caching・Batch割引を日本円で比較試算します。'
 
 const faqs: FaqItem[] = [
   {
@@ -15,14 +15,14 @@ const faqs: FaqItem[] = [
       '多くのLLMが採用しているBPE（Byte Pair Encoding）トークナイザは英語テキストの圧縮効率が高く、半角英数字は約4文字で1トークンになります。一方、日本語の漢字やひらがなは1文字あたり1〜2トークン以上に分割されやすいため、同じ意味を伝える場合でも日本語の方がトークン消費量が多くなる傾向があります。',
   },
   {
-    question: 'ここで算出されるトークン数は各社APIの請求と完全に一致しますか？',
+    question: 'ここで算出されるトークン数やモデル料金は各社APIの請求と完全に一致しますか？',
     answer:
-      'いいえ。本ツールはサーバー通信を行わずに即時概算を出すため、漢字・かな・ASCII比率に基づく高速な近似アルゴリズムを使用しています。モデルごとの厳密な語彙辞書（tiktoken等）とは数％から10％前後の差が出るため、予算稟議や概算比較としてご活用ください。',
+      'いいえ。本ツールは入力プロンプトのサーバー送信を行わずに即時概算を出すため、漢字・かな・ASCII比率に基づく高速な近似アルゴリズムを使用しています。また、272Kトークン超の長文課金や推論時の思考トークン（Thinking tokens）、導入価格の改定時期など実請求には追加条件が適用される場合があるため、稟議前の最終確認には上部の公式料金表リンクもあわせてご参照ください。',
   },
   {
     question: 'Prompt Caching（キャッシュヒット率）を上げると何が変わりますか？',
     answer:
-      '長いシステムプロンプトや共通マニュアル、コードベースを毎回入力の先頭に固定して送る運用では、キャッシュ機能を使うことで入力トークン単価が50%〜90%引きになります。本シミュレーターではヒット率スライダーを動かすことで削減インパクトを即座に試算できます。',
+      '長いシステムプロンプトや共通マニュアル、コードベースを毎回入力の先頭に固定して送る運用では、キャッシュ機能を使うことで入力トークン単価が90%〜97.5%引き（Claude 5.5/5.2やGemini 4、GPT-6.2等）になります。本シミュレーターではヒット率スライダーを動かすことで削減インパクトを即座に試算できます。',
   },
   {
     question: '社内専用のモデル単価や最新の改定単価で計算したい場合はどうすればいいですか？',
@@ -38,54 +38,64 @@ const faqs: FaqItem[] = [
   seoDescription={seoDescription}
   featureList={[
     '日本語の漢字・かな・半角英数比率を区別したローカル即時トークン推定',
-    '入力・出力・キャッシュヒット率・Batch API 50%割引の複合試算',
-    '任意の為替レートでの月額円換算と安い順ソート',
+    'GPT-6 / Claude 5.5・5.2 / Gemini 4・3.8 / DeepSeek V4の最新単価と導入価格期限の可視化',
+    '入力・出力・キャッシュヒット率・Batch API 50%割引の複合試算とプロバイダ絞り込み',
     'カスタム単価モデル追加および試算比較表のCSVエクスポート',
   ]}
   faqs={faqs}
 >
   <LlmCostCalculator slot="tool" client:load />
 
-  <div slot="guide" class="space-y-6 text-sm leading-relaxed text-slate-700">
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
     <section>
-      <h2 class="text-xl font-bold text-slate-900">
+      <h2 class="text-lg font-bold text-slate-900">
         日本語ビジネスアプリ開発でAPIコスト見積もりが狂いやすい3つの要因
       </h2>
-      <p class="mt-3">
-        生成AIを組み込んだ社内チャットボットや自動要約バッチを開発する際、「1回のテストでは数円しかかからなかったのに、本番で月10万回動かしたら想定の5倍の請求が来た」という相談は珍しくありません。その最大の理由は、英語基準で語られがちなトークン感覚をそのまま日本語ドキュメントへ当てはめてしまう点と、入力単価より3倍〜5倍高い「出力トークン単価」の重みを見落とす点にあります。
+      <p class="mt-2.5">
+        生成AIを組み込んだ社内チャットボットや自動要約バッチを開発する際、「1回のテストでは数円しかかからなかったのに、本番で月10万回動かしたら想定の5倍の請求が来た」という相談は珍しくありません。その最大の理由は、英語基準で語られがちなトークン感覚をそのまま日本語ドキュメントへ当てはめてしまう点と、入力単価より4倍〜5倍高い「出力トークン単価（推論時の思考トークンを含む）」の重みを見落とす点にあります。
       </p>
-      <p class="mt-3">
-        たとえば日本語の議事録1,000文字を要約させる場合、文字数は1,000文字でもトークン数はおおよそ1,200〜1,500トークン前後に膨らみます。さらに社内規定や過去事例（Few-shot）を5,000トークン分毎回プロンプトに含める設計にすると、リクエスト数が増えた瞬間にコストが指数的に跳ね上がります。
+      <p class="mt-2.5">
+        たとえば日本語の議事録1,000文字を要約させる場合、文字数は1,000文字でもトークン数はおおよそ1,200〜1,500トークン前後に膨らみます。さらに社内規定や過去事例（Few-shot）を5,000トークン分毎回プロンプトに含める設計にすると、リクエスト数が増えた瞬間にコストが指数的に跳ね上がります。また、期間限定の導入価格（例：Gemini 4 Argon の2026年12月改定や Gemini 3.8 Flash の2027年1月改定など）を見落とすと、改定後に単価が倍増して予算超過を起こす原因になります。
       </p>
     </section>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        AIコストを半分以下に抑える設計テクニックと本ツールの活用法
-      </h2>
-      <ul class="mt-3 list-disc space-y-2.5 pl-5">
-        <li>
-          <strong>1. 軽量モデルと上位推論モデルの役割分担:</strong> すべての工程をフラッグシップモデル（OpusやPro上位帯）で処理せず、前段の意図分類やタグ付けには Flash-Lite や GPT-4o mini / nano を割り当てることで、10分の1以下の予算で同じ品質ラインを維持できます。
-        </li>
-        <li>
-          <strong>2. Prompt Caching の積極設計:</strong> 変わることのないシステム指示文や長い参考資料をプロンプトの最上部に集約し、変動するユーザー入力だけを末尾に置く構造にするとキャッシュヒット率が上がり、入力費用を劇的に抑えられます。上のスライダーで「キャッシュ0%」と「70%」の月額差額をぜひ見比べてみてください。
-        </li>
-        <li>
-          <strong>3. 夜間バッチ処理（Batch API）の活用:</strong> 記事の夜間自動分類や日次レポート生成のように24時間以内の完了で十分な業務は、非同期バッチAPI（多くの主要プロバイダで50%割引）を選ぶだけで請求額がそのまま半減します。
-        </li>
-        <li>
-          <strong>4. 出力形式の簡潔化:</strong> 出力単価は入力単価より高いため、AIに長い前置きや言い換えを書かせず、JSON形式や箇条書きの上限文字数を指定して出力トークン数を絞ることがもっとも即効性の高いコスト削減策になります。
-        </li>
-      </ul>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>最新モデル世代でAIコストを半分以下に抑える設計テクニック</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="border-t border-slate-200 px-4 py-4">
+        <ul class="list-disc space-y-2.5 pl-5">
+          <li>
+            <strong>1. 軽量モデルと上位推論モデルの役割分担:</strong> すべての工程をフラッグシップ帯（GPT-6.2 Astra、Claude Opus 5.5 / Fable 5.2、Gemini 4 Neon 等）で処理せず、前段の意図分類や定型抽出には GPT-6 Luna、Claude Haiku 5.5、Gemini 3.5 Flash-Lite、DeepSeek-V4.1-Flash を割り当てることで、10分の1以下の予算で十分な精度を維持できます。
+          </li>
+          <li>
+            <strong>2. Prompt Caching の積極設計:</strong> 変わることのないシステム指示文や長い参考資料をプロンプトの最上部に集約し、変動するユーザー入力だけを末尾に置く構造にすると暗黙・明示キャッシュのヒット率が上がり、入力費用を90%〜97.5%削減できます。上のスライダーで「キャッシュ0%」と「70%」の月額差額をぜひ見比べてみてください。
+          </li>
+          <li>
+            <strong>3. 夜間バッチ処理（Batch API）の活用:</strong> 記事の夜間自動分類や日次レポート生成のように非同期処理で十分な業務は、OpenAI・Anthropic・Google 各社の Batch API（50%割引）を選ぶだけで請求額が半減します。DeepSeek を選ぶ場合はピーク帯を外した Off-Peak 時間帯（50%割引）の活用も有効です。
+          </li>
+          <li>
+            <strong>4. 長大コンテキスト閾値と思考トークンの制御:</strong> GPT-6.2 系では272Kトークン超で入力2倍・出力1.5倍の長文加算が適用され、Claude Haiku 5.5 も100Kトークン超で単価帯が変わります。不要な履歴は要約してコンテキストを圧縮し、出力はJSON形式や箇条書きの上限文字数を指定して思考・出力トークンを絞ることが確実なコスト削減策になります。
+          </li>
+        </ul>
+      </div>
+    </details>
 
-    <section>
-      <h2 class="text-xl font-bold text-slate-900">
-        開発中の未公開仕様やプロンプト案を外部に漏らさず試算できるメリット
-      </h2>
-      <p class="mt-3">
-        他社のオンライン計算機の中には、入力したテキストをサーバー上のPythonトークナイザーへ送って計算するものもありますが、開発中のシステムプロンプトや社外秘のマニュアル本文をそのまま第三者のサーバーへ送信することはセキュリティ規程上望ましくありません。LocalBoxの試算ツールはブラウザ上の純粋なJavaScript計算のみで完結しているため、実際の社内プロンプト原案を貼り付けても通信は一切発生せず、そのまま稟議資料用のCSV比較表として持ち帰れます。
-      </p>
-    </section>
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>開発中の未公開仕様やプロンプト案を外部に漏らさず試算できるメリット</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="border-t border-slate-200 px-4 py-4">
+        <p>
+          他社のオンライン計算機の中には、入力したテキストをサーバー上のトークナイザーへ送って計算するものもありますが、開発中のシステムプロンプトや社外秘のマニュアル本文をそのまま第三者のサーバーへ送信することはセキュリティ規程上望ましくありません。TemotoBoxの試算ツールはブラウザ上の純粋なJavaScript計算のみで完結しているため、実際の社内プロンプト原案を貼り付けても入力データの外部送信は一切発生せず、そのまま稟議資料用のCSV比較表として持ち帰れます。また、収録モデルの単価データと導入価格の期限は日次の自動監査で鮮度監視しています。
+        </p>
+      </div>
+    </details>
   </div>
 </ToolLayout>

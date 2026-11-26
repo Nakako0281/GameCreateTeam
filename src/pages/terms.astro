@@ -1,24 +1,27 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 
-const title = '利用規約・免責事項 | LocalBox'
+const title = '利用規約・免責事項 | TemotoBox'
 const description =
-  'LocalBoxが提供するすべてのブラウザ完結型Webツールの利用条件、出力結果の正確性に関する免責事項、業務利用時の確認義務、禁止事項について説明します。'
+  'TemotoBoxが提供するすべてのブラウザ完結型Webツールの利用条件、出力結果の正確性に関する免責事項、業務利用時の確認義務、禁止事項について説明します。'
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
-        利用規約・免責事項
-      </h1>
-      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月21日</p>
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
+      <PhraseHeading
+        as="h1"
+        segments={['利用規約と', '免責事項']}
+        class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+      />
+      <p class="mt-2 text-xs text-slate-500">最終改定日: 2026年11月23日</p>
 
       <div class="mt-6 space-y-7 text-sm leading-relaxed text-slate-700">
         <section>
           <h2 class="text-lg font-bold text-slate-900">1. 本サービスの提供形態</h2>
           <p class="mt-2">
-            LocalBox（以下「当サイト」）は、ブラウザ上でローカル動作する実務支援ツールを個人・法人を問わず無料で提供する静的Webサイトです。会員登録や有料課金プランは存在せず、将来にわたっても利用料金を請求することはありません。
+            TemotoBox（以下「当サイト」）は、ブラウザ上でローカル動作する実務支援ツールを個人・法人を問わず無料で提供する静的Webサイトです。会員登録や有料課金プランは存在せず、将来にわたっても利用料金を請求することはありません。
           </p>
         </section>
 
@@ -27,6 +30,9 @@ const description =
           <ul class="mt-2 list-disc space-y-2 pl-5">
             <li>
               <strong>個人情報（PII）マスキングツール:</strong> 正規表現や辞書パターンによる自動検出を行いますが、すべての固有名詞や機密表現を100%漏れなく検知することを保証するものではありません。社外AI等へ貼り付ける前に、必ず人間による最終目視確認を行ってください。
+            </li>
+            <li>
+              <strong>設定ファイル・ログ秘匿化＆変換ツール:</strong> .env・JSON・YAML・サーバーログ内の秘匿値検出についても100%の完全検出やあらゆる構文の再現性を保証するものではありません。Issueやチャット等へ共有する前に必ず目視確認を行ってください。また、すでに外部へ露出した本番APIキーや秘密鍵は、本ツールでのマスクではなく直ちに無効化・ローテーションを実施してください。
             </li>
             <li>
               <strong>LLM料金シミュレーター:</strong> トークン数は日本語・英語の文字種別に基づくローカル近似値であり、各AIベンダーの厳密なトークナイザーとは数％の誤差が生じる場合があります。また、モデルのAPI単価および為替レートは変動するため、実際の請求額の保証はいたしかねます。

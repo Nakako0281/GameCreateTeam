@@ -1,48 +1,51 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import PhraseHeading from '../components/PhraseHeading.astro'
 import { SITE_CONFIG } from '../config/site'
 
-const title = 'お問い合わせ・不具合報告 | LocalBox'
+const title = 'お問い合わせ・不具合報告 | TemotoBox'
 const description =
-  'LocalBoxへのツール改善要望、不具合報告、プライバシーや著作権に関するお問い合わせ窓口のご案内です。個人情報保護のため自社DB型フォームを持たない運用方針を説明しています。'
+  'TemotoBoxへのツール改善要望、不具合報告、プライバシーや著作権に関するお問い合わせ窓口のご案内です。個人情報保護のため自社DB型フォームを持たない運用方針を説明しています。'
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-      <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">
-        お問い合わせ・機能リクエスト
-      </h1>
+  <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-8">
+      <PhraseHeading
+        as="h1"
+        segments={['お問い合わせと', '不具合報告']}
+        class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+      />
 
-      <div class="mt-6 space-y-6 text-sm leading-relaxed text-slate-700">
+      <div class="mt-5 space-y-6 text-sm leading-relaxed text-slate-700">
         <p>
-          LocalBoxでは、個人情報漏洩リスクを構造的にゼロにするため、当サイト独自のメールフォームバックエンドや顧客データベースを設置しておりません。ご意見・不具合報告・新規ツールのリクエストは、以下の窓口よりお送りください。
+          TemotoBoxでは、個人情報漏洩リスクを構造的に排除するため、サイト独自の送信フォームや顧客データベースを設置しておりません。不具合の報告や機能改善のご要望、著作権・プライバシーに関するお問い合わせは、以下の窓口よりお送りください。
         </p>
 
         <div class="grid gap-4 sm:grid-cols-2">
-          <div class="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5">
             <h2 class="text-base font-bold text-slate-900">
-              1. GitHub Issues（推奨・公開トラッカー）
+              1. GitHub フィードバックフォーム
             </h2>
             <p class="mt-2 text-xs leading-relaxed text-slate-600">
-              バグ報告、機能追加のご提案、計算単価テーブルの更新依頼などは GitHub Issues で受け付けています。進捗状況もそのままご確認いただけます。
+              不具合報告、改善要望、新ツールのアイデアは専用のGitHub Issueテンプレートから受け付けています。公開トラッカー上で修正状況をご確認いただけます。
             </p>
             <a
-              href={SITE_CONFIG.repoIssuesUrl}
+              href={SITE_CONFIG.feedbackIssueUrl}
               target="_blank"
               rel="noopener noreferrer"
               class="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
             >
-              GitHub Issues を開く
+              不具合報告フォームを開く（GitHub）
             </a>
           </div>
 
-          <div class="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5">
             <h2 class="text-base font-bold text-slate-900">
-              2. メール連絡先について
+              2. メールでのお問い合わせ
             </h2>
             <p class="mt-2 text-xs leading-relaxed text-slate-600">
-              独自ドメインの本番運用開始にあわせ、専用の問い合わせメールアドレス（転送専用・非公開管理）を本ページへ掲載いたします。
+              非公開でのご連絡が必要な場合にご利用いただける専用メールアドレスを準備中です。公開後に本ページへ掲載いたします。
             </p>
             <p class="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
               現在の状況: {SITE_CONFIG.contactEmailLabel}
@@ -50,22 +53,19 @@ const description =
           </div>
         </div>
 
-        <section class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 space-y-2">
+        <section class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-5">
           <h2 class="text-base font-bold text-slate-900">
-            3. 不具合報告・機能改善リクエスト時のお願いと対応方針
+            3. 不具合報告時にお知らせいただきたい情報
           </h2>
           <p class="text-xs leading-relaxed text-slate-600">
-            LocalBoxは全ツールをブラウザ内のみで実行する構成上、お客様の環境（OS・ブラウザ種別・対象ファイルの形式）に依存した挙動の違いを把握することが改善の鍵となります。不具合をお知らせいただく際は、ご利用のブラウザ名（Chrome / Safari / Edge 等）、発生したツール名、期待した出力と実際の出力を記載いただけると、AI自律運用チームおよび運営責任者による検証と修正が迅速に進みます。
-          </p>
-          <p class="text-xs leading-relaxed text-slate-600">
-            なお、お寄せいただいた改善要望や新ツールのアイデアは、優先度と安全性（サーバー送信ゼロ原則・非YMYL基準）を精査の上で開発ロードマップへ反映いたします。すべてのお問い合わせへの個別返信をお約束するものではありませんが、公開トラッカー上ですべての対応状況をご確認いただけます。
+            ご利用中のブラウザ名（Chrome / Safari / Edge 等）・OS、発生したツールページ名、期待した動作と実際の結果、再現可能なダミー文字列をご記載いただくと、原因調査と修正が迅速に進みます。お寄せいただいたご要望は、ブラウザ完結・入力データ非送信の安全性を精査のうえ順次開発計画へ反映いたします（すべてのお問い合わせへの個別返信はお約束いたしかねます）。
           </p>
         </section>
 
         <section class="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs leading-relaxed text-amber-950">
-          <p class="font-bold">お願い（機密情報・個人情報の記載について）</p>
+          <p class="font-bold">お願い（機密情報・個人情報の貼付禁止）</p>
           <p class="mt-1">
-            不具合報告をいただく際は、実際に業務で扱われている顧客情報・APIキー・社内ファイルの原本をIssueへ貼り付けないようご注意ください。再現可能なダミー文字列でお知らせいただければ迅速に調査・修正いたします。
+            不具合報告のフォームや公開Issueには、業務で扱う顧客情報・APIキー・社内ファイルの原本を絶対に貼り付けないでください。必ず架空のダミーデータに置き換えてお知らせください。
           </p>
         </section>
       </div>

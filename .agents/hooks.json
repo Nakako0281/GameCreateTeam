@@ -1,0 +1,35 @@
+{
+  "harness-session-sync-alert": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node ../scripts/hooks/session-start.mjs",
+        "timeout": 10
+      }
+    ]
+  },
+  "harness-governance-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../scripts/hooks/pre-tool-guard.mjs",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ../scripts/hooks/pre-tool-guard.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
