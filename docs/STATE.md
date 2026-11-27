@@ -8,8 +8,8 @@
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **TemotoBox**（生成AI・社外共有前の下ごしらえ特化型・検証可能なブラウザ完結実務ワークベンチ／`ADR-004`）
 - **テスト環境URL**: Cloudflare Workers / Pages（`*.workers.dev`・`*.pages.dev` ともに `X-Robots-Tag: noindex, nofollow` 保護済み、`PUBLIC_NOINDEX=true` でバナー・meta制御可）
-- **本番URL**: 未公開（取得対象ドメイン `temotobox.com` 確定済み・`ADR-004`／Issue #32 で人間によるドメイン取得＆先行公開予定）
-- **AdSense状態**: 未申請（Phase 2 で12ツール整備＆公開後に初回申請予定）
+- **本番URL**: 未公開（取得対象ドメイン `temotobox.com` 確定・Canonical/Sitemap 自動 `https://temotobox.com` 化済／Issue #32 で最小15分手順によるドメイン接続待ち）
+- **AdSense状態**: 未申請（12/10 初回申請目標に向けツール拡充＆独自ドメイン公開準備完了）
 - **GA4 / GSC接続**: 未接続（独自ドメイン購入＆本番デプロイ時に設定）
 
 ---
@@ -47,10 +47,10 @@
   - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:review`, **進捗 4/4 完遂**: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/`・`/tools/pdf-redactor/` `dev`マージ済、`/tools/pdf-organizer/` PR提出)
   - Issue #57 `[AI] PIIマスカーの検出率ベンチマーク・往復property test・検出漏れ注意表示` (`owner:ai`, `priority:p1`, PR #65 で `dev`/`main` 反映済み)
   - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, `ADR-004` 優先順: `text-cleaner` → `offline-qr-password` → `jp-business-days` → `regex-tester-jp`)
-- **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 前倒し目標 2026-11-29 公開・12/10申請)**:
-  - Issue #35 `[AI] 初期集客・被リンク獲得用 Zenn/Qiita/X 技術記事ドラフト3本作成` (`owner:ai`, `priority:p1`, `status:review`, `docs/promotions/` に `TemotoBox` / `temotobox.com` 版で 3/3 本マージ済み・#66 で公開引き継ぎ)
+- **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 前倒し目標 12/10申請)**:
+  - Issue #66 `[Human] TemotoBox 公開記念 Zenn / Qiita / X 技術記事3本の投稿` (`owner:human`, `priority:p1`, `docs/promotions/` 3/3本完成・PR #71に合わせて手順最新化済、`temotobox.com` 疎通後に1本目から公開予定)
 - **その他 AI運用・品質強化バックログ**:
-  - Issue #54（自律度KPI計測: `status:review` / `ops:autonomy`・`found-by:*` ラベル・Week 1基準値記録PR提出）, #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策）, #59（問い合わせ導線・リポジトリ公開方針/衛生）
+  - Issue #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策：本週次PRで完了）, #59（問い合わせ導線・リポジトリ公開方針/衛生）, #75（自動起票ワークフロー2本の信頼境界・重複抑止統一と `found-by:ai` 自動付与：`found-by:ai` 自己発見起票）
 - **Milestone 4 (`M3: Growth PDCA, EN Expansion & 100 JPY/mo`, 期限 2027-02-20)**: 収益化・英語展開・週次PDCA目標。
 
 ---

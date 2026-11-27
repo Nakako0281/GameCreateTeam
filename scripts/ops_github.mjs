@@ -134,6 +134,11 @@ const STANDARD_LABELS = [
     color: 'fbca04',
     description: '人間（メンバー・責任者・アドバイザー）が発見・指摘した不具合や改善課題',
   },
+  {
+    name: 'origin:planned',
+    color: 'cfd3d7',
+    description: '計画ロードマップ・定例運用タスク（欠陥自己発見率の分母外）',
+  },
 ]
 
 function getGitHubToken() {
@@ -161,7 +166,67 @@ function readContentOrText(arg) {
   return arg
 }
 
-const BOOLEAN_FLAGS = new Set(['include-external'])
+const BOOLEAN_FLAGS = new Set([
+  'include-external',
+  'allow-exception',
+  'allow-legacy-labels',
+])
+
+function bestEffortFetchOriginMainDev() {
+  try {
+    spawnSync('git', ['fetch', '--quiet', 'origin', 'main', 'dev'], {
+      encoding: 'utf-8',
+      timeout: 5000,
+    })
+  } catch {
+    // オフライン・タイムアウト時は非致命で続行
+  }
+}
+
+export function validateIssueGovernanceLabels(
+  labels = [],
+  { allowLegacyLabels = false } = {}
+) {
+  if (allowLegacyLabels) {
+    return { valid: true, reason: null }
+  }
+  const clean = (labels || []).map((l) => String(l || '').trim()).filter(Boolean)
+  const labelSet = new Set(clean)
+  const hasAi = labelSet.has('owner:ai')
+  const hasHuman = labelSet.has('owner:human')
+
+  if (hasAi === hasHuman) {
+    return {
+      valid: false,
+      reason:
+        '[LabelGuard] Issue作成時は owner:ai または owner:human のいずれか一方を必ず指定してください。',
+    }
+  }
+
+  const hasType = Array.from(labelSet).some((l) => l.startsWith('type:'))
+  if (!hasType) {
+    return {
+      valid: false,
+      reason:
+        '[LabelGuard] Issue作成時は type:* ラベル（type:tool, type:ops, type:security 等）を1つ以上指定してください。',
+    }
+  }
+
+  if (hasAi && !labelSet.has('type:retrospective')) {
+    const origins = ['found-by:ai', 'found-by:human', 'origin:planned'].filter(
+      (l) => labelSet.has(l)
+    )
+    if (origins.length !== 1) {
+      return {
+        valid: false,
+        reason:
+          '[LabelGuard] owner:ai Issue作成時は自律度KPI計測のため found-by:ai / found-by:human / origin:planned のいずれか1つを排他指定してください。',
+      }
+    }
+  }
+
+  return { valid: true, reason: null }
+}
 
 function parseArgs(rawArgs) {
   const positional = []
@@ -518,6 +583,9 @@ export function evaluateBranchSync(compareRes) {
   const mainAheadBy = compareRes.ahead_by
   const devAheadBy =
     typeof compareRes.behind_by === 'number' ? compareRes.behind_by : 0
+  const changedFilesCount = Array.isArray(compareRes.files)
+    ? compareRes.files.length
+    : null
   const status =
     compareRes.status ||
     (mainAheadBy > 0 && devAheadBy > 0
@@ -528,14 +596,28 @@ export function evaluateBranchSync(compareRes) {
           ? 'behind'
           : 'identical')
   const needsEscalation = mainAheadBy > 0
+  const isMergeCommitOnly = needsEscalation && changedFilesCount === 0
   const warning = needsEscalation
-    ? `origin/main is ahead of origin/dev by ${mainAheadBy} commit(s) (status=${status}). Escalate (Tier 2) and sync main -> dev before releasing to main.`
+    ? isMergeCommitOnly
+      ? `origin/main is ahead of origin/dev by ${mainAheadBy} merge commit(s) with 0 file diffs (status=${status}). Sync main -> dev via chore/sync-main-to-dev before releasing to main.`
+      : `origin/main is ahead of origin/dev by ${mainAheadBy} commit(s) (status=${status}). Escalate (Tier 2) and sync main -> dev before releasing to main.`
     : null
 
   return {
     status,
     main_ahead_by: mainAheadBy,
     dev_ahead_by: devAheadBy,
+    ...(changedFilesCount !== null
+      ? {
+          changed_files_count: changedFilesCount,
+          sync_kind:
+            mainAheadBy === 0
+              ? 'synced'
+              : isMergeCommitOnly
+                ? 'merge_commit_only'
+                : 'content_diverged',
+        }
+      : {}),
     needs_escalation: needsEscalation,
     warning,
   }
@@ -655,6 +737,19 @@ export function classifyStatusIssues(
   const unlabeledTrusted = trustedIssues.filter(
     (i) => !(i.labels || []).length
   )
+  const unclassifiedOriginIssues = trustedIssues.filter(
+    (i) =>
+      !hasLabel(i, 'owner:human') &&
+      !hasLabel(i, 'type:retrospective') &&
+      !hasLabel(i, 'found-by:ai') &&
+      !hasLabel(i, 'found-by:human') &&
+      !hasLabel(i, 'origin:planned')
+  )
+  const stagnantThresholdMs = 72 * 60 * 60 * 1000
+  const stagnantHumanIssues = humanOpen.filter((i) => {
+    const updated = Date.parse(i.updated_at || i.created_at)
+    return !Number.isNaN(updated) && nowMs - updated >= stagnantThresholdMs
+  })
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
   const recentlyClosedHuman = (closedHumanRaw || []).filter(
     (i) =>
@@ -671,6 +766,8 @@ export function classifyStatusIssues(
     humanOpen,
     aiOpen,
     unlabeledTrusted,
+    unclassifiedOriginIssues,
+    stagnantHumanIssues,
     recentlyClosedHuman,
   }
 }
@@ -707,14 +804,13 @@ export function computeAutonomyReport({
   const foundByHumanIssues = issuesCreatedInWindow.filter((i) =>
     hasLabel(i, 'found-by:human')
   )
-  const defectOrImprovementIssues = issuesCreatedInWindow.filter(
+  const measurableIssues = issuesCreatedInWindow.filter(
     (i) =>
-      hasLabel(i, 'type:postmortem') ||
-      hasLabel(i, 'type:security') ||
-      hasLabel(i, 'type:seo-growth') ||
-      hasLabel(i, 'type:ops')
+      !hasLabel(i, 'owner:human') &&
+      !hasLabel(i, 'origin:planned') &&
+      !hasLabel(i, 'type:retrospective')
   )
-  const unclassifiedDefectOrImprovement = defectOrImprovementIssues.filter(
+  const unclassifiedDefectOrImprovement = measurableIssues.filter(
     (i) => !hasLabel(i, 'found-by:ai') && !hasLabel(i, 'found-by:human')
   )
 
@@ -757,11 +853,12 @@ export function computeAutonomyReport({
       : null
 
   const stagnantThresholdMs = 72 * 60 * 60 * 1000
-  const openHumanStagnantOver3d = humanIssuesAll.filter((i) => {
+  const stagnantHumanList = humanIssuesAll.filter((i) => {
     if (i.state !== 'open') return false
     const updated = Date.parse(i.updated_at || i.created_at)
     return !Number.isNaN(updated) && untilMs - updated >= stagnantThresholdMs
-  }).length
+  })
+  const openHumanStagnantOver3d = stagnantHumanList.length
 
   const trustedPulls = (pulls || []).filter(
     (p) => classifyPullRequestTrust(p) === 'trusted'
@@ -805,9 +902,13 @@ export function computeAutonomyReport({
       found_by_human: foundByHumanIssues.length,
       unclassified_defect_or_improvement:
         unclassifiedDefectOrImprovement.length,
+      unclassified_issue_numbers: unclassifiedDefectOrImprovement.map(
+        (i) => i.number
+      ),
       self_discovery_rate: selfDiscoveryRate,
       owner_human_opened: ownerHumanOpened,
       owner_human_closed: ownerHumanClosedIssues.length,
+      stagnant_human_issue_numbers: stagnantHumanList.map((i) => i.number),
       human_wait_days: {
         sample_count: closedWaitDays.length,
         avg_days: avgHumanWaitDays,
@@ -896,6 +997,7 @@ async function main() {
   switch (command) {
     case 'status':
     case 'dashboard': {
+      bestEffortFetchOriginMainDev()
       const includeExternal = Boolean(flags['include-external'])
       const sevenDaysAgoIso = new Date(
         Date.now() - 7 * 24 * 60 * 60 * 1000
@@ -913,6 +1015,7 @@ async function main() {
         ])
 
       const branchSync = evaluateBranchSync(compareRes)
+      const nowMs = Date.now()
 
       const {
         openIssues,
@@ -921,8 +1024,10 @@ async function main() {
         humanOpen,
         aiOpen,
         unlabeledTrusted,
+        unclassifiedOriginIssues,
+        stagnantHumanIssues,
         recentlyClosedHuman,
-      } = classifyStatusIssues(openRaw, closedHumanRaw)
+      } = classifyStatusIssues(openRaw, closedHumanRaw, nowMs)
 
       const trustedPrs = pulls.filter(
         (p) => classifyPullRequestTrust(p) === 'trusted'
@@ -935,14 +1040,16 @@ async function main() {
       console.log(
         JSON.stringify(
           {
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(nowMs).toISOString(),
             summary: {
               open_milestones: milestones.length,
               open_issues_total: openIssues.length,
               trusted_open_issues: trustedIssues.length,
               external_open_issues: externalIssues.length,
               unlabeled_trusted_issues: unlabeledTrusted.length,
+              unclassified_origin_open_issues: unclassifiedOriginIssues.length,
               open_human_issues: humanOpen.length,
+              stagnant_human_issues_over_3d: stagnantHumanIssues.length,
               open_ai_issues: aiOpen.length,
               recently_closed_human_issues_7d: recentlyClosedHuman.length,
               open_prs: trustedPrs.length,
@@ -960,8 +1067,20 @@ async function main() {
               : {}),
             milestones: milestones.map(formatMilestone),
             open_human_issues: humanOpen.map((i) => formatIssueSummary(i)),
+            stagnant_human_issues: stagnantHumanIssues.map((i) => ({
+              ...formatIssueSummary(i),
+              stagnant_days: Number(
+                (
+                  (nowMs - Date.parse(i.updated_at || i.created_at)) /
+                  (24 * 60 * 60 * 1000)
+                ).toFixed(1)
+              ),
+            })),
             open_ai_issues: aiOpen.map((i) => formatIssueSummary(i)),
             unlabeled_trusted_issues: unlabeledTrusted.map((i) =>
+              formatIssueSummary(i)
+            ),
+            unclassified_origin_issues: unclassifiedOriginIssues.map((i) =>
               formatIssueSummary(i)
             ),
             recently_closed_human_issues: recentlyClosedHuman.map((i) =>
@@ -1148,7 +1267,13 @@ async function main() {
       const [title, bodyArg] = positional
       if (!title) throw new Error('タイトルを指定してください')
       const body = readContentOrText(bodyArg || flags.body || '')
-      const labels = flags.labels ? splitCsv(flags.labels) : ['owner:ai']
+      const labels = flags.labels ? splitCsv(flags.labels) : []
+      const labelCheck = validateIssueGovernanceLabels(labels, {
+        allowLegacyLabels: Boolean(flags['allow-legacy-labels']),
+      })
+      if (!labelCheck.valid) {
+        throw new Error(labelCheck.reason)
+      }
       const payload = { title, body, labels }
       if (flags.milestone) {
         payload.milestone = Number(flags.milestone)
@@ -1250,6 +1375,7 @@ async function main() {
     }
 
     case 'create-pr': {
+      bestEffortFetchOriginMainDev()
       const [head, title, bodyArg, base = 'dev'] = positional
       if (!head || !title) {
         throw new Error('ブランチ名(head)とPRタイトルを指定してください')
@@ -1371,7 +1497,33 @@ async function main() {
         payload.body = readContentOrText(flags.body)
       }
       if (flags.state) payload.state = flags.state
-      if (flags.base) payload.base = flags.base
+      if (flags.base) {
+        bestEffortFetchOriginMainDev()
+        const currentPr = await githubRequest(`/pulls/${num}`)
+        const headRef = currentPr.head?.ref || ''
+        let branchSync = null
+        let headContainsUnmergedMain = false
+        if (flags.base === 'main') {
+          const compareRes = await githubRequest('/compare/dev...main').catch(
+            () => null
+          )
+          branchSync = evaluateBranchSync(compareRes)
+        } else if (flags.base === 'dev') {
+          headContainsUnmergedMain = detectHeadContainsUnmergedMain(headRef)
+        }
+        const guard = validateCreatePrBranchGuard({
+          head: headRef,
+          base: flags.base,
+          branchSync,
+          headContainsUnmergedMain,
+          allowException: Boolean(flags['allow-exception']),
+          exceptionReason: typeof flags.reason === 'string' ? flags.reason : '',
+        })
+        if (!guard.allowed) {
+          throw new Error(guard.reason)
+        }
+        payload.base = flags.base
+      }
 
       const pr = await githubRequest(`/pulls/${num}`, 'PATCH', payload)
       console.log(

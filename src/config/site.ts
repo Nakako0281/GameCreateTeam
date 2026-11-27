@@ -2,8 +2,8 @@ export const SITE_CONFIG = {
   brandName: 'TemotoBox',
   brandTagline: '機密・AI実務のブラウザ完結ワークベンチ（入力データ送信ゼロ）',
   description:
-    '生成AIや社外共有の前に、入力したテキスト・設定ファイル・CSV・画像の内容をサーバーへ一切送信せずブラウザ内だけで安全に下ごしらえできる実務ワークベンチ。個人情報マスキング、.env秘匿化、Markdown整形、LLM料金試算、CSV修復、EXIF削除を無料で提供。',
-  defaultUrl: 'https://example.com',
+    '生成AIや社外共有の前に、入力テキスト・PDF・設定ファイル・CSV・画像の内容をサーバーへ一切送信せずブラウザ内だけで下ごしらえできる実務ワークベンチ。PIIマスキング、PDF真の墨消し、.env秘匿化、Markdown整形、LLM料金試算、CSV修復、EXIF削除を提供。',
+  defaultUrl: 'https://temotobox.com',
   repoIssuesUrl: 'https://github.com/Nakako0281/GameCreateTeam/issues',
   feedbackIssueUrl:
     'https://github.com/Nakako0281/GameCreateTeam/issues/new?template=user_feedback.md',

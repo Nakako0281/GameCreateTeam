@@ -44,7 +44,7 @@ const appCommitSha = resolveShortCommitSha()
 const appBuiltAt = `${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`
 
 export default defineConfig({
-  site: process.env.SITE_URL || process.env.CF_PAGES_URL || 'https://example.com',
+  site: process.env.SITE_URL || 'https://temotobox.com',
   outDir: process.env.ASTRO_OUT_DIR || './dist',
   output: 'static',
   trailingSlash: 'always',

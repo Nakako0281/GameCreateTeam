@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { OWNER, REPO, computeAutonomyReport } from '../../scripts/ops_github.mjs'
+import {
+  OWNER,
+  REPO,
+  classifyStatusIssues,
+  computeAutonomyReport,
+  validateIssueGovernanceLabels,
+} from '../../scripts/ops_github.mjs'
 
 describe('ops_github autonomy-report (Issue #54)', () => {
   it('computes self-discovery rate, human wait days, and PR rework rate while excluding untrusted external items', () => {
@@ -176,5 +182,73 @@ describe('ops_github autonomy-report (Issue #54)', () => {
     expect(report.issues.self_discovery_rate).toBeNull()
     expect(report.issues.human_wait_days.avg_days).toBeNull()
     expect(report.pull_requests.rework_rate).toBeNull()
+  })
+
+  it('excludes origin:planned issues from unclassified defects and enforces label guard on create-issue (L-18)', () => {
+    expect(
+      validateIssueGovernanceLabels([
+        'owner:ai',
+        'type:tool',
+        'found-by:ai',
+      ]).valid
+    ).toBe(true)
+    expect(
+      validateIssueGovernanceLabels([
+        'owner:ai',
+        'type:tool',
+        'origin:planned',
+      ]).valid
+    ).toBe(true)
+    expect(
+      validateIssueGovernanceLabels(['owner:human', 'type:infra']).valid
+    ).toBe(true)
+    expect(validateIssueGovernanceLabels(['owner:ai', 'type:tool']).valid).toBe(
+      false
+    )
+    expect(
+      validateIssueGovernanceLabels([
+        'owner:ai',
+        'type:tool',
+        'found-by:ai',
+        'found-by:human',
+      ]).valid
+    ).toBe(false)
+
+    const nowMs = Date.parse('2026-11-26T12:00:00Z')
+    const statusClassified = classifyStatusIssues(
+      [
+        {
+          number: 33,
+          state: 'open',
+          author_association: 'OWNER',
+          user: { login: OWNER, type: 'User' },
+          labels: [{ name: 'owner:ai' }, { name: 'type:tool' }, { name: 'origin:planned' }],
+          created_at: '2026-11-21T00:00:00Z',
+          updated_at: '2026-11-26T00:00:00Z',
+        },
+        {
+          number: 55,
+          state: 'open',
+          author_association: 'OWNER',
+          user: { login: OWNER, type: 'User' },
+          labels: [{ name: 'owner:ai' }, { name: 'type:ops' }],
+          created_at: '2026-11-22T00:00:00Z',
+          updated_at: '2026-11-22T00:00:00Z',
+        },
+        {
+          number: 32,
+          state: 'open',
+          author_association: 'OWNER',
+          user: { login: OWNER, type: 'User' },
+          labels: [{ name: 'owner:human' }, { name: 'type:infra' }],
+          created_at: '2026-11-21T00:00:00Z',
+          updated_at: '2026-11-22T00:00:00Z',
+        },
+      ],
+      [],
+      nowMs
+    )
+    expect(statusClassified.unclassifiedOriginIssues.map((i) => i.number)).toEqual([55])
+    expect(statusClassified.stagnantHumanIssues.map((i) => i.number)).toEqual([32])
   })
 })
