@@ -21,6 +21,8 @@
 | **LLMトークン数＆API料金 リアルタイム比較シミュレーター** | `/tools/llm-cost-calculator/` | 日本語/英語のトークン近似計算、Prompt Caching・Batch 50%割引・円換算比較とCSV出力 |
 | **Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング** | `/tools/csv-encoding-fixer/` | 文字コード自動判定、Excel対応UTF-8（BOM付）への変換、列単位のマスク・削除 |
 | **画像 EXIF/GPS位置情報 完全削除＆WebP/JPG一括軽量化** | `/tools/image-exif-cleaner/` | 削除前メタデータ診断、HTML5 Canvas再描画による物理消去、削除後0件再検査と軽量化 |
+| **PDF「真の墨消し（黒塗り）」＆メタデータ完全削除** | `/tools/pdf-redactor/` | 全ページ画像化焼付けによる下層テキスト抽出不能化、PII候補1クリック提案、Info/XMP削除と0文字/0件再検査 |
+| **PDF 完全ローカル結合・分割・ページ並べ替え** | `/tools/pdf-organizer/` | 複数PDFの無劣化結合・範囲分割・ZIP一括保存・90度回転・A4縦統一・ページ単位注釈/メタデータ除去と再スキャン検証 |
 | **AI出力（Markdown・表）➔ Word / Excel / Slack 整形** | `/tools/ai-markdown-formatter/` | 書式付きHTMLコピー、複数Markdown表のExcel用TSV/BOM付CSV抽出、Slack mrkdwn・平文整形 |
 | **`.env` / JSON / YAML / ログ 秘匿値サニタイズ＆変換** | `/tools/config-sanitizer/` | APIキー・DBパスワード・秘密鍵・K8s Secretの非破壊マスク、`.env.example`生成、`.env`⇔JSON⇔YAML相互変換 |
 

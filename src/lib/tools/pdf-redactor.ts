@@ -4,6 +4,7 @@ import {
   PDFDocument,
   PDFHexString,
   PDFName,
+  PDFStream,
   PDFString,
 } from 'pdf-lib'
 
@@ -98,6 +99,9 @@ export interface PdfStructureReport {
   hasOutlines: boolean
   hasOptionalContent: boolean
   hasJavaScript: boolean
+  hasDigitalSignature: boolean
+  pageLevelRiskCount: number
+  dangerousActionCount: number
   totalAnnotations: number
   totalRiskItems: number
 }
@@ -347,13 +351,69 @@ function decodePdfTextValue(val: unknown): string {
   return String(val ?? '')
 }
 
+const DANGEROUS_ACTION_NAMES = new Set([
+  'JavaScript',
+  'URI',
+  'Launch',
+  'SubmitForm',
+  'ImportData',
+  'GoToR',
+])
+
+function inspectActionDictForRisks(
+  actionObj: unknown,
+  context: PDFDocument['context'],
+  visited = new Set<unknown>()
+): { dangerousActions: number; hasJs: boolean } {
+  const resolved = context.lookup(actionObj as never)
+  if (!(resolved instanceof PDFDict) || visited.has(resolved)) {
+    return { dangerousActions: 0, hasJs: false }
+  }
+  visited.add(resolved)
+
+  let dangerousActions = 0
+  let hasJs = false
+  const sVal = resolved.lookup(PDFName.of('S'))
+  if (sVal instanceof PDFName) {
+    const actionType = sVal.decodeText()
+    if (DANGEROUS_ACTION_NAMES.has(actionType)) {
+      dangerousActions += 1
+      if (actionType === 'JavaScript') hasJs = true
+    }
+  }
+  if (resolved.has(PDFName.of('JS'))) {
+    if (dangerousActions === 0) dangerousActions += 1
+    hasJs = true
+  }
+
+  const nextVal = resolved.get(PDFName.of('Next'))
+  if (nextVal) {
+    const nextResolved = context.lookup(nextVal)
+    if (nextResolved instanceof PDFArray) {
+      for (let i = 0; i < nextResolved.size(); i++) {
+        const sub = inspectActionDictForRisks(nextResolved.get(i), context, visited)
+        dangerousActions += sub.dangerousActions
+        if (sub.hasJs) hasJs = true
+      }
+    } else {
+      const sub = inspectActionDictForRisks(nextResolved, context, visited)
+      dangerousActions += sub.dangerousActions
+      if (sub.hasJs) hasJs = true
+    }
+  }
+
+  return { dangerousActions, hasJs }
+}
+
 export async function inspectPdfStructure(
-  bytes: Uint8Array
+  bytes: Uint8Array,
+  options: { maxPages?: number } = {}
 ): Promise<PdfStructureReport> {
   if (bytes.byteLength < 5) {
     throw new Error('有効なPDFファイルではありません（ファイルサイズが小さすぎます）。')
   }
 
+  const maxPages = options.maxPages ?? MAX_PDF_PAGES
   let pdfDoc: PDFDocument
   let pages: ReturnType<PDFDocument['getPages']>
   try {
@@ -374,16 +434,94 @@ export async function inspectPdfStructure(
     )
   }
 
-  if (pages.length > MAX_PDF_PAGES) {
+  if (pages.length > maxPages) {
     throw new Error(
-      `ページ数が上限（${MAX_PDF_PAGES}ページ）を超えています（現在 ${pages.length}ページ）。分割してからお試しください。`
+      `ページ数が上限（${maxPages}ページ）を超えています（現在 ${pages.length}ページ）。分割してからお試しください。`
     )
   }
+
+  let pageLevelRiskCount = 0
+  let dangerousActionCount = 0
+  let pageHasJavaScript = false
+  let hasDigitalSignature = false
+  let pageHasEmbeddedFiles = false
 
   const pageSummaries: PdfPageSummary[] = pages.map((page, index) => {
     const size = page.getSize()
     const rotation = page.getRotation().angle
     const annots = page.node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+
+    for (const keyName of ['AA', 'Metadata', 'PieceInfo', 'Thumb']) {
+      if (page.node.has(PDFName.of(keyName))) {
+        pageLevelRiskCount += 1
+      }
+    }
+
+    const aaDict = page.node.lookupMaybe(PDFName.of('AA'), PDFDict)
+    if (aaDict) {
+      for (const [, val] of aaDict.entries()) {
+        const res = inspectActionDictForRisks(val, pdfDoc.context)
+        dangerousActionCount += res.dangerousActions
+        if (res.hasJs) pageHasJavaScript = true
+      }
+    }
+
+    const resources = page.node.lookupMaybe(PDFName.of('Resources'), PDFDict)
+    const xObjects = resources?.lookupMaybe(PDFName.of('XObject'), PDFDict)
+    if (xObjects) {
+      for (const [, refOrObj] of xObjects.entries()) {
+        const resolved = pdfDoc.context.lookup(refOrObj)
+        const dict =
+          resolved instanceof PDFStream
+            ? resolved.dict
+            : resolved instanceof PDFDict
+              ? resolved
+              : null
+        if (!dict) continue
+        if (dict.has(PDFName.of('Metadata'))) pageLevelRiskCount += 1
+        if (dict.has(PDFName.of('PieceInfo'))) pageLevelRiskCount += 1
+      }
+    }
+
+    if (annots) {
+      for (let i = 0; i < annots.size(); i++) {
+        const annot = pdfDoc.context.lookup(annots.get(i))
+        if (!(annot instanceof PDFDict)) continue
+
+        const subtype = annot.lookup(PDFName.of('Subtype'))
+        if (subtype instanceof PDFName) {
+          const st = subtype.decodeText()
+          if (st === 'FileAttachment') pageHasEmbeddedFiles = true
+          if (st === 'Widget') {
+            const ft = annot.lookup(PDFName.of('FT'))
+            if (ft instanceof PDFName && ft.decodeText() === 'Sig') {
+              hasDigitalSignature = true
+            }
+            const vObj = annot.lookupMaybe(PDFName.of('V'), PDFDict)
+            if (vObj && vObj.has(PDFName.of('ByteRange'))) {
+              hasDigitalSignature = true
+            }
+          }
+        }
+
+        const actionVal = annot.get(PDFName.of('A'))
+        if (actionVal) {
+          const res = inspectActionDictForRisks(actionVal, pdfDoc.context)
+          dangerousActionCount += res.dangerousActions
+          if (res.hasJs) pageHasJavaScript = true
+        }
+
+        const annotAa = annot.lookupMaybe(PDFName.of('AA'), PDFDict)
+        if (annotAa) {
+          for (const [, val] of annotAa.entries()) {
+            const res = inspectActionDictForRisks(val, pdfDoc.context)
+            dangerousActionCount += res.dangerousActions
+            if (res.hasJs) pageHasJavaScript = true
+          }
+        }
+      }
+    }
+
     return {
       pageNumber: index + 1,
       widthPt: size.width,
@@ -443,12 +581,31 @@ export async function inspectPdfStructure(
   const hasOutlines = pdfDoc.catalog.has(PDFName.of('Outlines'))
   const hasOptionalContent = pdfDoc.catalog.has(PDFName.of('OCProperties'))
 
+  const acroFormDict = pdfDoc.catalog.lookupMaybe(PDFName.of('AcroForm'), PDFDict)
+  if (acroFormDict) {
+    const sigFlags = acroFormDict.get(PDFName.of('SigFlags'))
+    if (sigFlags) hasDigitalSignature = true
+    const fields = acroFormDict.lookupMaybe(PDFName.of('Fields'), PDFArray)
+    if (fields) {
+      for (let i = 0; i < fields.size(); i++) {
+        const field = pdfDoc.context.lookup(fields.get(i))
+        if (field instanceof PDFDict) {
+          const ft = field.lookup(PDFName.of('FT'))
+          if (ft instanceof PDFName && ft.decodeText() === 'Sig') {
+            hasDigitalSignature = true
+          }
+        }
+      }
+    }
+  }
+
   const namesDict = pdfDoc.catalog.lookupMaybe(PDFName.of('Names'), PDFDict)
   const hasEmbeddedFiles = Boolean(
-    namesDict && namesDict.has(PDFName.of('EmbeddedFiles'))
+    pageHasEmbeddedFiles || (namesDict && namesDict.has(PDFName.of('EmbeddedFiles')))
   )
   const hasJavaScript = Boolean(
-    (namesDict && namesDict.has(PDFName.of('JavaScript'))) ||
+    pageHasJavaScript ||
+      (namesDict && namesDict.has(PDFName.of('JavaScript'))) ||
       pdfDoc.catalog.has(PDFName.of('OpenAction')) ||
       pdfDoc.catalog.has(PDFName.of('AA'))
   )
@@ -461,6 +618,8 @@ export async function inspectPdfStructure(
   const totalRiskItems =
     metadataEntries.length +
     totalAnnotations +
+    pageLevelRiskCount +
+    dangerousActionCount +
     (hasXmpMetadata ? 1 : 0) +
     (hasAcroForm ? 1 : 0) +
     (hasEmbeddedFiles ? 1 : 0) +
@@ -478,6 +637,9 @@ export async function inspectPdfStructure(
     hasOutlines,
     hasOptionalContent,
     hasJavaScript,
+    hasDigitalSignature,
+    pageLevelRiskCount,
+    dangerousActionCount,
     totalAnnotations,
     totalRiskItems,
   }

@@ -11,6 +11,7 @@ const ALL_ROUTES = [
   '/tools/csv-encoding-fixer/',
   '/tools/image-exif-cleaner/',
   '/tools/pdf-redactor/',
+  '/tools/pdf-organizer/',
   '/tools/ai-markdown-formatter/',
   '/tools/config-sanitizer/',
 ]
@@ -141,7 +142,7 @@ for (const vp of [
   })
 }
 
-test('proves zero external transmission across interactive execution of all 7 published tools', async ({
+test('proves zero external transmission across interactive execution of all 8 published tools', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -320,6 +321,36 @@ test('proves zero external transmission across interactive execution of all 7 pu
     .getByTestId('download-redacted-pdf')
     .getAttribute('href')
   expect(downloadHref).toMatch(/^blob:/)
+
+  // 8. PDF Organizer
+  await page.goto('/tools/pdf-organizer/', { waitUntil: 'networkidle' })
+  await page.getByTestId('load-sample-pdfs-btn').click()
+  await expect(page.getByTestId('organizer-before-summary')).toBeVisible()
+  await expect(page.getByTestId('organizer-before-risk-count')).toContainText('件検出')
+  expect(await page.getByTestId('organizer-page-card').count()).toBe(3)
+
+  await page.getByTestId('generate-organized-pdf-btn').click()
+  await expect(page.getByTestId('organizer-output-result')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByTestId('organizer-after-risk-count')).toContainText('0 件')
+  const mergedHref = await page
+    .getByTestId('download-organized-pdf')
+    .first()
+    .getAttribute('href')
+  expect(mergedHref).toMatch(/^blob:/)
+
+  // 範囲分割モード（2ファイル + ZIP一括保存）の検証
+  await page
+    .getByRole('group', { name: '出力モードの選択' })
+    .getByRole('button', { name: '範囲指定で分割出力' })
+    .click()
+  await page.getByTestId('split-range-input').fill('1-2, 3')
+  await page.getByTestId('generate-organized-pdf-btn').click()
+  await expect(page.getByTestId('download-organized-zip')).toBeVisible({ timeout: 20000 })
+  const zipHref = await page
+    .getByTestId('download-organized-zip')
+    .getAttribute('href')
+  expect(zipHref).toMatch(/^blob:/)
+  expect(await page.getByTestId('download-organized-pdf').count()).toBe(2)
 
   // 全ツール実操作中、外部送信が0件であることを確認
   expect(tracker.consoleErrors).toEqual([])
