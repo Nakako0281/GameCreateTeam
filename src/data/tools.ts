@@ -48,18 +48,23 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     slug: 'llm-cost-calculator',
-    name: 'LLMトークン数＆API料金 リアルタイム比較シミュレーター',
-    shortTitle: 'LLM料金シミュレーター',
-    titleSegments: ['LLMトークン＆', 'API料金', '比較シミュレーター'],
+    name: 'LLMトークン数＆API料金・性能比較シミュレーター',
+    shortTitle: 'LLM料金・性能比較',
+    titleSegments: ['LLMトークン＆', 'API料金・性能', '比較シミュレーター'],
     shortSummary:
-      'プロンプトのトークン数を推定し、主要15モデルの月額API料金を円換算で比較します。',
+      'プロンプトのトークン数を推定し、主要15モデルの月額API料金と性能ベンチマークを円換算・グラフで比較します。',
     summary:
-      '日本語テキストやコードを即時トークン推定し、主要モデルのAPI月額費用・Prompt Caching・Batch割引を円換算で一括比較します。',
+      '日本語テキストやコードを即時トークン推定し、主要モデルのAPI月額費用・Prompt Caching・Batch割引と性能ベンチマーク（パレート散布図・棒グラフ）を一括比較します。',
     category: 'ai-security',
-    categoryLabel: 'AIコスト試算',
+    categoryLabel: 'AIコスト・性能試算',
     status: 'published',
     wave: 1,
-    keywords: ['LLM API 料金比較', 'トークン数 計算 日本語', 'GPT Claude Gemini コスト試算'],
+    keywords: [
+      'LLM API 料金比較',
+      'LLM ベンチマーク 価格 コスパ比較',
+      'トークン数 計算 日本語',
+      'GPT Claude Gemini コスト試算',
+    ],
     iconKey: 'calculator',
   },
   {

@@ -31,5 +31,6 @@ description: TemotoBoxへ新しいブラウザ完結・入力データ送信ゼ�
 1. `tests/e2e/site.spec.ts` に新規ツールの実操作＆外部ネットワークリクエスト0件証明テストを追加し、あわせて `tests/e2e/ads-leakage.spec.ts`（広告・GA4有効ビルドでのカナリア入力漏洩ゼロ証明）へ新ツールの操作とカナリア検証を追加する。
 2. 新規パッケージを追加した場合はローカルで `npm ci` クリーン再現確認を行う。
 3. `npm run check:all` を実行し、`audit:ci-parity`, `typecheck`, `test`, `build`, `audit:security`, `audit:seo`, `audit:memory`, `test:e2e`, `test:e2e:ads` のすべてをエラー0件で通過させる。
-4. `docs/STATE.md` と `docs/TOOLS_ROADMAP.md` を更新してコミット＆Pushし、Draft PR 作成後に `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過を確認してから報告する。
+4. **AI自己受け入れテスト（Issue #55）**: 新規ツールページの初期状態およびサンプル実行後について、Playwright で PC（`1280×800`）とモバイル（`390×844`）のスクリーンショットを撮影して視覚検査し、①スクロール0pxでの主入力枠到達性、②390pxでの文字潰れ・バッジ重なりゼロ、③初見でのラベル理解性を確認してPR本文へ記録する。
+5. `docs/STATE.md` と `docs/TOOLS_ROADMAP.md` を更新してコミット＆Pushし、`.github/pull_request_template.md` に沿った Draft PR 作成後に `node scripts/ops_github.mjs ready-pr <pr_number>` でPR本文検証およびリモートCI全通過を確認してから報告する。
    - *クロスOS実装メモ*: `scripts/*.mjs` や Playwright `webServer` から Astro / Playwright CLI を起動する際は、`npx` や `{ ...process.env }` 展開を使わず `process.execPath` / `node node_modules/...` で直接実行する（Windows での `EINVAL` や環境変数大小文字による `webServer` タイムアウト回避のため）。

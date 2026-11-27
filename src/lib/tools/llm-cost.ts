@@ -1,6 +1,8 @@
 import {
   LLM_MODELS,
   PRICING_LAST_VERIFIED,
+  type BenchmarkMetricKey,
+  type ModelBenchmarkProfile,
   type ScheduledModelPrice,
 } from '../../data/llm-pricing'
 
@@ -25,6 +27,8 @@ export interface CostSimulationInput {
     inputPerMillionUsd: number
     outputPerMillionUsd: number
     cachedInputPerMillionUsd: number
+    benchmarkOverall?: number | null
+    benchmarkCoding?: number | null
   } | null
 }
 
@@ -42,8 +46,15 @@ export interface ModelCostRow {
   monthlyJpy: number
   batchApplied: boolean
   priceEffectiveUntil?: string
+  benchmarks: ModelBenchmarkProfile
   sourceUrl: string
   notes: string
+}
+
+export interface BenchmarkChartPoint {
+  row: ModelCostRow
+  score: number
+  isParetoOptimal: boolean
 }
 
 export function estimateTokens(text: string): TokenEstimate {
@@ -110,6 +121,7 @@ export interface SimulatableModel {
   supportsBatch50: boolean
   priceEffectiveUntil?: string
   scheduledPricing?: ScheduledModelPrice
+  benchmarks: ModelBenchmarkProfile
   sourceUrl: string
   notes: string
 }
@@ -123,6 +135,12 @@ type PricedModelLike = Pick<
   | 'scheduledPricing'
   | 'notes'
 >
+
+function sanitizeOptionalScore(val?: number | null): number | null {
+  if (val === null || val === undefined || !Number.isFinite(val)) return null
+  if (val <= 0 || val > 100) return null
+  return Number(val.toFixed(1))
+}
 
 /**
  * 基準日 (YYYY-MM-DD) に応じて予定改定価格を適用する。
@@ -198,6 +216,7 @@ export function calculateSingleModelCost(
     monthlyJpy,
     batchApplied,
     priceEffectiveUntil: effectiveModel.priceEffectiveUntil,
+    benchmarks: effectiveModel.benchmarks,
     sourceUrl: effectiveModel.sourceUrl,
     notes: effectiveModel.notes,
   }
@@ -227,6 +246,11 @@ export function calculateAllModelCosts(
         input.customModel.cachedInputPerMillionUsd
       ),
       supportsBatch50: true,
+      benchmarks: {
+        overall: sanitizeOptionalScore(input.customModel.benchmarkOverall),
+        coding: sanitizeOptionalScore(input.customModel.benchmarkCoding),
+        sourceUrl: '',
+      },
       sourceUrl: '',
       notes: 'ユーザー指定のカスタム単価条件',
     })
@@ -235,6 +259,66 @@ export function calculateAllModelCosts(
   return models
     .map((m) => calculateSingleModelCost(m, input))
     .sort((a, b) => a.monthlyUsd - b.monthlyUsd)
+}
+
+/**
+ * 指定されたベンチマーク軸で有効スコアを持つモデルを抽出し、
+ * 「それ以下の月額コストでより高い（または同等の）スコアを持つ他モデルが存在しない」
+ * パレート最適（効率フロンティア）モデルを判定して返す。
+ */
+export function computeBenchmarkComparison(
+  rows: ModelCostRow[],
+  metric: BenchmarkMetricKey
+): {
+  measured: BenchmarkChartPoint[]
+  unmeasured: ModelCostRow[]
+  paretoFrontier: BenchmarkChartPoint[]
+} {
+  const unmeasured: ModelCostRow[] = []
+  const rawPoints: Array<{ row: ModelCostRow; score: number }> = []
+
+  for (const row of rows) {
+    const score = row.benchmarks[metric]
+    if (typeof score === 'number' && Number.isFinite(score) && score > 0) {
+      rawPoints.push({ row, score })
+    } else {
+      unmeasured.push(row)
+    }
+  }
+
+  // 月額コスト昇順、同額ならスコア降順で並べ、これまでの最高スコアを更新した点をパレート最適とする
+  const sortedByCost = [...rawPoints].sort((a, b) => {
+    const costDiff = a.row.monthlyUsd - b.row.monthlyUsd
+    if (Math.abs(costDiff) > 1e-12) return costDiff
+    return b.score - a.score
+  })
+
+  const paretoIds = new Set<string>()
+  let bestScoreSoFar = -Infinity
+  let prevParetoCost = -Infinity
+
+  for (const item of sortedByCost) {
+    const isSameCostAsPrev = Math.abs(item.row.monthlyUsd - prevParetoCost) <= 1e-12
+    if (item.score > bestScoreSoFar || (isSameCostAsPrev && item.score === bestScoreSoFar)) {
+      paretoIds.add(item.row.id)
+      bestScoreSoFar = item.score
+      prevParetoCost = item.row.monthlyUsd
+    }
+  }
+
+  const measured: BenchmarkChartPoint[] = sortedByCost.map((item) => ({
+    row: item.row,
+    score: item.score,
+    isParetoOptimal: paretoIds.has(item.row.id),
+  }))
+
+  const paretoFrontier = measured.filter((p) => p.isParetoOptimal)
+
+  return {
+    measured,
+    unmeasured,
+    paretoFrontier,
+  }
 }
 
 export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
@@ -250,6 +334,8 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
     'MonthlyUSD',
     'MonthlyJPY',
     'Batch50Applied',
+    'BenchmarkOverall',
+    'BenchmarkCoding',
     'PriceEffectiveUntil',
   ].join(',')
 
@@ -266,6 +352,8 @@ export function exportCostComparisonCsv(rows: ModelCostRow[]): string {
       r.monthlyUsd.toFixed(4),
       Math.round(r.monthlyJpy).toString(),
       r.batchApplied ? 'YES' : 'NO',
+      r.benchmarks.overall !== null ? r.benchmarks.overall.toFixed(1) : '',
+      r.benchmarks.coding !== null ? r.benchmarks.coding.toFixed(1) : '',
       r.priceEffectiveUntil ?? '',
     ].join(',')
   )

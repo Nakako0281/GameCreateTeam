@@ -170,6 +170,7 @@ const BOOLEAN_FLAGS = new Set([
   'include-external',
   'allow-exception',
   'allow-legacy-labels',
+  'allow-legacy-body',
 ])
 
 function bestEffortFetchOriginMainDev() {
@@ -730,6 +731,167 @@ export function validateCreatePrBranchGuard({
   }
 
   return { allowed: true, override_used: false, reason: null }
+}
+
+const DOCS_ONLY_FILE_PATTERNS = [
+  /^docs\//,
+  /^\.agents\//,
+  /^\.github\/ISSUE_TEMPLATE\//,
+  /^\.github\/pull_request_template\.md$/i,
+  /^README\.md$/,
+  /^AGENTS\.md$/,
+]
+
+export function isDocsOnlyChangedFiles(changedFiles = []) {
+  if (!Array.isArray(changedFiles) || changedFiles.length === 0) return false
+  return changedFiles.every((raw) => {
+    const norm = String(raw || '')
+      .trim()
+      .replace(/\\/g, '/')
+    if (!norm) return true
+    return DOCS_ONLY_FILE_PATTERNS.some((re) => re.test(norm))
+  })
+}
+
+const PR_PLACEHOLDER_RE =
+  /(?:\bTODO\b|\bTBD\b|\bFIXME\b|Refs\s+#00\b|ここに記入|未記入|<issue>)/i
+
+function extractMarkdownSectionMap(bodyWithoutComments) {
+  const sections = new Map()
+  const lines = bodyWithoutComments.split(/\r?\n/)
+  let currentHeading = null
+  let buf = []
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+(.+?)\s*$/)
+    if (headingMatch) {
+      if (currentHeading !== null) {
+        sections.set(currentHeading, buf.join('\n').trim())
+      }
+      currentHeading = headingMatch[1].trim()
+      buf = []
+    } else if (currentHeading !== null) {
+      buf.push(line)
+    }
+  }
+  if (currentHeading !== null) {
+    sections.set(currentHeading, buf.join('\n').trim())
+  }
+  return sections
+}
+
+function stripTemplateLabelsForSubstantiveCheck(sectionText) {
+  return String(sectionText || '')
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/^\s*[-*]\s*[^:：]{2,60}[:：]\s*/, '')
+        .trim()
+    )
+    .filter(Boolean)
+    .join(' ')
+}
+
+export function validatePullRequestBody({
+  body = '',
+  changedFiles = [],
+  baseRef = 'dev',
+  allowLegacyBody = false,
+} = {}) {
+  if (allowLegacyBody) {
+    return { valid: true, docs_only: false, errors: [] }
+  }
+
+  const errors = []
+  const cleaned = String(body || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .trim()
+
+  if (!cleaned) {
+    return {
+      valid: false,
+      docs_only: false,
+      errors: [
+        '[PRTemplateGuard] PR本文が空です。.github/pull_request_template.md に沿って概要・検証証跡・自己受け入れ確認を記載してください。',
+      ],
+    }
+  }
+
+  const placeholderHit = cleaned.match(PR_PLACEHOLDER_RE)
+  if (placeholderHit) {
+    errors.push(
+      `[PRTemplateGuard] PR本文に未記入プレースホルダ（"${placeholderHit[0]}"）が残っています。実測結果へ書き換えてください。`
+    )
+  }
+
+  if (/^\s*[-*]\s*\[\s\]/m.test(cleaned)) {
+    errors.push(
+      '[PRTemplateGuard] PR本文に未完了チェックボックス（"- [ ]"）が残っています。完了確認後に更新してください。'
+    )
+  }
+
+  const sections = extractMarkdownSectionMap(cleaned)
+  const requiredHeadings = [
+    '概要',
+    '変更と検証証跡',
+    'サブエージェント監査と自己受け入れ確認',
+  ]
+
+  for (const heading of requiredHeadings) {
+    if (!sections.has(heading)) {
+      errors.push(
+        `[PRTemplateGuard] 必須見出し "## ${heading}" がPR本文にありません（.github/pull_request_template.md 参照）。`
+      )
+      continue
+    }
+    const substantive = stripTemplateLabelsForSubstantiveCheck(
+      sections.get(heading)
+    )
+    if (substantive.length < 15) {
+      errors.push(
+        `[PRTemplateGuard] セクション "## ${heading}" の実質記述が不足しています（15文字以上の具体的な確認結果を記載してください）。`
+      )
+    }
+  }
+
+  const normalizedFiles = (changedFiles || []).map((f) =>
+    String(f || '')
+      .trim()
+      .replace(/\\/g, '/')
+  )
+  const docsOnly = isDocsOnlyChangedFiles(normalizedFiles)
+  const hasUiOrToolChanges = normalizedFiles.some((f) =>
+    /^(?:src\/components\/|src\/pages\/|src\/layouts\/|src\/styles\/)/.test(f)
+  )
+  const hasPricingChange = normalizedFiles.includes('src/data/llm-pricing.ts')
+
+  if (hasUiOrToolChanges && baseRef !== 'main') {
+    const acceptanceSection =
+      sections.get('サブエージェント監査と自己受け入れ確認') || ''
+    if (!/(?:1280|PC|デスクトップ)/i.test(acceptanceSection) || !/(?:390|モバイル|スマホ|mobile)/i.test(acceptanceSection)) {
+      errors.push(
+        '[PRTemplateGuard] UI/ページ変更を含むPRでは「## サブエージェント監査と自己受け入れ確認」に PC(1280px) および モバイル(390px) の自己受け入れ確認結果を記載してください。'
+      )
+    }
+  }
+
+  if (hasPricingChange) {
+    const evidenceSection = sections.get('変更と検証証跡') || cleaned
+    if (
+      !/\b20\d{2}-\d{2}-\d{2}\b/.test(evidenceSection) ||
+      !/https:\/\/[^\s)]+/.test(evidenceSection)
+    ) {
+      errors.push(
+        '[PRTemplateGuard] src/data/llm-pricing.ts を変更するPRでは、検証日(YYYY-MM-DD)と確認した公式一次ソース(https://...)を「## 変更と検証証跡」に明記してください。'
+      )
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    docs_only: docsOnly,
+    errors,
+  }
 }
 
 function detectHeadContainsUnmergedMain(headRef) {
@@ -1508,7 +1670,27 @@ async function main() {
 
     case 'ready-pr': {
       const num = positional[0]
+      if (!num) throw new Error('PR番号を指定してください')
       const timeoutSec = flags.timeout ? Number(flags.timeout) : 600
+      const allowLegacyBody = Boolean(flags['allow-legacy-body'])
+
+      const [initialPr, prFilesRaw] = await Promise.all([
+        githubRequest(`/pulls/${num}`),
+        fetchPagedGithub(`/pulls/${num}/files`, 3),
+      ])
+      const changedFiles = (prFilesRaw || []).map((f) => f.filename)
+      const preBodyCheck = validatePullRequestBody({
+        body: initialPr.body || '',
+        changedFiles,
+        baseRef: initialPr.base?.ref || 'dev',
+        allowLegacyBody,
+      })
+      if (!preBodyCheck.valid) {
+        throw new Error(
+          `PR #${num} の本文が受け入れゲート基準を満たしていないため Ready 昇格を拒否しました:\n${preBodyCheck.errors.map((e) => `  - ${e}`).join('\n')}`
+        )
+      }
+
       const { pr, result } = await waitAndVerifyPrCi(num, timeoutSec)
       if (!result.all_passed) {
         console.log(JSON.stringify({ ...result, ready_promoted: false }, null, 2))
@@ -1516,6 +1698,20 @@ async function main() {
           `PR #${pr.number} のリモートCIが失敗しているため Ready for Review への昇格を拒否しました。`
         )
       }
+
+      // CI待機中に update-pr で本文が書き換わった場合にも備え、昇格直前に再検証する
+      const finalBodyCheck = validatePullRequestBody({
+        body: pr.body || '',
+        changedFiles,
+        baseRef: pr.base?.ref || 'dev',
+        allowLegacyBody,
+      })
+      if (!finalBodyCheck.valid) {
+        throw new Error(
+          `PR #${pr.number} の本文が受け入れゲート基準を満たしていないため Ready 昇格を拒否しました:\n${finalBodyCheck.errors.map((e) => `  - ${e}`).join('\n')}`
+        )
+      }
+
       let readyPromoted = false
       let currentDraft = pr.draft
       if (pr.draft) {
@@ -1538,6 +1734,7 @@ async function main() {
             ...result,
             draft: currentDraft,
             ready_promoted: readyPromoted,
+            pr_body_verified: true,
             ci_verified: true,
           },
           null,

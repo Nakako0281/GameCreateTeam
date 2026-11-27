@@ -426,6 +426,39 @@ export function runOrgMemoryAudit({
     }
   }
 
+  // PRテンプレート存在・必須見出し・公開境界チェック（Issue #55 & L-11）
+  const prTemplatePath = path.join(
+    root,
+    '.github',
+    'pull_request_template.md'
+  )
+  if (!fs.existsSync(prTemplatePath)) {
+    errors.push(
+      '[PRTemplate] Missing .github/pull_request_template.md (Issue #55)'
+    )
+  } else {
+    const prTemplateText = fs.readFileSync(prTemplatePath, 'utf-8')
+    const prForbiddenHit = prTemplateText.match(
+      /(?:マネタイズ|AdSense|収益目標|月\s*100\s*円|従業員兼最終責任者|AutoGrowth Studio)/i
+    )
+    if (prForbiddenHit) {
+      errors.push(
+        `[PublicBoundary] .github/pull_request_template.md contains internal strategy term "${prForbiddenHit[0]}"`
+      )
+    }
+    for (const heading of [
+      '## 概要',
+      '## 変更と検証証跡',
+      '## サブエージェント監査と自己受け入れ確認',
+    ]) {
+      if (!prTemplateText.includes(heading)) {
+        errors.push(
+          `[PRTemplate] .github/pull_request_template.md missing required heading "${heading}"`
+        )
+      }
+    }
+  }
+
   // ops_github.mjs 信頼境界ロジックの実動作検証（fail-closed）
   if (TRUSTED_AUTHOR_ASSOCIATIONS.has('CONTRIBUTOR')) {
     errors.push(
@@ -688,6 +721,20 @@ export function runOrgMemoryAudit({
 
   const coveredProviders = new Set()
   const seenModelIds = new Set()
+  let validBenchmarkModelCount = 0
+
+  const benchmarkSourceBlockMatch = pricingText.match(
+    /export const OFFICIAL_BENCHMARK_SOURCE\s*=\s*\{([\s\S]*?)\}\s*as const/
+  )
+  const officialBenchmarkUrlMatch = benchmarkSourceBlockMatch
+    ? benchmarkSourceBlockMatch[1].match(/url:\s*'(https:\/\/[^']+)'/)
+    : null
+  const officialBenchmarkUrl = officialBenchmarkUrlMatch?.[1] || ''
+  if (!officialBenchmarkUrl) {
+    errors.push(
+      '[Benchmark] OFFICIAL_BENCHMARK_SOURCE.url (https://...) not found in src/data/llm-pricing.ts'
+    )
+  }
 
   for (const block of modelBlocks) {
     const idMatch = block.match(/id:\s*'([^']+)'/)
@@ -810,6 +857,58 @@ export function runOrgMemoryAudit({
         )
       }
     }
+
+    // ベンチマーク構造・範囲・出典チェック（Issue #79）
+    const benchMatch = block.match(/benchmarks\s*:\s*\{([\s\S]*?)\}/)
+    if (!benchMatch) {
+      errors.push(`[Benchmark] Model "${id}" missing benchmarks profile`)
+    } else {
+      const benchBody = benchMatch[1]
+      const overallMatch = benchBody.match(/overall:\s*(null|-?[\d.]+)/)
+      const codingMatch = benchBody.match(/coding:\s*(null|-?[\d.]+)/)
+      const benchUrlLiteral = benchBody.match(/sourceUrl:\s*'([^']+)'/)
+      const benchUrlRef = benchBody.includes('OFFICIAL_BENCHMARK_SOURCE.url')
+
+      for (const [metricName, m] of [
+        ['overall', overallMatch],
+        ['coding', codingMatch],
+      ]) {
+        if (!m) {
+          errors.push(
+            `[Benchmark] Model "${id}" benchmarks missing "${metricName}" field`
+          )
+        } else if (m[1] !== 'null') {
+          const val = Number(m[1])
+          if (!Number.isFinite(val) || val <= 0 || val > 100) {
+            errors.push(
+              `[Benchmark] Model "${id}" benchmarks.${metricName} (${m[1]}) must be null or in (0, 100]`
+            )
+          }
+        }
+      }
+
+      if (overallMatch && overallMatch[1] !== 'null') {
+        validBenchmarkModelCount += 1
+      }
+
+      const resolvedBenchUrl = benchUrlRef
+        ? officialBenchmarkUrl
+        : benchUrlLiteral?.[1] || ''
+      if (!resolvedBenchUrl.startsWith('https://')) {
+        errors.push(
+          `[Benchmark] Model "${id}" benchmarks.sourceUrl must be a valid https:// URL`
+        )
+      }
+    }
+  }
+
+  if (
+    modelBlocks.length > 0 &&
+    validBenchmarkModelCount < Math.ceil(modelBlocks.length * 0.5)
+  ) {
+    errors.push(
+      `[Benchmark] At least 50% of LLM_MODELS must have non-null overall benchmark scores (found ${validBenchmarkModelCount}/${modelBlocks.length})`
+    )
   }
 
   for (const provider of REQUIRED_PROVIDERS) {

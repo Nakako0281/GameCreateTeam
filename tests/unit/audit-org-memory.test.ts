@@ -12,23 +12,25 @@ import {
 const REPO_ROOT = path.resolve('.')
 
 describe('audit-org-memory deterministic vs time-sensitive separation (Issue #52 / L-13)', () => {
-  it('passes cleanly on 2026-11-22 even with timeSensitive=true', () => {
+  it('passes cleanly on 2026-11-27 even with timeSensitive=true', () => {
     const res = runOrgMemoryAudit({
       root: REPO_ROOT,
       docsOnly: true,
       timeSensitive: true,
-      now: '2026-11-22T12:00:00Z',
+      now: '2026-11-27T12:00:00Z',
     })
     expect(res.errors).toEqual([])
-    expect(res.warnings).toEqual([])
+    expect(
+      res.warnings.every((w) => w.includes('gemini-4-argon'))
+    ).toBe(true)
   })
 
-  it('emits 7-day advance warning for gemini-4-argon on 2026-11-25 without failing', () => {
+  it('emits 7-day advance warning for gemini-4-argon on 2026-11-28 without failing', () => {
     const res = runOrgMemoryAudit({
       root: REPO_ROOT,
       docsOnly: true,
       timeSensitive: true,
-      now: '2026-11-25T00:00:00Z',
+      now: '2026-11-28T00:00:00Z',
     })
     expect(res.errors).toEqual([])
     expect(

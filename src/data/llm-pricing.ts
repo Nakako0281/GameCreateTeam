@@ -1,10 +1,10 @@
 /**
- * 主要LLM APIの参考料金テーブル（USD / 100万トークンあたり）
+ * 主要LLM APIの参考料金テーブル（USD / 100万トークンあたり）および横断ベンチマーク指標
  * PRICING_LAST_VERIFIED は scripts/audit-org-memory.mjs --time-sensitive（日次監査および本ファイル変更PRのCI）で
  * 14日以内の鮮度と priceEffectiveUntil が強制チェックされます。
- * 本ファイルを更新する際は、検証日・確認した公式URL・確認者（AIセッション）をコミットまたはPR本文に明記してください。
+ * 本ファイルを更新する際は、検証日・確認した公式URL・確認者（AIセッション）をコミットおよびPR本文に明記してください。
  */
-export const PRICING_LAST_VERIFIED = '2026-11-22'
+export const PRICING_LAST_VERIFIED = '2026-11-27'
 export const MAX_PRICING_AGE_DAYS = 14
 export const DEFAULT_USD_TO_JPY = 159
 
@@ -15,7 +15,24 @@ export const OFFICIAL_PRICING_SOURCES = {
   DeepSeek: 'https://api-docs.deepseek.com/quick_start/pricing',
 } as const
 
+export const OFFICIAL_BENCHMARK_SOURCE = {
+  name: 'BenchLM (BenchAlign Public Leaderboard)',
+  url: 'https://benchlm.ai/',
+  verifiedAt: '2026-11-27',
+  protocolSummary:
+    '公開ベンチマーク横断集計スコア（0〜100点スケール。総合BenchAlign指標およびコーディング領域ポイント推定値）',
+} as const
+
 export type LlmProvider = keyof typeof OFFICIAL_PRICING_SOURCES
+export type BenchmarkMetricKey = 'overall' | 'coding'
+
+export interface ModelBenchmarkProfile {
+  /** 総合性能スコア（BenchLM BenchAlign 0〜100、同条件未計測時は null） */
+  overall: number | null
+  /** コーディング・ソフトウェア開発スコア（BenchLM Coding 0〜100、同条件未計測時は null） */
+  coding: number | null
+  sourceUrl: string
+}
 
 export interface ScheduledModelPrice {
   effectiveFrom: string
@@ -37,6 +54,7 @@ export interface LlmModelPrice {
   supportsBatch50: boolean
   priceEffectiveUntil?: string
   scheduledPricing?: ScheduledModelPrice
+  benchmarks: ModelBenchmarkProfile
   sourceUrl: string
   notes: string
 }
@@ -52,6 +70,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 0.5,
     cachedInputPerMillionUsd: 0.01,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 61.3,
+      coding: 61.2,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.OpenAI,
     notes: '大量抽出・分類・定型処理向けのOpenAI軽量低単価モデル',
   },
@@ -65,6 +88,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 5.0,
     cachedInputPerMillionUsd: 0.05,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 80.7,
+      coding: 80.2,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.OpenAI,
     notes: '標準業務ワークフロー・コストと精度の均衡をとる中核モデル',
   },
@@ -78,6 +106,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 10.0,
     cachedInputPerMillionUsd: 0.1,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 82.2,
+      coding: 83.6,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.OpenAI,
     notes: '日常開発・コーディング・自律エージェントの主力モデル（272K超長文で単価加算）',
   },
@@ -91,6 +124,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 40.0,
     cachedInputPerMillionUsd: 0.4,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 90.8,
+      coding: 92.0,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.OpenAI,
     notes: '高難度設計・複雑推論向けのOpenAI最上位フラッグシップ',
   },
@@ -104,6 +142,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 0.5,
     cachedInputPerMillionUsd: 0.01,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 63.6,
+      coding: 68.1,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Anthropic,
     notes: '100K以下入力時の単価（100K超の長文は入力$0.50/出力$2.50）。高速・高コスパ',
   },
@@ -117,6 +160,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 10.0,
     cachedInputPerMillionUsd: 0.1,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 77.7,
+      coding: 86.5,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Anthropic,
     notes: '日本語実務文書・コード生成の主力帯（キャッシュ読込95%割引）',
   },
@@ -130,6 +178,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 20.0,
     cachedInputPerMillionUsd: 0.2,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 82.7,
+      coding: 88.3,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Anthropic,
     notes: '長期自律エージェント・複雑コードベース設計向けの上位推論帯',
   },
@@ -143,6 +196,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 40.0,
     cachedInputPerMillionUsd: 0.2,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 93.3,
+      coding: 92.0,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Anthropic,
     notes: '最先端の深い推論・研究用途向けAnthropic最上位モデル（キャッシュ読込97.5%引）',
   },
@@ -156,6 +214,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 2.5,
     cachedInputPerMillionUsd: 0.03,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 47.6,
+      coding: 44.7,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
     notes: '大量バッチ分類・低レイテンシ処理向けの軽量Geminiモデル',
   },
@@ -177,6 +240,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
       cachedInputPerMillionUsd: 0.15,
       notes: '2027/1/1改定後の標準単価（思考トークン含む・キャッシュ90%引）',
     },
+    benchmarks: {
+      overall: 68.0,
+      coding: 65.6,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
     notes: '2026/12/31まで導入価格（2027/1/1から$1.50/$7.50へ自動切替・思考トークン含む）',
   },
@@ -190,6 +258,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 7.5,
     cachedInputPerMillionUsd: 0.075,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 78.8,
+      coding: 78.0,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
     notes: 'Gemini 4高速実務帯・暗黙キャッシュ95%引対応（思考トークン含む）',
   },
@@ -211,6 +284,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
       cachedInputPerMillionUsd: 0.2,
       notes: '2026/12/1改定後の標準単価（思考トークン含む・暗黙キャッシュ95%引）',
     },
+    benchmarks: {
+      overall: 79.1,
+      coding: 78.9,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
     notes: '2026/11/30まで導入価格（12/1から$4.00/$20.00へ自動切替・思考トークン含む）',
   },
@@ -224,6 +302,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 15.0,
     cachedInputPerMillionUsd: 0.15,
     supportsBatch50: true,
+    benchmarks: {
+      overall: 91.8,
+      coding: 90.0,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.Google,
     notes: 'Gemini 4上位推論・バランス主力帯・暗黙キャッシュ95%引（思考トークン含む）',
   },
@@ -237,6 +320,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 1.2,
     cachedInputPerMillionUsd: 0.006,
     supportsBatch50: false,
+    benchmarks: {
+      overall: 70.1,
+      coding: 76.7,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.DeepSeek,
     notes: 'Peak単価基準（Off-Peak時間帯は半額 $0.15/$0.60・自動キャッシュ対応）',
   },
@@ -250,6 +338,11 @@ export const LLM_MODELS: LlmModelPrice[] = [
     outputPerMillionUsd: 3.96,
     cachedInputPerMillionUsd: 0.044,
     supportsBatch50: false,
+    benchmarks: {
+      overall: 61.6,
+      coding: 59.7,
+      sourceUrl: OFFICIAL_BENCHMARK_SOURCE.url,
+    },
     sourceUrl: OFFICIAL_PRICING_SOURCES.DeepSeek,
     notes: 'Peak単価基準（Off-Peak時間帯は半額 $0.66/$1.98・機密データは送信先規約に注意）',
   },

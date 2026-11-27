@@ -13,8 +13,8 @@ AdSense審査通過と初期90日目標（2027-02-20までに月100円以上）�
 
 1. **AI入力前・個人情報（PII）自動マスキング＆回答復元** (`/tools/ai-pii-masker/`)
    - *狙い*: 生成AI（ChatGPT/Claude/Gemini）を安全に使いたいビジネス層・開発者。Chrome拡張への不信感を突き「ブラウザタブ内で完結＆回答を自動復元」で差別化。
-2. **LLMトークン数＆API料金 リアルタイム比較シミュレーター** (`/tools/llm-cost-calculator/`)
-   - *狙い*: AI導入検討者・個人開発者・法人担当。日英のトークン効率差・Prompt Caching・Batch割引・円換算まで一発試算。高単価IT広告との相性抜群。
+2. **LLMトークン数＆API料金・性能比較シミュレーター** (`/tools/llm-cost-calculator/`)
+   - *狙い*: AI導入検討者・個人開発者・法人担当。日英のトークン効率差・Prompt Caching・Batch割引・円換算に加え、実利用月額×BenchLM横断性能スコアのパレート最適散布図・棒グラフ比較まで一発試算。高単価IT広告との相性抜群。
 3. **Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング** (`/tools/csv-encoding-fixer/`)
    - *狙い*: 日本のビジネス現場で毎日発生する「ExcelでCSVが開けない/文字化け」の検索需要＋社外秘列の簡易マスキングをゼロ送信で解決。
 4. **画像 EXIF/GPS位置情報 完全削除＆WebP/JPG/PNG一括軽量化** (`/tools/image-exif-cleaner/`)

@@ -18,7 +18,7 @@
 | ツール | パス | 概要 |
 | :--- | :--- | :--- |
 | **AI入力前・個人情報(PII)自動マスキング＆回答復元** | `/tools/ai-pii-masker/` | メール・電話番号・APIキー・社名・独自固有名詞をブラウザ内で仮名トークンへ置換し、AIの回答をワンクリック復元 |
-| **LLMトークン数＆API料金 リアルタイム比較シミュレーター** | `/tools/llm-cost-calculator/` | 日本語/英語のトークン近似計算、Prompt Caching・Batch 50%割引・円換算比較とCSV出力 |
+| **LLMトークン数＆API料金・性能比較シミュレーター** | `/tools/llm-cost-calculator/` | 日本語/英語のトークン近似計算、Prompt Caching・Batch 50%割引・円換算比較、性能ベンチマーク（コスパ散布図・棒グラフ）とCSV出力 |
 | **Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング** | `/tools/csv-encoding-fixer/` | 文字コード自動判定、Excel対応UTF-8（BOM付）への変換、列単位のマスク・削除 |
 | **画像 EXIF/GPS位置情報 完全削除＆WebP/JPG一括軽量化** | `/tools/image-exif-cleaner/` | 削除前メタデータ診断、HTML5 Canvas再描画による物理消去、削除後0件再検査と軽量化 |
 | **PDF「真の墨消し（黒塗り）」＆メタデータ完全削除** | `/tools/pdf-redactor/` | 全ページ画像化焼付けによる下層テキスト抽出不能化、PII候補1クリック提案、Info/XMP削除と0文字/0件再検査 |

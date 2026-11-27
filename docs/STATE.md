@@ -20,7 +20,7 @@
 | :--- | :--- | :---: | :--- |
 | トップページ | `/` | 刷新済み (2026-11-22) | ファーストビュー即アクセス型レイアウト・H1文節折り返し防止・スリムトラスト帯 |
 | Tool 1 | `/tools/ai-pii-masker/` | 強化済み (2026-11-23) | AI入力前・個人情報（PII）自動マスキング＆回答復元（115件評価コーパス Recall 98.9%/Precision 100.0%・`fast-check` 往復property test・常時目視確認注意表示／L-08, L-10, L-16） |
-| Tool 2 | `/tools/llm-cost-calculator/` | 更新済み (2026-11-22) | 最新15モデル（GPT-6/Claude 5.5・5.2/Gemini 4・3.8/DeepSeek V4）対応・為替159円・予定改定価格自動切替（Gemini 4 Argon 12/1 等・2026-11-22 4社検証済） |
+| Tool 2 | `/tools/llm-cost-calculator/` | 強化済み (2026-11-27) | 最新15モデル（GPT-6/Claude 5.5・5.2/Gemini 4・3.8/DeepSeek V4）料金＆BenchLM性能ベンチマーク比較（実利用月額×性能のパレート最適散布図・棒グラフ・2026-11-27 一次ソース再検証済／#78, #79） |
 | Tool 3 | `/tools/csv-encoding-fixer/` | 刷新済み (2026-11-22) | Excel CSV文字化け修復（Shift-JIS ⇔ UTF-8 BOM付）＆列マスキング（ドロップ対応単一枠化） |
 | Tool 4 | `/tools/image-exif-cleaner/` | 刷新済み (2026-11-22) | 画像 EXIF/GPS位置情報 完全削除＆WebP/JPG/PNG一括軽量化（ドロップ枠最上段配置・設定簡素化） |
 | Tool 5 | `/tools/pdf-redactor/` | 実装済み (2026-11-26) | PDF「真の墨消し（黒塗り/白塗り）」＆Info/XMPメタデータ完全削除（全ページ画像化・PII候補1クリック提案・処理後0文字/0件再検査証明） |
@@ -40,22 +40,23 @@
 - **時刻依存鮮度ゲートの分離（`L-13`）**: 14日鮮度および `priceEffectiveUntil` 期限切れチェックは `--time-sensitive`（`npm run audit:memory:freshness`）へ分離し、日次監視（`.github/workflows/daily-freshness-check.yml` 毎日 08:30 JST・`audit:memory --docs-only --time-sensitive`）および `src/data/llm-pricing.ts` 変更PRのみで失敗判定する（無関係なPRでは警告のみ）。
 - **外部入力の信頼境界（`L-12`）**: `ops_github.mjs` は `OWNER`/`COLLABORATOR`/`MEMBER` と公式 `github-actions[bot]`（`type: Bot`）・同一リポPRのみを信頼し、外部Issue・外部コメント・フォークPRは隔離して本文/タイトルをデフォルト省略する。
 - **運用ルール刷新（`L-09` & 人間待ち3日ルール）**: タスク規模（Size S / M / L）と関連性に応じて1セッションあたり目安 3〜4pt を自律バッチ消化する **Adaptive Batching** 運用。ドキュメント専用PRは軽量検証（`audit:ci-parity` ＋ `audit:memory --docs-only`）で高速完了し、`owner:human` Issue の3日以上滞留時は分割案・代替案付きでリマインドする。
-- **ガバナンス ＆ 3層ハーネス（`ADR-005` / L-15）**: `.agents/hooks.json`（`SessionStart` 乖離警告、`PreToolUse` の `main`/`dev` 直操作 `deny` ＆ 保護ファイル/`main` PR `force_ask`）、`ops_github.mjs`（`status` の `branch_sync`・`create-pr` の `main`/連鎖ガード）、`.github/workflows/ci.yml`（`base_ref=main` サーバーゲート）を標準装備。常時読み込みルール（`AGENTS.md` + `.agents/rules/AGENTS.md`）も重複削減で純減し、90行ソフト予算警告を導入（Issue #56 前進）。
+- **ガバナンス ＆ 3層ハーネス（`ADR-005` / L-15 / #55 / #56）**: `.agents/hooks.json`（`SessionStart` 乖離警告、`PreToolUse` の `main`/`dev` 直操作 `deny` ＆ 保護ファイル/`main` PR `force_ask`）、`ops_github.mjs`（`status` の `branch_sync`・`create-pr` の `main`/連鎖ガード・`ready-pr` の `.github/pull_request_template.md` 必須見出し/PC・モバイル自己受け入れ証跡/料金一次ソースURL検証）、`.github/workflows/ci.yml`（`base_ref=main` サーバーゲート）を標準装備。常時読み込みルールも純減完了（Issue #56 クローズ済み）。
 - **ブランチ同期状態**: PR #74 により PR #71 マージコミットの `main ➔ dev` 履歴同期は完了済み（`main_ahead_by = 0`）。また `ops:status` の `open_human_issues` に信頼済み最新コメント（`latest_trusted_comment`）を自動同梱し、人間からの日程連絡・質問の見落としを防止（`L-19`）。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
   - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ブランド名 `TemotoBox`・取得対象ドメイン **`temotobox.com`**（すべて小文字・ADR-004）で確定。**他個人開発ドメインとの更新時期統一のため `2026-12-07` に Cloudflare Registrar で購入・接続予定（Issue #32 人間コメント合意済み・`2026-12-07` まで催促リマインド停止）**
-  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:review`, **進捗 4/4 `dev` マージ完遂**: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/`・`/tools/pdf-redactor/`・`/tools/pdf-organizer/` 統合済)
-  - Issue #57 `[AI] PIIマスカーの検出率ベンチマーク・往復property test・検出漏れ注意表示` (`owner:ai`, `priority:p1`, PR #65 で `dev`/`main` 反映済み)
-  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, 競合分析を踏まえ汎用ツールの数合わせ量産よりも品質・勝機領域優先を検討中)
+  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `status:done`, **4/4 `dev` マージ＆クローズ完了**)
+  - Issue #57 `[AI] PIIマスカーの検出率ベンチマーク・往復property test・検出漏れ注意表示` (`owner:ai`, `status:done`, クローズ済み)
+  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, 競合分析を踏まえ機密実務特化の `text-cleaner`・`offline-qr-password`・`jp-business-days`・`regex-tester-jp` を順次実装予定)
 - **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 合意スケジュール: `2026-12-07` ドメイン公開・12月中旬申請)**:
   - Issue #66 `[Human] TemotoBox 公開記念 Zenn / Qiita / X 技術記事3本の投稿` (`owner:human`, `priority:p1`, `docs/promotions/` 3/3本完成・`2026-12-07` の `temotobox.com` 疎通後に1本目から公開予定、12/07までリマインド停止)
 - **その他 AI運用・品質強化バックログ**:
-  - Issue #78（LLM料金改定予定の事前検知確認）、#55（AI受入テスト・PRテンプレート）、#59（問い合わせ導線・リポジトリ公開方針/衛生）、#75（自動起票ワークフロー2本の信頼境界・重複抑止統一と `found-by:ai` 自動付与）
+  - 対応完了・レビュー提出: Issue #79（LLM料金シミュレーターへの性能ベンチマーク散布図・棒グラフ統合）、#78（LLM 4社料金＆12/1 Gemini 4 Argon 改定予定の一次ソース再検証）、#55（PRテンプレート・AI自己受け入れテスト・`ready-pr` 本文ゲート導入）、#56（ルール肥大化対策クローズ完了）
+  - 残バックログ: Issue #75（保護ファイル `.github/workflows/` 自動起票ワークフロー2本の信頼境界・重複抑止統一と `found-by:ai` 自動付与）、#59（問い合わせ導線・リポジトリ公開方針整理・モジュール/E2E分割・古いブランチ整理）
 - **Milestone 4 (`M3: Growth PDCA, EN Expansion & 100 JPY/mo`, 期限 2027-02-20)**: 収益化・英語展開・週次PDCA目標。
 
 ---
 
 ## 3. 次セッションの実行プラン（Next Action）
 
-1. **公開前メンテナンス・品質基盤の仕上げ（Issue #78 / #75 / #55 / #59）**: `2026-12-07` の本番ドメイン取得日に万全の状態で公開できるよう、12/1 予定の LLM料金改定一次ソース確認（#78）、自動起票ワークフロー改善（#75）、AI受入テスト・PRテンプレート（#55）、公開リポジトリ衛生（#59）を優先消化する（※ Issue #32・#66 は `2026-12-07` ドメイン購入予定合意済みのため期日前のリマインド不要）。
+1. **公開前メンテナンス・品質衛生の仕上げ（Issue #75 / #59 / Wave 3 第1弾 #34）**: `2026-12-07` の本番ドメイン取得日に向け、保護対象ワークフロー改善（#75・人間承認スライス）、公開リポジトリ衛生・巨大ファイル分割（#59）、および Wave 3 優先① `text-cleaner`（#34）を推進する（※ Issue #32・#66 は `2026-12-07` ドメイン購入予定合意済みのため期日前のリマインド不要）。
 2. **`2026-12-07` ドメイン取得・本番リリース ＆ 記事公開（#32 Track A ＋ #66 ＋ #68）**: 12/7 の `temotobox.com`（小文字）購入に合わせ、最新8ツール統合済み `dev ➔ main` リリースPR作成、GSC/GA4登録、および Zenn/Qiita/X 技術記事公開（#66）を実施する。
