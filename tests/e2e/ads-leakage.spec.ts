@@ -38,6 +38,9 @@ const CANARY_SECRETS = [
   '090-8811-2233',
   'sk-proj-canarypdf88112233445566',
   'CanaryPdfAuthor_8811',
+  'CANARY_ORGANIZER_SECRET_9922',
+  'CanaryOrgAuthor_9922',
+  'canary-organizer-9922@secret-corp.example',
 ]
 
 interface RecordedRequest {
@@ -166,7 +169,7 @@ async function setupAdSandbox(page: Page) {
   }
 }
 
-test('proves zero input data leakage across all 7 tools even when AdSense and GA4 scripts are enabled', async ({
+test('proves zero input data leakage across all 8 tools even when AdSense and GA4 scripts are enabled', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -284,6 +287,53 @@ test('proves zero input data leakage across all 7 tools even when AdSense and GA
   await expect(page.getByTestId('pdf-after-text-chars')).toContainText('0 文字')
   await expect(page.getByTestId('pdf-after-metadata-count')).toContainText('0 件')
   await sandbox.snapshotDataLayer('/tools/pdf-redactor/')
+
+  // 8. PDF Organizer（カナリア入り2ファイルをアップロードし、結合・分割ZIP・匿名ファイル名で漏洩ゼロ検証）
+  const orgPdf1 = await PDFDocument.create()
+  orgPdf1.setTitle('CANARY_ORGANIZER_SECRET_9922')
+  orgPdf1.setAuthor('CanaryOrgAuthor_9922')
+  const orgFont1 = await orgPdf1.embedFont(StandardFonts.Helvetica)
+  const orgPage1 = orgPdf1.addPage([595, 842])
+  orgPage1.drawText('Secret Contact: canary-organizer-9922@secret-corp.example', {
+    x: 40,
+    y: 740,
+    size: 11,
+    font: orgFont1,
+    color: rgb(0, 0, 0),
+  })
+  const orgPdf1Bytes = await orgPdf1.save()
+
+  const orgPdf2 = await PDFDocument.create()
+  orgPdf2.setTitle('CANARY_ORGANIZER_APPENDIX_9922')
+  const orgFont2 = await orgPdf2.embedFont(StandardFonts.Helvetica)
+  const orgPage2 = orgPdf2.addPage([842, 595])
+  orgPage2.drawText('Appendix: CANARY_ORGANIZER_SECRET_9922', {
+    x: 40,
+    y: 440,
+    size: 11,
+    font: orgFont2,
+    color: rgb(0, 0, 0),
+  })
+  const orgPdf2Bytes = await orgPdf2.save()
+
+  await page.goto('/tools/pdf-organizer/', { waitUntil: 'networkidle' })
+  await page.getByTestId('organizer-file-input').setInputFiles([
+    {
+      name: 'CANARY_ORGANIZER_SECRET_9922_1.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(orgPdf1Bytes),
+    },
+    {
+      name: 'CANARY_ORGANIZER_SECRET_9922_2.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(orgPdf2Bytes),
+    },
+  ])
+  await expect(page.getByTestId('organizer-before-summary')).toBeVisible()
+  await page.getByTestId('generate-organized-pdf-btn').click()
+  await expect(page.getByTestId('organizer-output-result')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByTestId('organizer-after-risk-count')).toContainText('0 件')
+  await sandbox.snapshotDataLayer('/tools/pdf-organizer/')
 
   // 検証1: AdSense と GA4 の外部リクエスト試行が実際に発生・捕捉されていること
   expect(

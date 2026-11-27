@@ -48,10 +48,12 @@ export async function openPdfjsDocument(
     wasmUrl: '/pdfjs/wasm/',
     useWasm: false,
     enableXfa: false,
+    pdfBug: false,
     disableRange: true,
     disableStream: true,
     disableAutoFetch: true,
     maxImageSize: MAX_PDFJS_IMAGE_SIZE,
+    canvasMaxAreaInBytes: 16_777_216,
   })
   const doc = await task.promise
   return {
@@ -430,4 +432,154 @@ export async function createSampleConfidentialPdf(): Promise<Uint8Array> {
   })
 
   return doc.save()
+}
+
+export async function renderPdfThumbnailBlobUrl(
+  pdfDoc: PdfjsDocumentProxy,
+  pageNumber: number,
+  rotationDeltaDeg = 0,
+  targetLongEdgePx = 320
+): Promise<string> {
+  const page = await pdfDoc.getPage(pageNumber)
+  const canvas = document.createElement('canvas')
+  try {
+    const baseViewport = page.getViewport({ scale: 1 })
+    const longestPt = Math.max(1, baseViewport.width, baseViewport.height)
+    const scale = Math.min(1.5, Math.max(0.25, targetLongEdgePx / longestPt))
+    const totalRotation = (((page.rotate || 0) + rotationDeltaDeg) % 360 + 360) % 360
+    const viewport = page.getViewport({ scale, rotation: totalRotation })
+
+    canvas.width = Math.max(1, Math.round(viewport.width))
+    canvas.height = Math.max(1, Math.round(viewport.height))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      throw new Error('サムネイル描画用のCanvasを取得できませんでした。')
+    }
+
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    await page.render({
+      canvas,
+      canvasContext: ctx,
+      viewport,
+    }).promise
+
+    return await new Promise<string>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('サムネイル画像の生成に失敗しました。'))
+            return
+          }
+          resolve(URL.createObjectURL(blob))
+        },
+        'image/jpeg',
+        0.82
+      )
+    })
+  } finally {
+    page.cleanup()
+    canvas.width = 0
+    canvas.height = 0
+  }
+}
+
+/**
+ * PDF結合・分割・並べ替え用のサンプル2ファイル（契約書案2ページ＋横向き別紙1ページ）を
+ * メモリ上で生成する（作成者メタデータ・注釈・XMPを含み、除去検証を体験できる）。
+ */
+export async function createSampleOrganizerPdfs(): Promise<
+  { fileName: string; bytes: Uint8Array }[]
+> {
+  const doc1 = await PDFDocument.create()
+  doc1.setTitle('Sample_Master_Agreement_2026')
+  doc1.setAuthor('Hanako Sato (Corp-PC-12)')
+  doc1.setCreator('TemotoBox Sample Builder')
+  doc1.setProducer('Sample PDF Engine')
+  doc1.setCreationDate(new Date('2026-11-18T10:00:00Z'))
+  const xmp1 = doc1.context.flateStream('<x:xmpmeta>InternalDraft</x:xmpmeta>')
+  doc1.catalog.set(PDFName.of('Metadata'), doc1.context.register(xmp1))
+
+  const font1 = await doc1.embedFont(StandardFonts.Helvetica)
+  const bold1 = await doc1.embedFont(StandardFonts.HelveticaBold)
+
+  const banner1 = await renderBannerCanvasPng(
+    '業務委託契約書 ドラフト（サンプル 1/2）',
+    '作成者メタデータ・社内注釈を含む原本から、不要ページを除外して結合できます'
+  )
+  const img1 = await doc1.embedPng(banner1)
+  const p1 = doc1.addPage([595.28, 841.89])
+  p1.drawImage(img1, { x: 40, y: 700, width: 515, height: 88 })
+  p1.drawText('Article 1. Purpose and Scope of Services', {
+    x: 45,
+    y: 650,
+    size: 13,
+    font: bold1,
+    color: rgb(0.1, 0.14, 0.2),
+  })
+  p1.drawText('Document ID: SAMPLE-ORG-001 (A4 Portrait)', {
+    x: 45,
+    y: 622,
+    size: 11,
+    font: font1,
+    color: rgb(0.15, 0.2, 0.28),
+  })
+
+  const annotDict = doc1.context.obj({
+    Type: 'Annot',
+    Subtype: 'Text',
+    Rect: [45, 560, 65, 580],
+    Contents: PDFString.of('Internal review memo: strip before external sharing'),
+  })
+  p1.node.set(PDFName.of('Annots'), doc1.context.obj([doc1.context.register(annotDict)]))
+
+  const p2 = doc1.addPage([595.28, 841.89])
+  p2.drawText('Article 2. Internal Memo Page (Can be excluded or split)', {
+    x: 45,
+    y: 740,
+    size: 13,
+    font: bold1,
+    color: rgb(0.1, 0.14, 0.2),
+  })
+  p2.drawText('Try excluding this page, reordering Appendix first, or splitting by range.', {
+    x: 45,
+    y: 710,
+    size: 11,
+    font: font1,
+    color: rgb(0.15, 0.2, 0.28),
+  })
+
+  const doc2 = await PDFDocument.create()
+  doc2.setTitle('Sample_Appendix_Schedule')
+  doc2.setAuthor('Taro Tanaka (Scanner-03)')
+  doc2.setProducer('Scanner Utility')
+  const bold2 = await doc2.embedFont(StandardFonts.HelveticaBold)
+  const font2 = await doc2.embedFont(StandardFonts.Helvetica)
+  const banner2 = await renderBannerCanvasPng(
+    '別紙・納品スケジュール表（サンプル 2/2・横向き）',
+    'サイズや向きの異なるページを90度回転・A4縦統一して1つのPDFへ整理できます'
+  )
+  const img2 = await doc2.embedPng(banner2)
+  const p3 = doc2.addPage([841.89, 595.28])
+  p3.drawImage(img2, { x: 40, y: 455, width: 760, height: 100 })
+  p3.drawText('Appendix B: Delivery Schedule (A4 Landscape)', {
+    x: 45,
+    y: 410,
+    size: 14,
+    font: bold2,
+    color: rgb(0.1, 0.14, 0.2),
+  })
+  p3.drawText('Rotate 90 deg or normalize mixed page sizes to A4 portrait before export.', {
+    x: 45,
+    y: 382,
+    size: 11,
+    font: font2,
+    color: rgb(0.15, 0.2, 0.28),
+  })
+
+  return [
+    { fileName: 'sample-contract-draft.pdf', bytes: await doc1.save() },
+    { fileName: 'sample-appendix-landscape.pdf', bytes: await doc2.save() },
+  ]
 }

@@ -119,14 +119,19 @@ export const TOOLS: ToolDefinition[] = [
     name: 'PDF 完全ローカル結合・分割・ページ並べ替え',
     shortTitle: 'PDFローカル結合・分割',
     titleSegments: ['PDFローカル', '結合・分割', '・並べ替え'],
-    shortSummary: '社外秘PDFを外部へ送らず、ページの結合・分割・回転をブラウザ内で完結します。',
+    shortSummary: '入力PDFを外部へ送らず、ページの結合・分割・回転・メタデータ除去をブラウザ内で完結します。',
     summary:
-      '社外秘資料を外部クラウドへ上げずに、ページ単位の分割・結合・回転・抽出をブラウザ内だけで完結します。',
+      '入力PDFを外部クラウドへ上げずに、ページ単位の結合・範囲分割・ZIP一括出力・90度回転・A4統一・構造サニタイズをブラウザ内だけで完結します。',
     category: 'file-utility',
     categoryLabel: 'ファイル実務',
-    status: 'planned',
+    status: 'published',
     wave: 2,
-    keywords: ['PDF 結合 サーバー送信なし', 'PDF 分割 ローカル'],
+    keywords: [
+      'PDF 結合 サーバー送信なし',
+      'PDF 分割 ローカル ZIP',
+      'PDF ページ並べ替え 回転',
+      'PDF メタデータ 削除 結合',
+    ],
     iconKey: 'files',
   },
   {

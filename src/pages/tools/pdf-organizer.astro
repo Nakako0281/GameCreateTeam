@@ -1,0 +1,102 @@
+---
+import ToolLayout, { type FaqItem } from '../../layouts/ToolLayout.astro'
+import PdfOrganizer from '../../components/tools/PdfOrganizer'
+import { getToolBySlug } from '../../data/tools'
+
+const tool = getToolBySlug('pdf-organizer')
+const seoTitle = 'PDF結合・分割・ページ並べ替え（メタデータ除去） | TemotoBox'
+const seoDescription =
+  '入力PDFファイルをサーバーへ送信せず、ブラウザ内だけで複数PDFの結合・範囲分割・ZIP一括保存・ページ回転・白紙挿入を実行。作成者情報や注釈の除去と再スキャン結果も確認できます。'
+
+const faqs: FaqItem[] = [
+  {
+    question: 'OS標準の「PDFとして印刷（保存）」機能でページを抜き出す方法とは何が違いますか？',
+    answer:
+      'ブラウザや印刷ダイアログの「PDFとして保存」でページ抽出や結合を行うと、ページ全体が再描画・再変換されるため、元のテキスト選択やベクター図形が壊れたり、ファイル容量が数倍に膨れ上がったりします。本ツールはPDFのページオブジェクト単位で無劣化に結合・分割するため、文字検索や拡大時の鮮明さを維持したまま軽量に整理できます。',
+  },
+  {
+    question: '複数ファイルへ分割したとき、何十個も連続ダウンロードさせられませんか？',
+    answer:
+      '出力結果が2ファイル以上になる範囲分割やページ数ごとの全分割では、ブラウザの連続ダウンロード制限を避けるため自動的に1つのZIPアーカイブ（UTF-8日本語ファイル名対応）へまとめて一括保存できます。もちろん個別のPDFファイルごとのダウンロードリンクも同時に表示されます。',
+  },
+  {
+    question: '結合や抽出によって元のページに付いていたレビューコメントや作成者名は引き継がれますか？',
+    answer:
+      '既定でオンになっている「メタデータ・注釈・不要構造を除去」オプションを有効にしたまま出力すると、カタログ上の作成者情報やXMPだけでなく、ページ単位の注釈、外部URIリンク、スクリプト、編集ソフト固有データ、および分割で除外したページへの参照も出力から取り除かれ、出力後の再スキャン結果が一覧で確認できます。',
+  },
+  {
+    question: '結合や不要ページ削除だけで、文書内の機密文字も完全に消えますか？',
+    answer:
+      'いいえ。本ツールは文字やベクター情報を保ったままページ構造を整理・製本するツールであるため、白文字や非表示レイヤーを含むページ内テキストは残ります。特定の氏名や金額を完全に消したい場合は、まず本ツールで不要ページ削除や結合を済ませてから「PDF真の墨消し」ツールで黒塗り処理を行う順序をおすすめします。',
+  },
+]
+---
+
+<ToolLayout
+  tool={tool}
+  seoTitle={seoTitle}
+  seoDescription={seoDescription}
+  featureList={[
+    '入力PDFを外部へ送らず、複数PDFの結合・順序変更・不要ページ除外・白紙ページ挿入を無劣化で実行',
+    'A4縦・A3横などの実寸・向きバッジ表示、両面スキャン向け偶数ページ180度一括回転、A4縦フィット統一',
+    '範囲指定分割（1-2, 3+5 等）およびページ数ごと全分割に対応し、2件以上は標準ZIPで一括保存',
+    'ページ単位の注釈・外部アクション・XMP・除外ページ参照を剥離し、処理後再スキャン件数を表示',
+  ]}
+  faqs={faqs}
+>
+  <PdfOrganizer slot="tool" client:load />
+
+  <div slot="guide" class="space-y-4 text-sm leading-relaxed text-slate-700">
+    <section>
+      <h2 class="text-lg font-bold text-slate-900">
+        文字検索性と画質を保ったまま、複数PDFの製本・分割・サイズ統一を完結する仕組み
+      </h2>
+      <p class="mt-2.5">
+        見積書と別紙スケジュール、複数部署から集まった報告書、スキャナで取り込んだ両面原稿などを1つの提出用PDFへまとめる作業は日常的に発生します。このとき OS の印刷ダイアログから「PDFとして保存」を繰り返すと、文字のコピーや <code>Ctrl+F</code> 検索ができなくなったり、元のテキストデータが画像化されて容量が肥大化したりする問題が起きがちです。
+      </p>
+      <p class="mt-2.5">
+        TemotoBox の PDF ローカル結合・分割ツールは、入力PDFのページ定義オブジェクト単位で構造を読み解き、必要なページだけを新しいPDFコンテナへ組み直します。そのため、表組み・フォント・CAD図面のベクター線を劣化させずに順序変更や範囲抽出を行えます。さらに実寸と向きの判定により、A4縦の本体へA3横やB5、Letterサイズの別紙が混在した際もサムネイル上の用紙バッジで即座に違和感を発見でき、必要に応じて縦横比を保ったままA4縦サイズへ揃えて書き出せます。
+      </p>
+    </section>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>ページ単位の注釈・除外ページ参照・両面スキャン回転への実務対策</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          一般的なPDF結合ライブラリでページを単純コピーすると、文書全体の作成者欄だけでなく、各ページにぶら下がった社内レビュー用のコメント注釈、外部サイトへのクリック誘導リンク、編集アプリの履歴領域、さらにはフォーム参照を通じて「分割で省いたはずの別ページ」のオブジェクトまで出力ファイルへ紛れ込むことがあります。
+        </p>
+        <p>
+          本ツールは読み込み時に文書全体と各ページ・画像リソースの構造リスクを合計件数として診断し、既定のクリーン出力設定が有効な場合はコピー実行前の段階でページ上の注釈・外部アクション・ページ固有XMPを剥離してから新規ドキュメントへ組み込みます。出力直後には生成されたバイト列を再度検査し、残存件数が 0 件になったことを確認できるため、取引先提出前の確認負荷を大きく減らせます。
+        </p>
+        <p>
+          また、複合機の両面スキャンで裏面だけ上下逆さまに取り込まれてしまった原稿には「偶数ページ180度回転」、両面印刷時の章区切り調整には「白紙ページ追加」ボタンを用意しています。スマートフォン幅でもドラッグ操作に頼らず「前へ・後ろへ・位置指定ドロップダウン」だけで確実に並べ替えできます。
+        </p>
+      </div>
+    </details>
+
+    <details class="group rounded-xl border border-slate-200 bg-slate-50/50">
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-bold text-slate-900">
+        <span>範囲指定の書き方、電子署名・パスワードPDFの注意点、他ツールとの連携順</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="space-y-3 border-t border-slate-200 px-4 py-4">
+        <p>
+          <strong>範囲指定分割の記法:</strong> <code>1-2, 3-5</code> のようにカンマ（または改行）で区切ると、指定区間ごとに別々のPDFファイルへ分割されます。1つのファイルへ離れたページを集約したい場合は <code>1-2 + 5, 3-4</code> のように <code>+</code> で繋いでください。2ファイル以上の分割出力では、ブラウザでファイル保存ダイアログが連続表示される煩雑さを避けるため、そのまま解凍できるZIPアーカイブを同時に生成します。
+        </p>
+        <p>
+          <strong>暗号化PDFと電子署名付きPDFの制限:</strong> 閲覧や編集にパスワード保護が掛かった暗号化PDFは、権利保護と破損防止のため解除処理を行わず読み込み時点でエラー案内を表示します。また、タイムスタンプや電子署名（PAdES）が付与されたPDFに対してページ追加・削除・回転を行うとハッシュ値が変わるため署名は無効化されます。署名維持が必要な原本には適用しないでください。
+        </p>
+        <p>
+          <strong>文字の黒塗りが必要な場合の正しい作業順:</strong> 複数PDFを整理しつつ機密箇所を隠したい場合は、先に本ツールでページ結合・不要ページ削除・向き補正を完了し、その出力PDFを <a href="/tools/pdf-redactor/" class="font-semibold text-sky-700 underline">PDF真の墨消しツール</a> へ読み込んで黒塗り焼付けを行う手順が効率的です。テキストデータ自体をAI入力前に仮名化したい場合は <a href="/tools/ai-pii-masker/" class="font-semibold text-sky-700 underline">AI入力前 PIIマスカー</a> もあわせてご活用ください。
+        </p>
+      </div>
+    </details>
+  </div>
+</ToolLayout>
