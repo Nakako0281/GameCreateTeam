@@ -532,10 +532,49 @@ export function formatIssueSummary(i, { includeUntrustedTitle = false } = {}) {
     milestone: i.milestone
       ? { number: i.milestone.number, title: i.milestone.title }
       : null,
+    comments_count: typeof i.comments === 'number' ? i.comments : 0,
     created_at: i.created_at,
     updated_at: i.updated_at,
     closed_at: i.closed_at || null,
     html_url: i.html_url,
+  }
+}
+
+export function extractLatestTrustedComment(
+  comments = [],
+  { maxPreviewLength = 280 } = {}
+) {
+  const trusted = (comments || []).filter(isTrustedAuthor)
+  if (trusted.length === 0) return null
+
+  let latest = trusted[0]
+  let latestMs = Date.parse(latest.created_at || '')
+  for (let idx = 1; idx < trusted.length; idx++) {
+    const candidate = trusted[idx]
+    const candidateMs = Date.parse(candidate.created_at || '')
+    if (
+      Number.isNaN(latestMs) ||
+      (!Number.isNaN(candidateMs) && candidateMs >= latestMs)
+    ) {
+      latest = candidate
+      latestMs = candidateMs
+    }
+  }
+
+  const rawBody = String(latest.body ?? '')
+  const truncated = rawBody.length > maxPreviewLength
+  const bodyPreview = truncated
+    ? `${rawBody.slice(0, maxPreviewLength)}...`
+    : rawBody
+
+  return {
+    id: latest.id ?? null,
+    user: latest.user?.login || null,
+    author_type: latest.user?.type || null,
+    author_association: latest.author_association || 'NONE',
+    created_at: latest.created_at || null,
+    body_preview: bodyPreview,
+    truncated,
   }
 }
 
@@ -1037,6 +1076,20 @@ async function main() {
       )
       const hasExternal = externalIssues.length > 0 || externalPrs.length > 0
 
+      // オープン中の owner:human Issue に付いた信頼済み最新コメント（日程指定・質問・完了連絡）を自動取得し見落としを防ぐ（L-19）
+      const humanCommentTargets = humanOpen
+        .filter((i) => (i.comments || 0) > 0)
+        .slice(0, 10)
+      const humanCommentEntries = await Promise.all(
+        humanCommentTargets.map(async (i) => {
+          const comments = await githubRequest(
+            `/issues/${i.number}/comments?per_page=100`
+          ).catch(() => [])
+          return [i.number, extractLatestTrustedComment(comments)]
+        })
+      )
+      const humanLatestCommentMap = new Map(humanCommentEntries)
+
       console.log(
         JSON.stringify(
           {
@@ -1066,7 +1119,11 @@ async function main() {
                 }
               : {}),
             milestones: milestones.map(formatMilestone),
-            open_human_issues: humanOpen.map((i) => formatIssueSummary(i)),
+            open_human_issues: humanOpen.map((i) => ({
+              ...formatIssueSummary(i),
+              latest_trusted_comment:
+                humanLatestCommentMap.get(i.number) ?? null,
+            })),
             stagnant_human_issues: stagnantHumanIssues.map((i) => ({
               ...formatIssueSummary(i),
               stagnant_days: Number(
@@ -1075,6 +1132,8 @@ async function main() {
                   (24 * 60 * 60 * 1000)
                 ).toFixed(1)
               ),
+              latest_trusted_comment:
+                humanLatestCommentMap.get(i.number) ?? null,
             })),
             open_ai_issues: aiOpen.map((i) => formatIssueSummary(i)),
             unlabeled_trusted_issues: unlabeledTrusted.map((i) =>

@@ -13,7 +13,7 @@ description: 毎日定例で実行する自律運用スキル。GitHub上の人�
    - **`branch_sync` 異常検知（Tier 2 停止ゲート）**: `branch_sync.needs_escalation === true`（`main_ahead_by > 0`）または競合時は、変則 `main` PR や連鎖 PR を作成せず、`AGENTS.md` §3-2 に従い `owner:human` Issue へ4点セットを起票して停止する（無関係かつクリーンな `dev` 向け Tier 1 タスクのみ分離実行可）。
    - `unlabeled_trusted_issues` があれば即座に `get-issue` で精査し、`owner:ai` / `priority:p0` 等を付与して最優先トリアージする（外部入力境界は `AGENTS.md` §4 L-12 に従う）。
    - `recently_closed_human_issues` があれば `get-issue <num>` で人間の完了内容を取得し、`docs/STATE.md` と後続計画へ反映する。
-   - **人間待ち滞留エスカレーション（3日ルール）**: `open_human_issues` のうち `updated_at` から72時間以上滞留しているものは、`get-issue` で確認のうえ直近3日以内に同内容のリマインドが無ければ、スケジュール影響・最小労力の分割案・選択肢をコメントする（連日重複禁止）。
+   - **オープン中の `owner:human` コメント確認 ＆ 人間待ち滞留エスカレーション（3日ルール / L-19）**: `open_human_issues` の `latest_trusted_comment`（長文で `truncated: true` の場合や文脈確認時は `get-issue <num>`）を必ず確認し、人間からの実施予定日連絡・質問・判断があれば即座に回答および `docs/STATE.md` へ反映する。人間が具体的な実施予定日（例：`2026-12-07`）を明示している場合はその期日到来前の催促リマインドを禁止し、予定日未指定で `updated_at` から72時間以上滞留している場合のみ分割案・選択肢付きでリマインドする（連日重複禁止）。
    - 既に `dev` マージ済みの `status:review` Issue があれば `status:done` へ更新しクローズする。
    - 鮮度接近（`PRICING_LAST_VERIFIED` 14日上限・`priceEffectiveUntil` 7日以内）があれば公式一次ソースを確認してから実装する。
 

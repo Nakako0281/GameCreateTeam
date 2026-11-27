@@ -3,14 +3,14 @@
 > **単一真実（Single Source of Truth）**: 新しいチャットセッション・日次定例・週次振り返りは必ず本ファイルと `npm run ops:status` から開始すること。
 
 - **最終更新日**: 2026-11-27
-- **運用フェーズ**: `Phase 2 公開準備進行・Wave 2 全4ツール実装完了（計8ツール／pdf-organizer PR提出）`
+- **運用フェーズ**: `Phase 2 公開準備進行・Wave 2 全4ツール dev統合完了（計8ツール／temotobox.com は 2026-12-07 取得予定）`
 - **収益目標**: **2027-02-20 までに Google AdSense 月 100 円以上**（達成後は月 1,000 円 → 10,000 円へ拡大）
 - **対象リポジトリ**: `Nakako0281/GameCreateTeam`（旧 GameCreateTeam v1 はタグ `archive/game-create-team-v1` で保全済み）
 - **ブランド / サイト名**: **TemotoBox**（生成AI・社外共有前の下ごしらえ特化型・検証可能なブラウザ完結実務ワークベンチ／`ADR-004`）
 - **テスト環境URL**: Cloudflare Workers / Pages（`*.workers.dev`・`*.pages.dev` ともに `X-Robots-Tag: noindex, nofollow` 保護済み、`PUBLIC_NOINDEX=true` でバナー・meta制御可）
-- **本番URL**: 未公開（取得対象ドメイン `temotobox.com` 確定・Canonical/Sitemap 自動 `https://temotobox.com` 化済／Issue #32 で最小15分手順によるドメイン接続待ち）
-- **AdSense状態**: 未申請（12/10 初回申請目標に向けツール拡充＆独自ドメイン公開準備完了）
-- **GA4 / GSC接続**: 未接続（独自ドメイン購入＆本番デプロイ時に設定）
+- **本番URL**: 未公開（取得対象ドメイン **`temotobox.com`**（すべて小文字）確定・Canonical/Sitemap 自動 `https://temotobox.com` 化済／**Issue #32 人間コメント合意により他個人開発ドメインと更新日を揃え `2026-12-07` に購入・接続予定、12/07まで催促リマインド停止**）
+- **AdSense状態**: 未申請（2026-12-07 独自ドメイン公開後、12月中旬の初回申請目標に向け準備進行）
+- **GA4 / GSC接続**: 未接続（2026-12-07 独自ドメイン購入＆本番デプロイ時に設定）
 
 ---
 
@@ -25,8 +25,8 @@
 | Tool 4 | `/tools/image-exif-cleaner/` | 刷新済み (2026-11-22) | 画像 EXIF/GPS位置情報 完全削除＆WebP/JPG/PNG一括軽量化（ドロップ枠最上段配置・設定簡素化） |
 | Tool 5 | `/tools/pdf-redactor/` | 実装済み (2026-11-26) | PDF「真の墨消し（黒塗り/白塗り）」＆Info/XMPメタデータ完全削除（全ページ画像化・PII候補1クリック提案・処理後0文字/0件再検査証明） |
 | Tool 6 | `/tools/pdf-organizer/` | 実装済み (2026-11-27) | PDF 完全ローカル結合・範囲分割（ZIP一括出力）・90度回転・白紙挿入・A4縦統一＆ページ単位注釈/XMP/不要構造除去＋再スキャン証明 |
-| Tool 6 | `/tools/ai-markdown-formatter/` | 実装済み (2026-11-22) | AI出力（Markdown・表）➔ Word書式付きHTML・Excel用TSV/BOM付CSV・Slack mrkdwn・平文整形（外部画像遮断・数式インジェクション防御付き） |
-| Tool 7 | `/tools/config-sanitizer/` | 実装済み (2026-11-22) | `.env`・JSON/JSONC・マルチドキュメントYAML（K8s Secret含む）・JSONLログの非破壊秘匿値マスク＆`.env.example`生成・相互変換 |
+| Tool 7 | `/tools/ai-markdown-formatter/` | 実装済み (2026-11-22) | AI出力（Markdown・表）➔ Word書式付きHTML・Excel用TSV/BOM付CSV・Slack mrkdwn・平文整形（外部画像遮断・数式インジェクション防御付き） |
+| Tool 8 | `/tools/config-sanitizer/` | 実装済み (2026-11-22) | `.env`・JSON/JSONC・マルチドキュメントYAML（K8s Secret含む）・JSONLログの非破壊秘匿値マスク＆`.env.example`生成・相互変換 |
 | 法務ページ | `/privacy/` | 更新済み (2026-11-23) | プライバシーポリシー・電気通信事業法 外部送信規律公表・CMP記載（入力データ送信ゼロ＋GA4/AdSense分離明記） |
 | 法務ページ | `/terms/` | 更新済み (2026-11-22) | 利用規約・免責事項（設定ファイル・ログ秘匿化の免責＆露出キー無効化案内を追記・H1フレーズ制御適用） |
 | 法務ページ | `/about/` | 刷新済み (2026-11-23) | 入力データ非送信設計・DevTools検証手順（GA4/AdSense通信と入力処理の分離検証手順へ統一・L-14） |
@@ -41,22 +41,21 @@
 - **外部入力の信頼境界（`L-12`）**: `ops_github.mjs` は `OWNER`/`COLLABORATOR`/`MEMBER` と公式 `github-actions[bot]`（`type: Bot`）・同一リポPRのみを信頼し、外部Issue・外部コメント・フォークPRは隔離して本文/タイトルをデフォルト省略する。
 - **運用ルール刷新（`L-09` & 人間待ち3日ルール）**: タスク規模（Size S / M / L）と関連性に応じて1セッションあたり目安 3〜4pt を自律バッチ消化する **Adaptive Batching** 運用。ドキュメント専用PRは軽量検証（`audit:ci-parity` ＋ `audit:memory --docs-only`）で高速完了し、`owner:human` Issue の3日以上滞留時は分割案・代替案付きでリマインドする。
 - **ガバナンス ＆ 3層ハーネス（`ADR-005` / L-15）**: `.agents/hooks.json`（`SessionStart` 乖離警告、`PreToolUse` の `main`/`dev` 直操作 `deny` ＆ 保護ファイル/`main` PR `force_ask`）、`ops_github.mjs`（`status` の `branch_sync`・`create-pr` の `main`/連鎖ガード）、`.github/workflows/ci.yml`（`base_ref=main` サーバーゲート）を標準装備。常時読み込みルール（`AGENTS.md` + `.agents/rules/AGENTS.md`）も重複削減で純減し、90行ソフト予算警告を導入（Issue #56 前進）。
-- **ブランチ同期状態**: PR #74 により PR #71 マージコミットの `main ➔ dev` 履歴同期は完了済み（`main_ahead_by = 0`）。
+- **ブランチ同期状態**: PR #74 により PR #71 マージコミットの `main ➔ dev` 履歴同期は完了済み（`main_ahead_by = 0`）。また `ops:status` の `open_human_issues` に信頼済み最新コメント（`latest_trusted_comment`）を自動同梱し、人間からの日程連絡・質問の見落としを防止（`L-19`）。
 - **Milestone 2 (`M1: Local MVP & 12 Tools`, 期限 2026-12-05)**:
-  - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ブランド名 `TemotoBox`・取得対象ドメイン **`temotobox.com`**（ADR-004）で確定、PR #71 `main` 公開後に Track A（11/29目標 `temotobox.com` 取得＆GSC/GA4登録）を実施予定
-  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:review`, **進捗 4/4 完遂**: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/`・`/tools/pdf-redactor/` `dev`マージ済、`/tools/pdf-organizer/` PR提出)
+  - Issue #32 `[Human] Cloudflare Pages テスト環境（*.pages.dev）実機確認 ＆ 独自ドメイン購入判断` (`owner:human`, `priority:p0`) — ブランド名 `TemotoBox`・取得対象ドメイン **`temotobox.com`**（すべて小文字・ADR-004）で確定。**他個人開発ドメインとの更新時期統一のため `2026-12-07` に Cloudflare Registrar で購入・接続予定（Issue #32 人間コメント合意済み・`2026-12-07` まで催促リマインド停止）**
+  - Issue #33 `[AI] Wave 2（第2弾4ツール）の実装` (`owner:ai`, `priority:p1`, `status:review`, **進捗 4/4 `dev` マージ完遂**: `/tools/ai-markdown-formatter/`・`/tools/config-sanitizer/`・`/tools/pdf-redactor/`・`/tools/pdf-organizer/` 統合済)
   - Issue #57 `[AI] PIIマスカーの検出率ベンチマーク・往復property test・検出漏れ注意表示` (`owner:ai`, `priority:p1`, PR #65 で `dev`/`main` 反映済み)
-  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, `ADR-004` 優先順: `text-cleaner` → `offline-qr-password` → `jp-business-days` → `regex-tester-jp`)
-- **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 前倒し目標 12/10申請)**:
-  - Issue #66 `[Human] TemotoBox 公開記念 Zenn / Qiita / X 技術記事3本の投稿` (`owner:human`, `priority:p1`, `docs/promotions/` 3/3本完成・PR #71に合わせて手順最新化済、`temotobox.com` 疎通後に1本目から公開予定)
+  - Issue #34 `[AI] Wave 3（第3弾4ツール）の実装` (`owner:ai`, `priority:p1`, `Size L × 4本`, 競合分析を踏まえ汎用ツールの数合わせ量産よりも品質・勝機領域優先を検討中)
+- **Milestone 3 (`M2: Custom Domain, Production Launch & AdSense Approval`, 期限 2026-12-25 / ADR-003 合意スケジュール: `2026-12-07` ドメイン公開・12月中旬申請)**:
+  - Issue #66 `[Human] TemotoBox 公開記念 Zenn / Qiita / X 技術記事3本の投稿` (`owner:human`, `priority:p1`, `docs/promotions/` 3/3本完成・`2026-12-07` の `temotobox.com` 疎通後に1本目から公開予定、12/07までリマインド停止)
 - **その他 AI運用・品質強化バックログ**:
-  - Issue #55（AI受入テスト・PRテンプレート）, #56（組織ルール肥大化対策：本週次PRで完了）, #59（問い合わせ導線・リポジトリ公開方針/衛生）, #75（自動起票ワークフロー2本の信頼境界・重複抑止統一と `found-by:ai` 自動付与：`found-by:ai` 自己発見起票）
+  - Issue #78（LLM料金改定予定の事前検知確認）、#55（AI受入テスト・PRテンプレート）、#59（問い合わせ導線・リポジトリ公開方針/衛生）、#75（自動起票ワークフロー2本の信頼境界・重複抑止統一と `found-by:ai` 自動付与）
 - **Milestone 4 (`M3: Growth PDCA, EN Expansion & 100 JPY/mo`, 期限 2027-02-20)**: 収益化・英語展開・週次PDCA目標。
 
 ---
 
 ## 3. 次セッションの実行プラン（Next Action）
 
-1. **`temotobox.com` 取得・GSC/GA4登録 ＆ 記事公開（#32 Track A ＋ #66 ＋ #68）＋ `main ➔ dev` 履歴同期**: PR #71 の `main` リリース公開を受け、独自ドメイン取得・設定（#32 Track A）・Rulesets（#68）・記事公開（#66）を進行。あわせて PR #71 マージコミット由来の `main_ahead_by = 1` を `main ➔ dev` で同期する。
-2. **Wave 3 着手（Issue #34 / `text-cleaner` から順次実装）＆ 保護ワークフロー/受入テスト整備（#75 / #55）**: Wave 2 全4ツール（計8ツール）実装完了を受け、12/10 AdSense 審査申請に向けて Wave 3 と品質基盤を進める。
-3. **LLM料金自動切替確認（12/1 予定）＆ Wave 3・運用改善消化**: `gemini-4-argon` 12/1 価格改定の一次ソース確認および Issue #34 / #55 / #56 / #59 を進める。
+1. **公開前メンテナンス・品質基盤の仕上げ（Issue #78 / #75 / #55 / #59）**: `2026-12-07` の本番ドメイン取得日に万全の状態で公開できるよう、12/1 予定の LLM料金改定一次ソース確認（#78）、自動起票ワークフロー改善（#75）、AI受入テスト・PRテンプレート（#55）、公開リポジトリ衛生（#59）を優先消化する（※ Issue #32・#66 は `2026-12-07` ドメイン購入予定合意済みのため期日前のリマインド不要）。
+2. **`2026-12-07` ドメイン取得・本番リリース ＆ 記事公開（#32 Track A ＋ #66 ＋ #68）**: 12/7 の `temotobox.com`（小文字）購入に合わせ、最新8ツール統合済み `dev ➔ main` リリースPR作成、GSC/GA4登録、および Zenn/Qiita/X 技術記事公開（#66）を実施する。
