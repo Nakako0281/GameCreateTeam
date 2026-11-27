@@ -198,6 +198,22 @@ test('proves zero external transmission across interactive execution of all 8 pu
   await filterGroup.getByRole('button', { name: 'すべて' }).click()
   await expect(costTable.getByText('GPT-6.2 Sol', { exact: true })).toBeVisible()
 
+  // Issue #79: コスパ×性能マップ（散布図）とベンチマーク棒グラフの操作・表示検証
+  const viewTablist = page.getByRole('tablist', { name: '比較ビュー切替' })
+  await viewTablist.getByRole('tab', { name: 'コスパ×性能マップ' }).click()
+  await expect(page.getByTestId('llm-scatter-panel')).toBeVisible()
+  await expect(page.getByTestId('llm-pareto-svg')).toBeVisible()
+  await expect(page.getByTestId('scatter-selected-detail')).toBeVisible()
+  const metricGroup = page.getByRole('group', { name: 'ベンチマーク評価軸' })
+  await metricGroup.getByRole('button', { name: 'コーディング' }).click()
+  await expect(page.getByTestId('llm-scatter-panel')).toContainText('実務コーディング')
+
+  await viewTablist.getByRole('tab', { name: 'ベンチマーク棒グラフ' }).click()
+  const barsPanel = page.getByTestId('llm-bars-panel')
+  await expect(barsPanel).toBeVisible()
+  await expect(barsPanel.getByText('Claude Fable 5.2')).toBeVisible()
+  await viewTablist.getByRole('tab', { name: '料金テーブル' }).click()
+
   const tokensText = await page.getByTestId('effective-input-tokens').textContent()
   expect(Number((tokensText || '0').replace(/,/g, ''))).toBeGreaterThan(20)
 

@@ -24,7 +24,8 @@ description: 毎日定例で実行する自律運用スキル。GitHub上の人�
 3. **安全実装と検証ルートの最適化**:
    - 最新 `dev` から専用作業ブランチを切る（同トピックのクリーンな既存ブランチがあれば継続可）。
    - [運用細則 §4](../../rules/AGENTS.md) に従い、コード変更PRは `npm run check:all`、ドキュメント・ルール専用PRは `npm run audit:ci-parity && node scripts/audit-org-memory.mjs --docs-only` をエラー0件で通過させる。
+   - **AI自己受け入れテスト（UI/ページ変更時必須・Issue #55）**: `src/components/`・`src/pages/`・`src/layouts/`・`src/styles/` を変更した際は、Playwright で対象ページの PC（`1280×800`）およびモバイル（`390×844`）スクリーンショットを撮影して `read_file` で視覚確認し、①初期FVでの3秒アクション到達性、②390px局所文字潰れ・重なりゼロ、③ラベル意味の明快さを自己検査して結果をPR本文へ記載する。
 
-4. **記録とPR提出（リモートCIリリースゲート）**:
-   - `docs/STATE.md` を更新し、コミット＆Pushして `dev` 宛て Draft PR を作成（または既存PR更新）する。
-   - `node scripts/ops_github.mjs ready-pr <pr_number>` でリモートCI全通過と Ready 昇格を確認した後にのみ、関連Issueと人間へ報告する。
+4. **記録とPR提出（PR本文ゲート ＆ リモートCIリリースゲート）**:
+   - `docs/STATE.md` を更新し、コミット＆Pushして `.github/pull_request_template.md` 準拠の本文（`## 概要`・`## 変更と検証証跡`・`## サブエージェント監査と自己受け入れ確認`）で `dev` 宛て Draft PR を作成する。
+   - `node scripts/ops_github.mjs ready-pr <pr_number>` でPR本文の必須証跡検証・リモートCI全通過・Ready昇格を確認した後にのみ、関連Issueと人間へ報告する。

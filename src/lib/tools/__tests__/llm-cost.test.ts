@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   LLM_MODELS,
+  OFFICIAL_BENCHMARK_SOURCE,
   OFFICIAL_PRICING_SOURCES,
   type LlmProvider,
 } from '../../../data/llm-pricing'
 import {
   calculateAllModelCosts,
+  computeBenchmarkComparison,
   estimateTokens,
   exportCostComparisonCsv,
   resolveEffectiveModelPrice,
@@ -185,7 +187,59 @@ describe('llm-cost', () => {
 
     const csv = exportCostComparisonCsv(batchAndCacheRows)
     expect(csv).toContain('Provider,Model,Tier')
+    expect(csv).toContain('BenchmarkOverall,BenchmarkCoding')
     expect(csv).toContain('GPT-6.2 Sol')
     expect(csv).toContain('Internal Custom 8B')
+  })
+
+  it('maintains valid unified benchmark scores and computes Pareto optimal frontier accurately (Issue #79)', () => {
+    expect(OFFICIAL_BENCHMARK_SOURCE.url).toBe('https://benchlm.ai/')
+
+    for (const model of LLM_MODELS) {
+      expect(model.benchmarks.sourceUrl).toBe(OFFICIAL_BENCHMARK_SOURCE.url)
+      for (const score of [model.benchmarks.overall, model.benchmarks.coding]) {
+        if (score !== null) {
+          expect(score).toBeGreaterThan(0)
+          expect(score).toBeLessThanOrEqual(100)
+        }
+      }
+    }
+
+    const rows = calculateAllModelCosts({
+      inputTokens: 2000,
+      outputTokens: 800,
+      monthlyRequests: 1000,
+      cacheHitRatePercent: 50,
+      useBatchApi: false,
+      usdToJpy: 159,
+      customModel: {
+        name: 'Unmeasured Custom',
+        inputPerMillionUsd: 0.5,
+        outputPerMillionUsd: 2.0,
+        cachedInputPerMillionUsd: 0.1,
+        benchmarkOverall: null,
+        benchmarkCoding: 84.5,
+      },
+    })
+
+    const overallComp = computeBenchmarkComparison(rows, 'overall')
+    expect(overallComp.measured.length).toBe(LLM_MODELS.length)
+    expect(overallComp.unmeasured.map((u) => u.id)).toEqual(['custom-model'])
+    expect(overallComp.paretoFrontier.length).toBeGreaterThanOrEqual(3)
+
+    // パレート最適フロンティアはコスト昇順でスコアが単調増加していること
+    for (let i = 1; i < overallComp.paretoFrontier.length; i++) {
+      expect(overallComp.paretoFrontier[i].row.monthlyUsd).toBeGreaterThanOrEqual(
+        overallComp.paretoFrontier[i - 1].row.monthlyUsd
+      )
+      expect(overallComp.paretoFrontier[i].score).toBeGreaterThanOrEqual(
+        overallComp.paretoFrontier[i - 1].score
+      )
+    }
+
+    // Coding 軸ではスコア指定済みのカスタムモデルも測定対象に入ること
+    const codingComp = computeBenchmarkComparison(rows, 'coding')
+    expect(codingComp.measured.some((p) => p.row.id === 'custom-model')).toBe(true)
+    expect(codingComp.unmeasured).toHaveLength(0)
   })
 })
