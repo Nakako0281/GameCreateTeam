@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { findUnqualifiedZeroSendClaims } from '../../scripts/audit-seo-adsense.mjs'
+import {
+  findUnqualifiedZeroSendClaims,
+  validateRobotsAndCanonical,
+} from '../../scripts/audit-seo-adsense.mjs'
 
 describe('audit-seo-adsense zero-send claim accuracy (Issue #53 / L-14)', () => {
   it('flags unconditional one-byte or unqualified zero-transmission claims', () => {
@@ -35,5 +38,47 @@ describe('audit-seo-adsense zero-send claim accuracy (Issue #53 / L-14)', () => 
       const hits = findUnqualifiedZeroSendClaims(sample)
       expect(hits, `Unexpected violation for: ${sample}`).toEqual([])
     }
+  })
+
+  it('rejects relative Sitemap URLs and preview/placeholder canonical or sitemap hosts (L-17)', () => {
+    expect(
+      validateRobotsAndCanonical({
+        robotsTxt:
+          'User-agent: *\nAllow: /\n\nSitemap: https://temotobox.com/sitemap-index.xml\n',
+        canonicalEntries: [
+          { route: '/', href: 'https://temotobox.com/' },
+          {
+            route: '/tools/pdf-redactor/',
+            href: 'https://temotobox.com/tools/pdf-redactor/',
+          },
+        ],
+        sitemapXmls: [
+          {
+            name: 'sitemap-0.xml',
+            content:
+              '<urlset><url><loc>https://temotobox.com/</loc></url></urlset>',
+          },
+        ],
+      })
+    ).toEqual([])
+
+    const bad = validateRobotsAndCanonical({
+      robotsTxt: 'User-agent: *\nSitemap: /sitemap-index.xml\n',
+      canonicalEntries: [
+        { route: '/', href: 'https://abc123.gamecreateteam.pages.dev/' },
+        { route: '/about/', href: 'https://example.com/about/' },
+      ],
+      sitemapXmls: [
+        {
+          name: 'sitemap-0.xml',
+          content:
+            '<urlset><url><loc>https://preview.workers.dev/</loc></url></urlset>',
+        },
+      ],
+    })
+    expect(bad.some((e) => e.includes('robots.txt Sitemap directive'))).toBe(true)
+    expect(bad.some((e) => e.includes('gamecreateteam.pages.dev'))).toBe(true)
+    expect(bad.some((e) => e.includes('example.com'))).toBe(true)
+    expect(bad.some((e) => e.includes('preview.workers.dev'))).toBe(true)
   })
 })

@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   RULE_LINE_BUDGET,
   auditAlwaysOnRuleBudget,
+  auditBrandAndRoleTerminology,
+  auditPostmortemClassification,
+  auditPublishedToolSync,
   runOrgMemoryAudit,
 } from '../../scripts/audit-org-memory.mjs'
 
@@ -104,5 +107,24 @@ describe('audit-org-memory deterministic vs time-sensitive separation (Issue #52
     expect(overBudget).toHaveLength(2)
     expect(overBudget[0]).toContain('[RuleBudget Warning]')
     expect(overBudget[1]).toContain('[RuleBudget Warning]')
+  })
+
+  it('verifies 5-file published tool sync, terminology hygiene, and postmortem tier/evidence tags (L-17, L-18, #56)', () => {
+    expect(auditPublishedToolSync(REPO_ROOT)).toEqual([])
+    expect(auditBrandAndRoleTerminology(REPO_ROOT)).toEqual([])
+
+    const goodPostmortem =
+      '| **L-99** | テスト失敗 | 原因 | `[Tier B: Harness/CLI]` `scripts/audit-org-memory.mjs` に検査追加 |'
+    expect(auditPostmortemClassification(goodPostmortem, 'test.md')).toEqual([])
+
+    const missingTierAndPath =
+      '| **L-99** | テスト失敗 | 原因 | 次回から気をつけます |'
+    const badErrors = auditPostmortemClassification(
+      missingTierAndPath,
+      'test.md'
+    )
+    expect(badErrors).toHaveLength(2)
+    expect(badErrors[0]).toContain('missing Resolution Tier tag')
+    expect(badErrors[1]).toContain('missing concrete repository artifact path')
   })
 })
